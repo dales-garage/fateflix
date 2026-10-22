@@ -104,6 +104,14 @@ dependents. Missing/broken base evaluation selects the full suite; head evaluati
 errors fail CI. `CI required` permits skips only for checks the plan did not select.
 CI does not deploy or contact the VM.
 
+Nix jobs run on GitHub-hosted Ubuntu runners using
+`DeterminateSystems/determinate-nix-action`, pinned to a release and maintained
+by the existing Renovate CI-tooling group. The action configures KVM for the
+NixOS VM tests. CI needs Nix itself; it does not use Cachix or devenv and requires
+no Cachix organization, cache, or token. SecretSpec remains part of production
+credential provisioning and is not needed to initialize CI. Lightweight Python,
+publishing and Pages deployment jobs do not install Nix.
+
 ## First deployment
 
 Prerequisites: reviewed main with passing CI, SSH access as `marty`, sufficient
