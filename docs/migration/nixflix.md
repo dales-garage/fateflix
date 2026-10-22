@@ -501,6 +501,18 @@ other unrelated tunnel routes must remain intact.
 
 ## Verification after RAM and GPU upgrade
 
+This host is Usenet-only. FlareSolverr, qBittorrent, and torrent download-client
+integrations are explicitly disabled in `hosts/nixflix/services.nix`. Its Arr
+delay-profile declarations also disable torrents. The restored application
+databases retain runtime settings: all seven Arr instances (including native
+Readarr and Whisparr) have `enableTorrent=false` and `preferredProtocol=usenet`.
+Their existing delay values, tags, and Usenet connections are preserved. Broad
+database reconciliation remains disabled as described above; when restoring an
+older database, recheck its delay profiles and disable torrent protocols there.
+The October 22 audit found only Usenet indexers, SABnzbd as the enabled download
+client, no Prowlarr proxies, disabled Mylar torrent/FlareSolverr support, and no
+configured Bazarr CAPTCHA provider or keys.
+
 After adding Linux firmware and `i915 enable_guc=2`, a reboot loaded the Rocket
 Lake DMC firmware and authenticated HuC for all workloads. Before this fix a
 synthetic encode hung the GPU; after reboot, H.264 and 10-bit HEVC VA-API encoding
