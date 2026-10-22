@@ -1,0 +1,30 @@
+{
+  "domain": "vm.internal",
+  "address": "10.69.0.18",
+  "macAddress": "66:f3:5d:b3:84:5a",
+  "routerAddress": "10.69.0.1",
+  "publicNames": { "seerr": "seeme" },
+  "publicAuthServices": ["prowlarr", "readarr", "mylar3", "lidarr", "tautulli"],
+  "publicServices": ["plex", "seerr", "prowlarr", "audiobookshelf", "readarr", "mylar3", "lidarr", "tautulli"],
+  "services": {
+    "homepage": 8082,
+    "plex": 32400,
+    "seerr": 5055,
+    "seeme": 5055,
+    "sonarr": 8990,
+    "sonarr-4k": 8989,
+    "radarr": 7879,
+    "radarr-4k": 7878,
+    "prowlarr": 9696,
+    "sabnzbd": 8080,
+    "lidarr": 8686,
+    "bazarr": 6767,
+    "bazarr-4k": 6777,
+    "tautulli": 8181,
+    "audiobookshelf": 13378,
+    "readarr": 8787,
+    "whisparr": 6969,
+    "mylar3": 8090,
+    "stash": 9999
+  }
+}

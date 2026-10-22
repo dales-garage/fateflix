@@ -53,8 +53,13 @@ Each option is documented with:
 
 - [qBittorrent](torrentClients/qbittorrent/index.md)
 
+#### Soulseek
+
+- [slskd](slskd/index.md)
+
 ### Infrastructure
 
+- [Homepage](homepage/index.md) - Media dashboard ([configuration example](../examples/homepage.md))
 - [Nginx](nginx/index.md) - Nginx reverse proxy
 - [Caddy](caddy/index.md) - Caddy reverse proxy
 - [VPN](vpn/index.md) - WireGuard VPN configuration

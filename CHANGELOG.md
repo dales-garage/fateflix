@@ -8,7 +8,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Added Navidrome plugin support ([#372](https://github.com/kiriwalawren/nixflix/pull/372))
+- `nixflix.<sonarr|sonarr-anime|radarr|lidarr>.config.metadata` to configure metadata consumers (Settings → Metadata), e.g. Plex series match files and episode mappings ([#373](https://github.com/kiriwalawren/nixflix/pull/373))
+
+### Fixed
+
+- Fix Seerr failure for "Jelyfin hostname already configured" error ([#265](https://github.com/kiriwalawren/nixflix/issues/265))
+- Fix Jellyfin library sync/enable failing on Seerr 3.5.0+ by switching to the new `POST /settings/jellyfin/library/sync` and per-library `PUT /settings/jellyfin/library/:id` endpoints, replacing the removed `?sync=true`/`?enable=ids` query params ([#385](https://github.com/kiriwalawren/nixflix/issues/385))
+- Restore top-level overrides (e.g. `enable`, `priority`, `tags`, `removeCompletedDownloads`/`removeFailedDownloads` for download clients, `includeHealthWarnings` for Notif) that were silently dropped by the Connect triggers fix in [#381](https://github.com/kiriwalawren/nixflix/pull/381) ([#383](https://github.com/kiriwalawren/nixflix/issues/383))
+- Fix Connect triggers not working in Notif ([#381](https://github.com/kiriwalawren/nixflix/pull/381))
+- `nixflix.seerr.jellyfin.libraryFilter` now correctly selects the configured libraries ([#376](https://github.com/kiriwalawren/nixflix/pull/376))
+- Jellyfin plugins no longer intermittently go missing from `nixflix.jellyfin.plugins.<name>` by removing the dependency on the rate-limited Jellyfin Universal Plugin Repo ([#379](https://github.com/kiriwalawren/nixflix/pull/379))
+
+## [3.2.0] - 2026-10-05
+
+### Changed
+
+- Made Nix module options more discoverable in docs ([#345](https://github.com/kiriwalawren/nixflix/issues/345))
+- Updated `nixflix.seerr.externalUrlScheme` deprecation instructions
+- Radarr's default Recyclarr quality profile now sets `min_format_score` to `180` instead of `1000`, to prefer media acquisition ([#305](https://github.com/kiriwalawren/nixflix/issues/305))
+
+### Added
+
+- Allow VPN namespace to be overriden per service ([#336](https://github.com/kiriwalawren/nixflix/pull/336))
+- Soulseek downloader - slskd ([#336](https://github.com/kiriwalawren/nixflix/pull/336))
 - Notif Service for configuring notification connectors in Starr apps ([#324](https://github.com/kiriwalawren/nixflix/pull/324))
+- `nixflix.prowlarr.config.indexers.*.schemaName` to set a custom indexer display name and configure multiple indexers from the same schema ([#353](https://github.com/kiriwalawren/nixflix/issues/353))
+- Automatically set default package for most Jellyfin plugins, also removing the Universal Plugin
+  Repository from the system configuration. ([#339](https://github.com/kiriwalawren/nixflix/pull/339)).
+  If you previously enabled a plugin just by setting a package, you'll now want to just set `enable = true;` instead.
+
+### Fixed
+
+- Fix Recyclarr Custom Quality Profile causes Seerr to fail on first run ([#367](https://github.com/kiriwalawren/nixflix/pull/367))
+- Fix Starr apps failing to hardlink downloads into media directories by removing leftover per-directory `ReadWritePaths` bind mounts and setting qBittorrent's `UMask` to `0002` ([#347](https://github.com/kiriwalawren/nixflix/issues/347)).
+  Torrents downloaded before this fix keep mode `0644`. To make them hardlinkable, run `sudo chmod -R g+w /data/downloads/torrent` once (adjust the path if you changed `nixflix.torrentClients.qbittorrent.downloadsDir`).
+- Fix `radarr-config` failing to apply host settings on Radarr 6.4.4 by sending `allowedHosts` in the host config payload ([#355](https://github.com/kiriwalawren/nixflix/issues/355))
+- Fix redundant group configuration causing mediaUsers failure ([#341](https://github.com/kiriwalawren/nixflix/pull/341))
+- Fix jellyfin auto ignore empty folders ([#333](https://github.com/kiriwalawren/nixflix/pull/333))
+- Added missing websocket support to arrs nginx config ([#354](https://github.com/kiriwalawren/nixflix/pull/354))
+- Resolve `_secret` references in additional Prowlarr indexer fields instead of sending them unresolved ([#353](https://github.com/kiriwalawren/nixflix/issues/353))
 
 ## [3.1.0] - 2026-09-04
 

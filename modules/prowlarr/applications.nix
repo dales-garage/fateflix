@@ -59,6 +59,8 @@ in
           "prowlarr-config.service"
         ]
         ++ lib.optional config.nixflix.radarr.enable "radarr-config.service"
+        ++ lib.optional config.nixflix.radarr-4k.enable "radarr-4k-config.service"
+        ++ lib.optional config.nixflix.sonarr-4k.enable "sonarr-4k-config.service"
         ++ lib.optional config.nixflix.sonarr.enable "sonarr-config.service"
         ++ lib.optional config.nixflix.sonarr-anime.enable "sonarr-anime-config.service"
         ++ lib.optional config.nixflix.lidarr.enable "lidarr-config.service";
@@ -66,6 +68,8 @@ in
           "prowlarr-config.service"
         ]
         ++ lib.optional config.nixflix.radarr.enable "radarr-config.service"
+        ++ lib.optional config.nixflix.radarr-4k.enable "radarr-4k-config.service"
+        ++ lib.optional config.nixflix.sonarr-4k.enable "sonarr-4k-config.service"
         ++ lib.optional config.nixflix.sonarr.enable "sonarr-config.service"
         ++ lib.optional config.nixflix.sonarr-anime.enable "sonarr-anime-config.service"
         ++ lib.optional config.nixflix.lidarr.enable "lidarr-config.service";

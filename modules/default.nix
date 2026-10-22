@@ -15,18 +15,23 @@ in
     ./downloadarr
     ./flaresolverr.nix
     ./globals.nix
+    ./homepage.nix
     ./jellyfin
     ./lidarr
     ./maintainerr
     ./navidrome
     ./notif
+    ./notifiarr
     ./options.nix
     ./postgres.nix
     ./prowlarr
+    ./radarr-4k.nix
     ./radarr.nix
     ./recyclarr
     ./seerr
+    ./slskd
     ./sonarr-anime.nix
+    ./sonarr-4k.nix
     ./sonarr.nix
     ./torrentClients
     ./usenetClients

@@ -62,6 +62,8 @@ in
               radarr = getCategory "radarr";
               sonarr = getCategory "sonarr";
               sonarr-anime = getCategory "sonarr-anime";
+              sonarr-4k = getCategory "sonarr-4k";
+              radarr-4k = getCategory "radarr-4k";
               lidarr = getCategory "lidarr";
               prowlarr = getCategory "prowlarr";
             };
@@ -116,6 +118,13 @@ in
               When `true`, qBittorrent is confined to the WireGuard network namespace (requires nixflix.vpn.enable = true).
             '';
           };
+
+          namespace = mkOption {
+            type = types.str;
+            default = config.nixflix.vpn.namespace;
+            defaultText = literalExpression "config.nixflix.vpn.namespace";
+            description = "Name of the VPN network namespace to confine qBittorrent to when `vpn.enable = true`.";
+          };
         };
 
         subdomain = mkOption {
@@ -156,7 +165,7 @@ in
             type = types.str;
             default =
               if config.nixflix.vpn.enable && cfg.vpn.enable then
-                config.vpnNamespaces.wg.namespaceAddress
+                config.vpnNamespaces.${cfg.vpn.namespace}.namespaceAddress
               else if config.nixflix.reverseProxy.enable then
                 "127.0.0.1"
               else
@@ -222,8 +231,6 @@ in
           // optionalAttrs (config.nixflix.globals.uids ? ${cfg.user}) {
             uid = mkForce config.nixflix.globals.uids.${cfg.user};
           };
-
-        groups.${service.group} = mkForce { };
       };
 
       systemd.tmpfiles = {
@@ -259,6 +266,7 @@ in
       systemd.services.qbittorrent = {
         after = [ "nixflix-setup-dirs.service" ] ++ config.nixflix.serviceDependencies;
         requires = [ "nixflix-setup-dirs.service" ] ++ config.nixflix.serviceDependencies;
+        serviceConfig.UMask = "0002";
         preStart = lib.mkIf (cfg.categories != { }) (
           lib.mkAfter ''
             cp -f '${categoriesFile}' '${configPath}/categories.json'
@@ -272,9 +280,9 @@ in
     (mkIf (config.nixflix.vpn.enable && cfg.vpn.enable) {
       systemd.services.qbittorrent.vpnConfinement = {
         enable = true;
-        vpnNamespace = "wg";
+        vpnNamespace = cfg.vpn.namespace;
       };
-      vpnNamespaces.wg.portMappings = [
+      vpnNamespaces.${cfg.vpn.namespace}.portMappings = [
         {
           from = service.webuiPort;
           to = service.webuiPort;

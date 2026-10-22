@@ -2,6 +2,20 @@
   description = "Generic NixOS Jellyfin media server configuration with Arr stack";
 
   inputs = {
+    comin = {
+      url = "github:nlewo/comin";
+      inputs.nixpkgs.follows = "nixpkgs-host";
+      inputs.treefmt-nix.follows = "treefmt-nix";
+    };
+    trash-guides = {
+      url = "github:TRaSH-Guides/Guides";
+      flake = false;
+    };
+    recyclarr-templates = {
+      url = "github:recyclarr/config-templates";
+      flake = false;
+    };
+    nixpkgs-host.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
@@ -59,25 +73,32 @@
       };
       nixosModules.nixflix = self.nixosModules.default;
 
+      nixosConfigurations.nixflix = inputs.nixpkgs-host.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit inputs; };
+        modules = [
+          self.nixosModules.default
+          ./hosts/nixflix
+        ];
+      };
+      nixosConfigurations.nixflix-production = self.nixosConfigurations.nixflix.extendModules {
+        modules = [ { nixflixHost.production.enable = true; } ];
+      };
+      nixosConfigurations.nixflix-staging = self.nixosConfigurations.nixflix.extendModules {
+        modules = [ { nixflixHost.production.enable = lib.mkForce false; } ];
+      };
+
       packages = perSystem (
-        {
-          system,
-          pkgs,
-          ...
-        }:
+        { system, pkgs, ... }:
         (import ./docs { inherit pkgs inputs; })
         // {
           default = self.packages.${system}.docs;
-          inherit (pkgs) maintainerr;
+          inherit (pkgs) maintainerr notifiarr;
         }
       );
 
       apps = perSystem (
-        {
-          system,
-          pkgs,
-          ...
-        }:
+        { system, pkgs, ... }:
         {
           docs-serve = {
             type = "app";
@@ -89,6 +110,7 @@
             );
           };
         }
+        // import ./scripts/apps.nix { inherit pkgs self; }
       );
 
       formatter = perSystem ({ treefmt, ... }: treefmt.config.build.wrapper);
@@ -109,7 +131,32 @@
         in
         {
           formatting = treefmt.config.build.check self;
+          gitops-eval = import ./tests/migration/gitops-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-production;
+            staging = self.nixosConfigurations.nixflix-staging;
+          };
           docs-build = self.packages.${system}.docs;
+          four-instance-eval = import ./tests/migration/four-instance-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-staging;
+            nixosModules = self.nixosModules.default;
+          };
+          production-eval = import ./tests/migration/production-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-production;
+          };
+          homepage-eval = import ./tests/migration/homepage-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-production;
+            staging = self.nixosConfigurations.nixflix-staging;
+            nixosModules = self.nixosModules.default;
+          };
+          notifiarr-eval = import ./tests/migration/notifiarr-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-production;
+            staging = self.nixosConfigurations.nixflix-staging;
+          };
         }
         // tests.vm-tests
         // {
@@ -118,16 +165,29 @@
       );
 
       devShells = perSystem (
-        {
-          pkgs,
-          treefmt,
-          ...
-        }:
-        {
+        { pkgs, treefmt, ... }: {
           default = pkgs.mkShell {
             nativeBuildInputs = [
               treefmt.config.build.wrapper
               pkgs.yarn-berry_4.yarn-berry-fetcher
+              pkgs.jujutsu
+              pkgs.git
+              pkgs.openssh
+              pkgs.rsync
+              pkgs.jq
+              (pkgs.python3.withPackages (p: [
+                p.configobj
+                p.pyyaml
+              ]))
+              pkgs.sqlite
+              pkgs.curl
+              pkgs.dnsutils
+              pkgs.just
+              pkgs.shellcheck
+              pkgs.pass
+              pkgs.gnupg
+              pkgs.secretspec
+              pkgs.skopeo
             ]
             ++ (lib.attrValues treefmt.config.build.programs);
 

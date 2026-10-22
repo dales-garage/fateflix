@@ -26,6 +26,8 @@ let
     serviceName:
     {
       radarr = "movieCategory";
+      radarr-4k = "movieCategory";
+      sonarr-4k = "tvCategory";
       sonarr = "tvCategory";
       sonarr-anime = "tvCategory";
       lidarr = "musicCategory";
@@ -35,6 +37,8 @@ let
 
   arrServices = [
     "radarr"
+    "radarr-4k"
+    "sonarr-4k"
     "sonarr"
     "sonarr-anime"
     "lidarr"

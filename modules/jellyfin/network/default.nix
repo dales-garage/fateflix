@@ -25,7 +25,7 @@ in
       port = cfg.network.internalHttpPort;
       upstreamHost =
         if config.nixflix.vpn.enable && cfg.vpn.enable then
-          config.vpnNamespaces.wg.namespaceAddress
+          config.vpnNamespaces.${cfg.vpn.namespace}.namespaceAddress
         else
           "127.0.0.1";
       disableBuffering = true;
@@ -37,9 +37,7 @@ in
       };
 
       systemd.services.jellyfin = {
-        restartTriggers = [
-          networkXmlContent
-        ];
+        restartTriggers = [ networkXmlContent ];
 
         serviceConfig = {
           ExecStartPre = [
@@ -67,9 +65,9 @@ in
     (mkIf (config.nixflix.vpn.enable && cfg.vpn.enable) {
       systemd.services.jellyfin.vpnConfinement = {
         enable = true;
-        vpnNamespace = "wg";
+        vpnNamespace = cfg.vpn.namespace;
       };
-      vpnNamespaces.wg.portMappings = [
+      vpnNamespaces.${cfg.vpn.namespace}.portMappings = [
         {
           from = cfg.network.internalHttpPort;
           to = cfg.network.internalHttpPort;

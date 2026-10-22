@@ -16,6 +16,7 @@ in
   imports = [
     ./setupService.nix
     ./usersService.nix
+    ./plugins
   ];
 
   options.nixflix.navidrome = lib.mkOption {
@@ -111,7 +112,7 @@ in
                 type = lib.types.str;
                 default =
                   if config.nixflix.vpn.enable && cfg.vpn.enable then
-                    config.vpnNamespaces.wg.namespaceAddress
+                    config.vpnNamespaces.${cfg.vpn.namespace}.namespaceAddress
                   else if config.nixflix.reverseProxy.enable then
                     "127.0.0.1"
                   else
@@ -180,7 +181,7 @@ in
           readOnly = true;
           default =
             if config.nixflix.vpn.enable && cfg.vpn.enable then
-              config.vpnNamespaces.wg.namespaceAddress
+              config.vpnNamespaces.${cfg.vpn.namespace}.namespaceAddress
             else if cfg.settings.Address == "*" || cfg.settings.Address == "0.0.0.0" then
               "127.0.0.1"
             else
@@ -199,6 +200,13 @@ in
               When `false`, Navidrome bypasses the VPN.
               When `true`, Navidrome is confined to the WireGuard network namespace (requires nixflix.vpn.enable = true).
             '';
+          };
+
+          namespace = lib.mkOption {
+            type = lib.types.str;
+            default = config.nixflix.vpn.namespace;
+            defaultText = lib.literalExpression "config.nixflix.vpn.namespace";
+            description = "Name of the VPN network namespace to confine Navidrome to when `vpn.enable = true`.";
           };
         };
 
@@ -238,6 +246,7 @@ in
       {
         services.navidrome = builtins.removeAttrs cfg [
           "connectionAddress"
+          "plugins"
           "reverseProxy"
           "subdomain"
           "users"
@@ -259,9 +268,7 @@ in
               mode = "755";
               inherit (cfg) user group;
             };
-            "${cfg.settings.MusicFolder}"."d" = lib.mkForce {
-              group = ":${cfg.group}";
-            };
+            "${cfg.settings.MusicFolder}"."d" = lib.mkForce { group = ":${cfg.group}"; };
           };
         };
 
@@ -276,10 +283,21 @@ in
             // lib.optionalAttrs (config.nixflix.globals.uids ? ${cfg.user}) {
               uid = lib.mkForce config.nixflix.globals.uids.${cfg.user};
             };
-
-          groups.${cfg.group} = lib.mkForce { };
         };
       }
+      (lib.mkIf (config.nixflix.vpn.enable && cfg.vpn.enable) {
+        systemd.services.navidrome.vpnConfinement = {
+          enable = true;
+          vpnNamespace = cfg.vpn.namespace;
+        };
+        vpnNamespaces.${cfg.vpn.namespace}.portMappings = [
+          {
+            from = cfg.settings.Port;
+            to = cfg.settings.Port;
+            protocol = "tcp";
+          }
+        ];
+      })
     ]
   );
 }

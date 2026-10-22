@@ -1,8 +1,4 @@
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 with lib;
 let
   secrets = import ../../lib/secrets { inherit lib; };
@@ -14,12 +10,23 @@ let
       isAdmin = user: user.isAdmin;
     }).user;
 
+  notifTriggers = import ./triggers.nix;
+
+  mkTriggersOption =
+    serviceTriggers:
+    mkOption {
+      type = types.listOf (types.enum serviceTriggers.valid);
+      inherit (serviceTriggers) default;
+      description = "Starr trigger events that enable this notification.";
+    };
+
   mkNotificationType =
     {
       implementationName,
       enable ? { },
       dependencies ? { },
       services ? { },
+      triggers ? { },
       extraOptions ? { },
     }:
     types.submodule {
@@ -52,6 +59,15 @@ let
           // services
         );
 
+        triggers = mkOption (
+          {
+            type = types.attrsOf (types.listOf types.str);
+            default = { };
+            description = "Starr trigger events that enable this notification, per service.";
+          }
+          // triggers
+        );
+
         name = mkOption {
           type = types.str;
           default = implementationName;
@@ -76,7 +92,7 @@ let
       defaultText = literalExpression "config.nixflix.jellyfin.enable";
     };
 
-    dependencies.default = [ "jellyfin.service" ];
+    dependencies.default = [ "jellyfin-api-key.service" ];
 
     services = {
       default = optionals config.nixflix.jellyfin.enable (
@@ -93,6 +109,17 @@ let
           ++ optional (config.nixflix.jellyfin.libraries.Music or null != null) "lidarr"
         )
       '';
+    };
+
+    triggers = {
+      type = types.submodule {
+        options = {
+          sonarr = mkTriggersOption notifTriggers.jellyfin.sonarr;
+          radarr = mkTriggersOption notifTriggers.jellyfin.radarr;
+          lidarr = mkTriggersOption notifTriggers.jellyfin.lidarr;
+        };
+      };
+      default = { };
     };
 
     extraOptions = {
@@ -131,6 +158,15 @@ let
 
     services.default = [ "lidarr" ];
 
+    triggers = {
+      type = types.submodule {
+        options = {
+          lidarr = mkTriggersOption notifTriggers.subsonic.lidarr;
+        };
+      };
+      default = { };
+    };
+
     extraOptions = {
       host = mkOption {
         type = types.str;
@@ -167,10 +203,23 @@ let
 
     services.default = [
       "sonarr"
+      "sonarr-4k"
       "sonarr-anime"
       "radarr"
+      "radarr-4k"
       "lidarr"
     ];
+
+    triggers = {
+      type = types.submodule {
+        options = {
+          sonarr = mkTriggersOption notifTriggers.ntfy.sonarr;
+          radarr = mkTriggersOption notifTriggers.ntfy.radarr;
+          lidarr = mkTriggersOption notifTriggers.ntfy.lidarr;
+        };
+      };
+      default = { };
+    };
 
     extraOptions = {
       serverUrl = mkOption {
@@ -228,6 +277,12 @@ in
           type = types.bool;
           default = true;
           description = "Whether to enable Notif.";
+        };
+
+        pruneUnmanaged = mkOption {
+          type = types.bool;
+          default = true;
+          description = "Delete notifications not declared here. Disable while migrating preserved application state.";
         };
 
         jellyfin = mkOption {

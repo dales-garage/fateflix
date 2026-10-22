@@ -9,8 +9,6 @@ let
   inherit (config) nixflix;
   cfg = config.nixflix.jellyfin;
 
-  jellyfinPlugins = import ../../../lib/jellyfin-plugins.nix { inherit lib; };
-
   pluginResolution = import ./resolvePlugins.nix {
     inherit lib pkgs;
     jellyfinVersion = cfg.package.version;
@@ -31,10 +29,8 @@ in
 {
   imports = [
     ./options.nix
-    ./openSubtitles.nix
     ./pluginsService.nix
-    ./subbuzz.nix
-    ./subtitleExtract.nix
+    ./fromJson.nix
   ];
 
   config = mkIf (nixflix.enable && cfg.enable) {
@@ -42,12 +38,6 @@ in
 
     nixflix.jellyfin = {
       plugins.AniDB = mkIf config.nixflix.sonarr-anime.enable {
-        package = mkDefault (
-          jellyfinPlugins.fromRepo {
-            version = "11.0.0.0";
-            hash = "sha256-Rtvxq6NxQSrRyhYdsyWXY+SoDPW4S0471gmiLTUjaSk=";
-          }
-        );
         config = {
           TitlePreference = mkDefault "Localized";
           OriginalTitlePreference = mkDefault "JapaneseRomaji";

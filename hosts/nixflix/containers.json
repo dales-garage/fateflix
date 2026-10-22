@@ -1,0 +1,11 @@
+{
+  "readarr": "lscr.io/linuxserver/readarr@sha256:b6a7420770adeea5cac1f3ee5da606183d014e3f96fb473f3abd88ed11d9f344",
+  "whisparr": "ghcr.io/hotio/whisparr@sha256:363d9d8463237665a3f2fb2d33c96da4544b0ae4d30e72d56eacf8e88a1003e2",
+  "mylar3": "lscr.io/linuxserver/mylar3@sha256:0724332a379d16d164e8f3306ae8842390c595c18460efee2439f1f189a058d7",
+  "notifiarr": "golift/notifiarr@sha256:65f4ddfc323fedb4f51acd6346286bfeb61f6e15961d3c43662517ff0f4733c2",
+  "bazarr": "ghcr.io/hotio/bazarr@sha256:3eaf8bebb1e60508377d6a1e4221f52018bef083eaf0bc1d361e97088a63fbf4",
+  "bazarr-4k": "ghcr.io/hotio/bazarr@sha256:3eaf8bebb1e60508377d6a1e4221f52018bef083eaf0bc1d361e97088a63fbf4",
+  "stash": "stashapp/stash@sha256:a62f2d8afadbe029403777d18f54b2455b209a223aa28c6d3985c3cf9df2e08a",
+  "audiobookshelf": "ghcr.io/advplyr/audiobookshelf@sha256:e23adb24848d99d19cd1e251aee4e1e12ed4f5effc8ccb21754b062b6a06cf66",
+  "tautulli": "lscr.io/linuxserver/tautulli@sha256:4d764be0f66532f6820a82aa365e530414f50f462410ce0949edd3fc22ccb9d5"
+}

@@ -1,8 +1,4 @@
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 with lib;
 let
   cfg = config.nixflix;
@@ -17,9 +13,11 @@ in
     ./lidarr
     ./postgres.nix
     ./prowlarr
+    ./radarr-4k.nix
     ./radarr.nix
     ./recyclarr
     ./sonarr-anime.nix
+    ./sonarr-4k.nix
     ./sonarr.nix
     ./torrentClients
     ./usenetClients

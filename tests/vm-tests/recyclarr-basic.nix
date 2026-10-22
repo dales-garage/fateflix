@@ -12,91 +12,97 @@ in
 pkgsUnfree.testers.runNixOSTest {
   name = "recyclarr-basic-test";
 
-  nodes.machine =
-    { pkgs, lib, ... }:
-    {
-      imports = [ nixosModules ];
+  nodes.machine = { pkgs, lib, ... }: {
+    imports = [ nixosModules ];
 
-      networking.useDHCP = true;
+    networking.useDHCP = true;
 
-      virtualisation = {
-        cores = 4;
-        memorySize = 4096;
-        diskSize = 3 * 1024;
+    virtualisation = {
+      cores = 4;
+      memorySize = 4096;
+      diskSize = 3 * 1024;
+    };
+
+    nixflix = {
+      enable = true;
+
+      radarr = {
+        enable = true;
+        mediaDirs = [ "/media/movies" ];
+        config = {
+          hostConfig = {
+            port = 7878;
+            username = "admin";
+            password._secret = pkgs.writeText "radarr-password" "testpassword123";
+          };
+          apiKey._secret = pkgs.writeText "radarr-apikey" "abcd1234abcd1234abcd1234abcd1234";
+        };
       };
 
-      nixflix = {
+      sonarr = {
+        enable = true;
+        mediaDirs = [ "/media/tv" ];
+        config = {
+          hostConfig = {
+            port = 8989;
+            username = "admin";
+            password._secret = pkgs.writeText "sonarr-password" "testpassword456";
+          };
+          apiKey._secret = pkgs.writeText "sonarr-apikey" "efgh5678efgh5678efgh5678efgh5678";
+        };
+      };
+
+      sonarr-anime = {
+        enable = true;
+        mediaDirs = [ "/media/anime" ];
+        config = {
+          hostConfig = {
+            port = 8990;
+            username = "admin";
+            password._secret = pkgs.writeText "sonarr-anime-password" "testpassword789";
+          };
+          apiKey._secret = pkgs.writeText "sonarr-anime-apikey" "ijkl9012ijkl9012ijkl9012ijkl9012";
+        };
+      };
+
+      recyclarr = {
+        enable = true;
+        cleanupUnmanagedProfiles.enable = true;
+      };
+
+      jellyfin = {
         enable = true;
 
-        radarr = {
-          enable = true;
-          mediaDirs = [ "/media/movies" ];
-          config = {
-            hostConfig = {
-              port = 7878;
-              username = "admin";
-              password._secret = pkgs.writeText "radarr-password" "testpassword123";
-            };
-            apiKey._secret = pkgs.writeText "radarr-apikey" "abcd1234abcd1234abcd1234abcd1234";
+        apiKey._secret = pkgs.writeText "jellyfin-apikey" "jellyfinApiKey1111111111111111111";
+
+        users = {
+          admin = {
+            password._secret = pkgs.writeText "kiri_password" "321password";
+            policy.isAdministrator = true;
           };
         };
 
-        sonarr = {
-          enable = true;
-          mediaDirs = [ "/media/tv" ];
-          config = {
-            hostConfig = {
-              port = 8989;
-              username = "admin";
-              password._secret = pkgs.writeText "sonarr-password" "testpassword456";
-            };
-            apiKey._secret = pkgs.writeText "sonarr-apikey" "efgh5678efgh5678efgh5678efgh5678";
-          };
-        };
-
-        sonarr-anime = {
-          enable = true;
-          mediaDirs = [ "/media/anime" ];
-          config = {
-            hostConfig = {
-              port = 8990;
-              username = "admin";
-              password._secret = pkgs.writeText "sonarr-anime-password" "testpassword789";
-            };
-            apiKey._secret = pkgs.writeText "sonarr-anime-apikey" "ijkl9012ijkl9012ijkl9012ijkl9012";
-          };
-        };
-
-        recyclarr = {
-          enable = true;
-          cleanupUnmanagedProfiles.enable = true;
-        };
-
-        jellyfin = {
-          enable = true;
-
-          apiKey._secret = pkgs.writeText "jellyfin-apikey" "jellyfinApiKey1111111111111111111";
-
-          users = {
-            admin = {
-              password._secret = pkgs.writeText "kiri_password" "321password";
-              policy.isAdministrator = true;
-            };
-          };
-
-          # Disable AniDB to keep test pure
-          plugins.AniDB.enable = false;
-          libraries.Anime.typeOptions = lib.mkForce [ ];
-        };
-
-        seerr = {
-          enable = true;
-          apiKey._secret = pkgs.writeText "seerr-apikey" "seerr555555555555555555";
-        };
+        # Disable AniDB to keep test pure
+        plugins.AniDB.enable = false;
+        libraries.Anime.typeOptions = lib.mkForce [ ];
       };
 
-      systemd.services.jellyfin.serviceConfig.TimeoutStartSec = lib.mkForce 300;
+      seerr = {
+        enable = true;
+        apiKey._secret = pkgs.writeText "seerr-apikey" "seerr555555555555555555";
+        radarr.Radarr = {
+          apiKey._secret = pkgs.writeText "seerr-radarr-apikey" "abcd1234abcd1234abcd1234abcd1234";
+          activeProfileName = "[SQP] SQP-1 (1080p)";
+        };
+        sonarr.Sonarr = {
+          apiKey._secret = pkgs.writeText "seerr-sonarr-apikey" "efgh5678efgh5678efgh5678efgh5678";
+          activeProfileName = "WEB-1080p (Alternative)";
+        };
+      };
     };
+
+    systemd.services.jellyfin.serviceConfig.TimeoutStartSec = lib.mkForce 300;
+  };
 
   testScript = ''
     import json
@@ -153,6 +159,15 @@ pkgsUnfree.testers.runNixOSTest {
     machine.wait_for_unit("seerr-radarr.service", timeout=300)
     machine.wait_for_unit("seerr-sonarr.service", timeout=300)
 
+    # Verify seerr-radarr/seerr-sonarr are ordered after recyclarr so they
+    # don't race it for custom quality profiles (issue #348)
+    for unit in ["seerr-radarr.service", "seerr-sonarr.service"]:
+        deps = machine.succeed(f"systemctl show {unit} -p After,Wants,Requires")
+        assert "recyclarr.service" in deps, \
+            f"{unit} missing ordering on recyclarr.service"
+        assert "recyclarr-cleanup-profiles.service" in deps, \
+            f"{unit} missing dependency on recyclarr-cleanup-profiles.service"
+
     # Check that quality profiles were created by recyclarr for Radarr
     radarr_profiles = machine.succeed(
         "curl -s -H 'X-Api-Key: abcd1234abcd1234abcd1234abcd1234' "
@@ -163,6 +178,12 @@ pkgsUnfree.testers.runNixOSTest {
     radarr_profile_names = {p['name'] for p in radarr_profiles_list}
     assert radarr_profile_names == {"[SQP] SQP-1 (1080p)"}, \
         f"Expected only '[SQP] SQP-1 (1080p)' in Radarr after cleanup, found: {radarr_profile_names}"
+
+    # The guide ships SQP-1 with a minimum score of 1000, which is adjusted
+    # by default to lower value in order to improve media acquisition
+    radarr_min_format_score = radarr_profiles_list[0]['minFormatScore']
+    assert radarr_min_format_score == 180, \
+        f"Expected Radarr minFormatScore of 180, found: {radarr_min_format_score}"
 
     # Check that quality profiles were created by recyclarr for Sonarr
     sonarr_profiles = machine.succeed(

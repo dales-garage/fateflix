@@ -9,35 +9,35 @@ let
   buildJellyfinPlugin = import ../../../lib/build-jellyfin-plugin.nix { inherit pkgs; };
   jellyfinPlugins = import ../../../lib/jellyfin-plugins.nix { inherit lib; };
 
-  normalizeTargetAbi = targetAbi: lib.removeSuffix ".0" targetAbi;
+  selectVersions = import ./selectVersions.nix;
 
-  versionSeries = version: lib.concatStringsSep "." (lib.take 2 (lib.splitVersion version));
-
-  highestByTargetAbi =
-    matches:
-    if matches == [ ] then
-      [ ]
-    else
-      let
-        highestMatch = lib.foldl' (
-          best: candidate:
-          if
-            lib.versionOlder (normalizeTargetAbi best.targetAbi) (normalizeTargetAbi candidate.targetAbi)
-          then
-            candidate
-          else
-            best
-        ) (lib.head matches) (lib.tail matches);
-        highestTargetAbi = normalizeTargetAbi highestMatch.targetAbi;
-      in
-      lib.filter (match: normalizeTargetAbi match.targetAbi == highestTargetAbi) matches;
-
-  preferNonFallbackMatches =
+  dedupeMatches =
     matches:
     let
-      nonFallbackMatches = lib.filter (match: !match.fallback) matches;
+      folded =
+        lib.foldl'
+          (
+            acc: match:
+            let
+              key = "${match.name} ${match.sourceUrl} ${match.version} ${match.targetAbi}";
+            in
+            if acc.seen ? ${key} then
+              acc
+            else
+              {
+                seen = acc.seen // {
+                  ${key} = true;
+                };
+                result = acc.result ++ [ match ];
+              }
+          )
+          {
+            seen = { };
+            result = [ ];
+          }
+          matches;
     in
-    if nonFallbackMatches == [ ] then matches else nonFallbackMatches;
+    folded.result;
 
   repoPluginDirName = pluginName: pluginVersion: "${pluginName}_${pluginVersion}";
 
@@ -88,52 +88,40 @@ let
         else
           lib.filter (repo: repo.name == repositoryName) repositoriesWithManifest;
 
-      versionMatches = lib.concatMap (
-        repo:
+      selectedMatches = dedupeMatches (
         lib.concatMap (
-          plugin:
-          if plugin.name == pluginName then
-            map
-              (release: {
-                inherit (repo) name url fallback;
-                inherit (release) sourceUrl version targetAbi;
-                timestamp = release.timestamp or "";
-                changelog = release.changelog or "";
-                guid = plugin.guid or "";
-                category = plugin.category or "";
-                description = plugin.description or "";
-                overview = plugin.overview or "";
-                owner = plugin.owner or "";
-                imageUrl = plugin.imageUrl or "";
-              })
-              (
-                lib.filter (release: pluginVersion == "latest" || release.version == pluginVersion) (
-                  plugin.versions or [ ]
+          repo:
+          lib.concatMap (
+            plugin:
+            if plugin.name == pluginName then
+              map
+                (release: {
+                  inherit (repo) name url;
+                  inherit (release) sourceUrl version targetAbi;
+                  timestamp = release.timestamp or "";
+                  changelog = release.changelog or "";
+                  guid = plugin.guid or "";
+                  category = plugin.category or "";
+                  description = plugin.description or "";
+                  overview = plugin.overview or "";
+                  owner = plugin.owner or "";
+                  imageUrl = plugin.imageUrl or "";
+                })
+                (
+                  lib.filter (release: pluginVersion == "latest" || release.version == pluginVersion) (
+                    plugin.versions or [ ]
+                  )
                 )
-              )
-          else
-            [ ]
-        ) repo.manifest
-      ) matchingRepositories;
-
-      matchingAbi = lib.filter (
-        match: normalizeTargetAbi match.targetAbi == jellyfinVersion
-      ) versionMatches;
-
-      compatibleAbi = lib.filter (
-        match:
-        let
-          normalizedTargetAbi = normalizeTargetAbi match.targetAbi;
-        in
-        versionSeries normalizedTargetAbi == versionSeries jellyfinVersion
-        && !lib.versionOlder jellyfinVersion normalizedTargetAbi
-      ) versionMatches;
-
-      selectedMatches = if lib.length matchingAbi == 1 then matchingAbi else versionMatches;
-
-      selectedCompatibleMatches = preferNonFallbackMatches (
-        if lib.length matchingAbi > 0 then matchingAbi else highestByTargetAbi compatibleAbi
+            else
+              [ ]
+          ) repo.manifest
+        ) matchingRepositories
       );
+
+      selectedCompatibleMatches = selectVersions {
+        inherit lib jellyfinVersion;
+        inherit (sourceSpec) relaxVersionCheck;
+      } selectedMatches;
 
       matchingRepositoriesSummary = lib.concatStringsSep ", " (
         lib.unique (map (match: match.name) selectedCompatibleMatches)
@@ -141,7 +129,7 @@ let
     in
     if repositoryName != null && matchingRepositories == [ ] then
       throw "nixflix.jellyfin.plugins.\"${pluginName}\": repository '${repositoryName}' was not found in nixflix.jellyfin.system.pluginRepositories"
-    else if versionMatches == [ ] then
+    else if selectedMatches == [ ] then
       throw "nixflix.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' was not found in any configured plugin repository"
     else if selectedCompatibleMatches == [ ] then
       throw "nixflix.jellyfin.plugins.\"${pluginName}\": version '${pluginVersion}' did not have a compatible release for Jellyfin ${jellyfinVersion}"
@@ -166,9 +154,7 @@ let
   resolvePluginResult =
     pluginName: pluginCfg:
     if pluginCfg.package == null || lib.isDerivation pluginCfg.package then
-      {
-        inherit pluginCfg;
-      }
+      { inherit pluginCfg; }
     else
       let
         sourceSpec = jellyfinPlugins.fromRepo pluginCfg.package;

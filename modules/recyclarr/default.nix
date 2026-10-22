@@ -1,8 +1,4 @@
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 with lib;
 let
   cfg = config.nixflix.recyclarr;
@@ -26,6 +22,8 @@ in
   imports = [
     ./cleanup-profiles.nix
     ./config-option.nix
+    ./radarr-4k.nix
+    ./sonarr-4k.nix
     ./radarr.nix
     ./sonarr-anime.nix
     ./sonarr.nix
@@ -121,12 +119,16 @@ in
           ++ optional (cfg.radarrQuality == "1080p") "[SQP] SQP-1 (1080p)"
           ++ optional (cfg.sonarrQuality == "4K") "WEB-2160p (Alternative)"
           ++ optional (cfg.sonarrQuality == "1080p") "WEB-1080p (Alternative)"
+          ++ optional config.nixflix.radarr-4k.enable "[SQP] SQP-1 (2160p)"
+          ++ optional config.nixflix.sonarr-4k.enable "WEB-2160p (Alternative)"
           ++ optional config.nixflix.sonarr-anime.enable "[Anime] Remux-1080p";
         defaultText = literalExpression ''
           optional (cfg.radarrQuality == "4K") "[SQP] SQP-1 (2160p)"
           ++ optional (cfg.radarrQuality == "1080p") "[SQP] SQP-1 (1080p)"
           ++ optional (cfg.sonarrQuality == "4K") "WEB-2160p (Alternative)"
           ++ optional (cfg.sonarrQuality == "1080p") "WEB-1080p (Alternative)"
+          ++ optional config.nixflix.radarr-4k.enable "[SQP] SQP-1 (2160p)"
+          ++ optional config.nixflix.sonarr-4k.enable "WEB-2160p (Alternative)"
           ++ optional config.nixflix.sonarr-anime.enable "[Anime] Remux-1080p";
         '';
         example = [ "My Custom Profile" ];
@@ -216,6 +218,14 @@ in
           "radarr.service"
           "radarr-config.service"
         ]
+        ++ optionals config.nixflix.radarr-4k.enable [
+          "radarr-4k.service"
+          "radarr-4k-config.service"
+        ]
+        ++ optionals config.nixflix.sonarr-4k.enable [
+          "sonarr-4k.service"
+          "sonarr-4k-config.service"
+        ]
         ++ optionals config.nixflix.sonarr.enable [
           "sonarr.service"
           "sonarr-config.service"
@@ -228,6 +238,14 @@ in
           optionals config.nixflix.radarr.enable [
             "radarr.service"
             "radarr-config.service"
+          ]
+          ++ optionals config.nixflix.radarr-4k.enable [
+            "radarr-4k.service"
+            "radarr-4k-config.service"
+          ]
+          ++ optionals config.nixflix.sonarr-4k.enable [
+            "sonarr-4k.service"
+            "sonarr-4k-config.service"
           ]
           ++ optionals config.nixflix.sonarr.enable [
             "sonarr.service"

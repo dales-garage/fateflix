@@ -1,0 +1,25 @@
+name: Upstream sync
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 12 * * 0'
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    if: github.repository == 'declarative-dale/nixflix'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Create upstream PR and dispatch CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/update-pr.py upstream

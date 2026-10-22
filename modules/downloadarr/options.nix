@@ -1,8 +1,4 @@
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 with lib;
 let
   secrets = import ../../lib/secrets { inherit lib; };
@@ -26,6 +22,18 @@ let
           type = types.str;
           default = "sonarr-anime";
           description = "The categories to use for the Sonarr Anime instance";
+        };
+
+        sonarr-4k = mkOption {
+          type = types.str;
+          default = "sonarr-4k";
+          description = "Download category for sonarr-4k";
+        };
+
+        radarr-4k = mkOption {
+          type = types.str;
+          default = "radarr-4k";
+          description = "Download category for radarr-4k";
         };
 
         lidarr = mkOption {
@@ -228,13 +236,9 @@ let
     };
 
     extraOptions = {
-      username = secrets.mkSecretOption {
-        description = "Username key for the download client.";
-      };
+      username = secrets.mkSecretOption { description = "Username key for the download client."; };
 
-      password = secrets.mkSecretOption {
-        description = "Password for the download client.";
-      };
+      password = secrets.mkSecretOption { description = "Password for the download client."; };
     };
   };
 
@@ -251,13 +255,9 @@ let
     };
 
     extraOptions = {
-      username = secrets.mkSecretOption {
-        description = "Username key for the download client.";
-      };
+      username = secrets.mkSecretOption { description = "Username key for the download client."; };
 
-      password = secrets.mkSecretOption {
-        description = "Password for the download client.";
-      };
+      password = secrets.mkSecretOption { description = "Password for the download client."; };
     };
   };
 
@@ -275,9 +275,7 @@ let
     };
 
     extraOptions = {
-      password = secrets.mkSecretOption {
-        description = "Password for the download client.";
-      };
+      password = secrets.mkSecretOption { description = "Password for the download client."; };
     };
   };
 in

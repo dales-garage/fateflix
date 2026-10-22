@@ -154,6 +154,16 @@ in
                     name = "1337x";
                     apiKey._secret = "/run/secrets/1337x-api";
                   }
+                  {
+                    name = "My Tracker";
+                    schemaName = "Generic Torznab";
+                    trackerId._secret = "/run/secrets/tracker-id";
+                  }
+                  {
+                    name = "Other Tracker";
+                    schemaName = "Generic Torznab";
+                    baseUrl = "http://127.0.0.1:9117/other";
+                  }
                 ];
               };
             };
@@ -161,10 +171,25 @@ in
         }
       ];
       systemdUnits = config.config.systemd.services;
-      hasAllServices =
-        systemdUnits ? prowlarr && systemdUnits ? prowlarr-config && systemdUnits ? prowlarr-indexers;
+      indexersScript = systemdUnits.prowlarr-indexers.script;
     in
-    assertTest "prowlarr-service-generation" hasAllServices;
+    pkgs.runCommand "unit-test-prowlarr-service-generation" { } ''
+      ${check "prowlarr services are generated" (
+        systemdUnits ? prowlarr && systemdUnits ? prowlarr-config && systemdUnits ? prowlarr-indexers
+      )}
+      ${check "schemaName is used for schema lookup" (
+        lib.hasInfix "--arg name 'Generic Torznab' '.[] | select(.name == $name)" indexersScript
+      )}
+      ${check "display names are applied to indexers from the same schema" (
+        lib.hasInfix "--arg name 'My Tracker' '.name = $name" indexersScript
+        && lib.hasInfix "--arg name 'Other Tracker' '.name = $name" indexersScript
+      )}
+      ${check "secrets are read at runtime" (
+        lib.hasInfix "--rawfile nixflixSecret1Content /run/secrets/1337x-api" indexersScript
+        && lib.hasInfix "--rawfile nixflixSecret0Content /run/secrets/tracker-id" indexersScript
+      )}
+      echo 'PASS: prowlarr-service-generation' > $out
+    '';
 
   # Test that prowlarr with indexers generates correct systemd units
   sabnzbd-service-generation =
@@ -321,6 +346,22 @@ in
 
   jellyfin-plugin-repo-service-generation =
     let
+      targetAbi = "${pkgs.jellyfin.version}.0";
+      manifest = pkgs.writeText "jellyfin-plugin-repo-service-generation.json" (
+        builtins.toJSON [
+          {
+            guid = "c83d86bb-a1e0-4c35-a113-e2101cf4ee6b";
+            name = "Intro Skipper";
+            versions = [
+              {
+                version = "12.0.5.0";
+                inherit targetAbi;
+                sourceUrl = "https://github.com/intro-skipper/intro-skipper/releases/download/12.0/v12.0.5.0/intro-skipper-v12.0.5.0.zip";
+              }
+            ];
+          }
+        ]
+      );
       config = evalConfig [
         {
           nixflix = {
@@ -328,10 +369,18 @@ in
 
             jellyfin = {
               enable = true;
-              plugins.Bookshelf = {
+              system.pluginRepositories = lib.mkForce {
+                "Test Repo" = {
+                  url = builtins.unsafeDiscardStringContext "file://${manifest}";
+                  hash = manifestHash manifest;
+                  enabled = true;
+                };
+              };
+              plugins."Intro Skipper" = {
+                enable = true;
                 package = jellyfinPlugins.fromRepo {
-                  version = "13.0.0.0";
-                  hash = "sha256-16jaQRh1rIFE27nSSEWNF7UjVsPJDaRf24Ews0BZGas=";
+                  version = "12.0.5.0";
+                  hash = "sha256-qotwE6GgGC1dXKRDrnxz1DdsL+O0OV/9OREExi8P3UM=";
                 };
               };
               users.admin = {
@@ -349,13 +398,70 @@ in
         config.config.systemd.services ? jellyfin-plugins
       )}
       ${check "repo-managed plugins resolve to package sync commands" (
-        lib.hasInfix "Syncing packaged plugin: Bookshelf" pluginService.script
+        lib.hasInfix "Syncing packaged plugin: Intro Skipper" pluginService.script
       )}
       ${check "resolved plugin directory name appears in service script" (
-        lib.hasInfix "Bookshelf_13.0.0.0" pluginService.script
+        lib.hasInfix "Intro Skipper_12.0.5.0" pluginService.script
       )}
 
       echo 'PASS: jellyfin-plugin-repo-service-generation' > $out
+    '';
+
+  jellyfin-plugin-repo-relaxed-version-check =
+    let
+      manifest = pkgs.writeText "jellyfin-plugin-relaxed-version-check.json" (
+        builtins.toJSON [
+          {
+            guid = "486090e1-ca92-46e1-8549-9f6bb914a1d0";
+            name = "LAPSE";
+            versions = [
+              {
+                version = "2.0.1.0";
+                targetAbi = "10.11.0.0";
+                sourceUrl = "https://github.com/Schwponaco-org/lapse-jellyfin-plugin/releases/download/v2.0.1/lapse-jellyfin-plugin-v2.0.1.zip";
+              }
+            ];
+          }
+        ]
+      );
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+
+            jellyfin = {
+              enable = true;
+              system.pluginRepositories = lib.mkForce {
+                "LAPSE Repo" = {
+                  url = builtins.unsafeDiscardStringContext "file://${manifest}";
+                  hash = manifestHash manifest;
+                  enabled = true;
+                };
+              };
+              plugins."LAPSE" = {
+                enable = true;
+                package = jellyfinPlugins.fromRepo {
+                  version = "2.0.1.0";
+                  hash = "sha256-A9C6P/m17axgmsWC4E3CFP1M/zcSmo+8mgh1cAD4Rls=";
+                  relaxVersionCheck = true;
+                };
+              };
+              users.admin = {
+                password = "testpassword";
+                policy.isAdministrator = true;
+              };
+            };
+          };
+        }
+      ];
+      pluginService = config.config.systemd.services.jellyfin-plugins;
+    in
+    pkgs.runCommand "unit-test-jellyfin-plugin-repo-relaxed-version-check" { } ''
+      ${check "Plugin with incompatible target ABI installed with relaxed version check" (
+        lib.hasInfix "LAPSE_2.0.1.0" pluginService.script
+      )}
+
+      echo 'PASS: jellyfin-plugin-repo-relax-version-check' > $out
     '';
 
   jellyfin-plugin-repo-ambiguity-assertion =
@@ -559,6 +665,12 @@ in
                 url_base = "/sabnzbd";
               };
             };
+
+            downloadarr.sabnzbd = {
+              removeCompletedDownloads = false;
+              removeFailedDownloads = true;
+              priority = 1;
+            };
           };
         }
       ];
@@ -588,6 +700,20 @@ in
       ${check "radarr-downloadclients script does not use 0.0.0.0" (
         !lib.hasInfix "0.0.0.0" downloadClientsService.script
       )}
+      ${check "apply_field_overrides merges top-level overrides (enable, freeform properties)" (
+        lib.hasInfix ". + \$overrides" downloadClientsService.script
+      )}
+      ${check "sabnzbd download client enable is passed through as a top-level override" (
+        lib.hasInfix ''"enable":true'' downloadClientsService.script
+      )}
+      ${check
+        "sabnzbd freeform properties (removeCompletedDownloads/removeFailedDownloads/priority) are passed through"
+        (
+          lib.hasInfix ''"removeCompletedDownloads":false'' downloadClientsService.script
+          && lib.hasInfix ''"removeFailedDownloads":true'' downloadClientsService.script
+          && lib.hasInfix ''"priority":1'' downloadClientsService.script
+        )
+      }
       echo 'PASS: download-clients-no-reverse-proxy' > $out
     '';
 
@@ -663,6 +789,65 @@ in
         lib.hasInfix "Subsonic" lidarrNotifications.script
       )}
       echo 'PASS: notif-service-scoping' > $out
+    '';
+
+  notif-triggers =
+    let
+      config = evalConfig [
+        {
+          nixflix = {
+            enable = true;
+
+            jellyfin = {
+              enable = true;
+              apiKey = "test-jellyfin-key";
+            };
+
+            sonarr = {
+              enable = true;
+              config = {
+                hostConfig.port = 8989;
+                apiKey._secret = "/run/secrets/sonarr-api";
+              };
+            };
+
+            radarr = {
+              enable = true;
+              config = {
+                hostConfig.port = 7878;
+                apiKey._secret = "/run/secrets/radarr-api";
+              };
+            };
+
+            notif.jellyfin.triggers.sonarr = [
+              "onDownload"
+              "onHealthIssue"
+            ];
+
+            notif.jellyfin.includeHealthWarnings = true;
+          };
+        }
+      ];
+      sonarrNotifications = config.config.systemd.services."sonarr-notifications";
+      radarrNotifications = config.config.systemd.services."radarr-notifications";
+    in
+    pkgs.runCommand "unit-test-notif-triggers" { } ''
+      ${check "sonarr-notifications applies the overridden trigger set" (
+        lib.hasInfix ''["onDownload","onHealthIssue"]'' sonarrNotifications.script
+      )}
+      ${check "radarr-notifications still uses the jellyfin default trigger set" (
+        lib.hasInfix ''["onGrab","onDownload","onUpgrade","onRename","onMovieDelete","onMovieFileDelete","onMovieFileDeleteForUpgrade","onApplicationUpdate"]'' radarrNotifications.script
+      )}
+      ${check "sonarr-notifications applies the freeform includeHealthWarnings override" (
+        lib.hasInfix ''"includeHealthWarnings":true'' sonarrNotifications.script
+      )}
+      ${check "apply_field_overrides merges top-level overrides (name, enable, freeform properties)" (
+        lib.hasInfix ". + \$overrides" sonarrNotifications.script
+      )}
+      ${check "notification overrides do not include the nested triggers attrset" (
+        !lib.hasInfix "\"triggers\":" sonarrNotifications.script
+      )}
+      echo 'PASS: notif-triggers' > $out
     '';
 
   jellyfin-subtitles =
@@ -749,13 +934,13 @@ in
       )}
 
       ${check "Open Subtitles plugin directory name in service script" (
-        lib.hasInfix "Open Subtitles_24.0.0.0" pluginService.script
+        lib.hasInfix "Open-Subtitles-" pluginService.script
       )}
       ${check "subbuzz plugin directory name in service script" (
-        lib.hasInfix "subbuzz_1.4.1.0" pluginService.script
+        lib.hasInfix "subbuzz-" pluginService.script
       )}
       ${check "Subtitle Extract plugin directory name in service script" (
-        lib.hasInfix "Subtitle Extract_7.0.0.0" pluginService.script
+        lib.hasInfix "Subtitle-Extract-" pluginService.script
       )}
 
       ${check "subbuzz EnableOpenSubtitles config value" jellyfinCfg.plugins.subbuzz.config.EnableOpenSubtitles}
@@ -1032,23 +1217,19 @@ in
       plainFile = pkgs.writeText "plain.json" (builtins.toJSON (secrets.stripSecretRefs rawConfig));
       jqSecrets = secrets.mkNestedJqSecretArgs rawConfig;
     in
-    pkgs.runCommand "unit-test-nested-secret-in-list-jq-filter"
-      {
-        nativeBuildInputs = [ pkgs.jq ];
-      }
-      ''
-        merged=$(
-          echo '{"Entries":[]}' \
-            | jq \
-                ${jqSecrets.flagsString} \
-                --argjson plain "$(cat ${plainFile})" \
-                '. * $plain | ${lib.concatStringsSep " | " jqSecrets.assignments}'
-        )
+    pkgs.runCommand "unit-test-nested-secret-in-list-jq-filter" { nativeBuildInputs = [ pkgs.jq ]; } ''
+      merged=$(
+        echo '{"Entries":[]}' \
+          | jq \
+              ${jqSecrets.flagsString} \
+              --argjson plain "$(cat ${plainFile})" \
+              '. * $plain | ${lib.concatStringsSep " | " jqSecrets.assignments}'
+      )
 
-        value=$(echo "$merged" | jq -r '.Entries[0].Value')
-        if [ "$value" != "s3cr3t-value" ]; then
-          echo "FAIL: expected substituted value, got '$value'" && exit 1
-        fi
-        echo 'PASS: nested-secret-in-list-jq-filter' > $out
-      '';
+      value=$(echo "$merged" | jq -r '.Entries[0].Value')
+      if [ "$value" != "s3cr3t-value" ]; then
+        echo "FAIL: expected substituted value, got '$value'" && exit 1
+      fi
+      echo 'PASS: nested-secret-in-list-jq-filter' > $out
+    '';
 }

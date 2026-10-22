@@ -115,6 +115,7 @@ nav:
       - Jellyfin Plugins: examples/jellyfin-plugins.md
       - Jellyfin Subtitles: examples/jellyfin-subtitles.md
       - Maintainerr Rules: examples/maintainerr-rules.md
+      - Homepage: examples/homepage.md
 # REFERENCE_NAV_PLACEHOLDER
 extra:
   social:

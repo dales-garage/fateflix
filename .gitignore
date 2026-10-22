@@ -1,9 +1,28 @@
 /result
 .direnv/
 .envrc
+__pycache__/
 
 docs/reference/*/
 !docs/reference/index.md
 mkdocs.yml
 
 .nixos-test-history
+
+# Runtime data belongs outside the checkout.
+.env
+.env.*
+!.env.example
+.secrets/
+secrets/*.gpg
+*.db
+*.db-*
+*.sqlite*
+*.pem
+*.key
+backups/
+staging/
+migration-payloads/
+result-*
+__pycache__/
+modules/jellyfin/plugins/.source-cache/

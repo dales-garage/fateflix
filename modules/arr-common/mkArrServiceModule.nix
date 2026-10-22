@@ -50,6 +50,7 @@ in
     (import ./hostConfig.nix { inherit serviceName; })
     (import ./mediaManagement.nix { inherit serviceName; })
     (import ./mediaDirs.nix { inherit serviceName; })
+    (import ./metadata.nix { inherit serviceName; })
     (import ./postgres.nix { inherit serviceName; })
     (import ./rootFolders.nix { inherit serviceName; })
   ];
@@ -71,6 +72,13 @@ in
           [TRaSH Guides](https://trash-guides.info/Prowlarr/prowlarr-setup-proxy/?h=vpn#setup-proxy-for-certain-indexers)
           recommend leaving this `false`.
         '';
+      };
+
+      namespace = mkOption {
+        type = types.str;
+        default = config.nixflix.vpn.namespace;
+        defaultText = literalExpression "config.nixflix.vpn.namespace";
+        description = "Name of the VPN network namespace to confine ${capitalizedName} to when `vpn.enable = true`.";
       };
     };
 
@@ -245,6 +253,7 @@ in
       inherit (cfg.config.hostConfig) port;
       upstreamHost = cfg.connectionAddress;
       themeParkService = serviceBase;
+      websocketUpgrade = true;
     })
     {
       assertions = [
@@ -294,14 +303,10 @@ in
           home = cfg.dataDir;
           isSystemUser = true;
         }
-        // optionalAttrs (globals.uids ? ${cfg.user}) {
-          uid = globals.uids.${cfg.user};
-        };
+        // optionalAttrs (globals.uids ? ${cfg.user}) { uid = globals.uids.${cfg.user}; };
       };
 
-      networking.firewall = mkIf cfg.openFirewall {
-        allowedTCPPorts = [ cfg.config.hostConfig.port ];
-      };
+      networking.firewall = mkIf cfg.openFirewall { allowedTCPPorts = [ cfg.config.hostConfig.port ]; };
 
       systemd.tmpfiles.settings."10-${serviceName}" = {
         "${cfg.dataDir}".d = {
@@ -323,10 +328,7 @@ in
           "nixflix-setup-dirs.service"
         ]
         ++ config.nixflix.serviceDependencies;
-        requires = [
-          "nixflix-setup-dirs.service"
-        ]
-        ++ config.nixflix.serviceDependencies;
+        requires = [ "nixflix-setup-dirs.service" ] ++ config.nixflix.serviceDependencies;
         wantedBy = [ "multi-user.target" ];
 
         serviceConfig = {
@@ -336,7 +338,10 @@ in
           ExecStart =
             if apiKeyIsSecretRef then
               pkgs.writeShellScript "${serviceName}-start" ''
-                export ${apiKeyEnvVar}="$(cat ${credentialPath})"
+                set -euo pipefail
+                api_key="$(cat ${credentialPath})"
+                test -n "$api_key"
+                export ${apiKeyEnvVar}="$api_key"
                 exec ${getExe cfg.package} -nobrowser -data='${cfg.dataDir}'
               ''
             else
@@ -347,15 +352,16 @@ in
         }
         // optionalAttrs apiKeyIsSecretRef {
           LoadCredential = [ "apiKey:${toString cfg.config.apiKey._secret}" ];
+          ExecStartPre = "${pkgs.coreutils}/bin/test -s ${credentialPath}";
         };
       };
     }
     (mkIf (config.nixflix.vpn.enable && cfg.vpn.enable) {
       systemd.services.${serviceName}.vpnConfinement = {
         enable = true;
-        vpnNamespace = "wg";
+        vpnNamespace = cfg.vpn.namespace;
       };
-      vpnNamespaces.wg.portMappings = [
+      vpnNamespaces.${cfg.vpn.namespace}.portMappings = [
         {
           from = cfg.config.hostConfig.port;
           to = cfg.config.hostConfig.port;
