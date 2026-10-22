@@ -166,7 +166,12 @@ def networking():
     active("sshd")
     active("xen-guest-agent")
     # Exercise the deployed reverse proxy and its host routing, not just open ports.
-    http("http://127.0.0.1/", {"Host": "sonarr.vm.internal"}, probe=True)
+    key = ET.parse("/var/lib/sonarr/config.xml").findtext("ApiKey")
+    status = http(
+        "http://127.0.0.1/api/v3/system/status",
+        {"Host": "sonarr.vm.internal", "X-Api-Key": key},
+    )
+    assert status.get("appName") == "Sonarr"
 
 
 def run_check(item):

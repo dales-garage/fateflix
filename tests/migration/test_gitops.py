@@ -22,6 +22,20 @@ notifiarr = load("notifiarr_update", "pkgs/notifiarr/update.py")
 
 
 class HealthTests(unittest.TestCase):
+    def test_proxy_probe_uses_authenticated_api_without_login_redirect(self):
+        with (
+            patch.object(health.Path, "read_text", return_value="production\n"),
+            patch.object(health, "active"),
+            patch.object(health.ET, "parse") as config,
+            patch.object(health, "http", return_value={"appName": "Sonarr"}) as request,
+        ):
+            config.return_value.findtext.return_value = "private-key"
+            health.networking()
+            request.assert_called_once_with(
+                "http://127.0.0.1/api/v3/system/status",
+                {"Host": "sonarr.vm.internal", "X-Api-Key": "private-key"},
+            )
+
     def test_stale_or_previous_boot_or_generation_is_unhealthy(self):
         report = {
             "healthy": True,
@@ -59,8 +73,9 @@ class HealthTests(unittest.TestCase):
         self.assertEqual(result, {"healthy": False, "error_type": "ValueError"})
 
     def test_failed_hook_does_not_claim_deployment(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(
-            health, "STATE", Path(directory)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            patch.object(health, "STATE", Path(directory)),
         ):
             with patch.dict(
                 "os.environ",
