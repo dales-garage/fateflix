@@ -101,6 +101,7 @@
       "original": {
         "owner": "recyclarr",
         "repo": "config-templates",
+        "rev": "9faf65ff745d74ab906fd73cadaa25f08eb9d981",
         "type": "github"
       }
     },
@@ -129,6 +130,7 @@
       "original": {
         "owner": "TRaSH-Guides",
         "repo": "Guides",
+        "rev": "56cb176ef4b59d734d3643287e66aafd7c809bd4",
         "type": "github"
       }
     },
