@@ -27,7 +27,7 @@ Merge only after the required CI check passes. Do not enable Comin against the o
 
 | Updates | Owner | Review policy |
 | --- | --- | --- |
-| Direct flake inputs and lock revisions | Renovate | Sunday 06:00–10:59 America/Chicago; manual merge |
+| Branch-tracking flake inputs and lock revisions | Renovate lock-file maintenance | Sunday 06:00–10:59 America/Chicago; manual merge |
 | Actions and active Mylar3/Stash image digests | Renovate | Separate from flake updates; major updates separate |
 | Upstream nixflix | `upstream-sync.yml` | Sunday 12:00 UTC or manual; merge commit required |
 | Notifiarr, Maintainerr, Caddy and plugin hashes | `update-packages.yml` | Sunday 12:30 UTC or manual; one PR per updater |
@@ -36,9 +36,13 @@ Merge only after the required CI check passes. Do not enable Comin against the o
 
 UTC workflow schedules run at 06:00/06:30 CST or 07:00/07:30 CDT. Renovate allows
 five concurrent PRs. Historical container pins and disabled Apprise are excluded.
-Full-lock maintenance is disabled so it cannot bypass the media-policy exclusions;
-Renovate updates individual input locks instead. The inherited omnibus updater is
-not scheduled. Optional Jellyfin/Navidrome modules remain maintained for the fork,
+Lock-file maintenance refreshes NixOS packages, Comin, and other tracked inputs.
+TRaSH/Recyclarr policy URLs are pinned to exact reviewed revisions in `flake.nix`
+as well as excluded from Renovate: disabling a package rule alone does not prevent
+`nix flake update` from advancing an unpinned input. Nix digest pinning is disabled
+because it fails to rewrite these branch-only URLs; the lock file provides the pins.
+The NixOS host channel stays on 26.05. The inherited omnibus updater is not
+scheduled. Optional Jellyfin/Navidrome modules remain maintained for the fork,
 without enabling them on the production host.
 
 Custom workflows have explicit changed-file allowlists, detect no-op updates, and
