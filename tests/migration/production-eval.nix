@@ -21,6 +21,30 @@ let
   ];
 in
 assert cfg.nixflixHost.production.enable;
+assert !cfg.services.flaresolverr.enable;
+assert !cfg.services.qbittorrent.enable;
+assert cfg.nixflix.usenetClients.sabnzbd.enable;
+assert cfg.nixflix.prowlarr.config.indexerProxies == [ ];
+assert builtins.all (name: !cfg.nixflix.downloadarr.${name}.enable) [
+  "qbittorrent"
+  "rtorrent"
+  "deluge"
+  "transmission"
+];
+assert builtins.all
+  (
+    name:
+    builtins.all (
+      profile: !profile.enableTorrent && profile.enableUsenet
+    ) cfg.nixflix.${name}.config.delayProfiles
+  )
+  [
+    "sonarr"
+    "sonarr-4k"
+    "radarr"
+    "radarr-4k"
+    "lidarr"
+  ];
 assert builtins.elem "rw" cfg.fileSystems."/data".options;
 assert cfg.networking.firewall.allowedTCPPorts == [ 22 ];
 assert pkgs.lib.hasInfix "iptables -A nixos-fw -p tcp --dport 32400 -j nixos-fw-accept"

@@ -22,6 +22,14 @@ let
     # Preserve restored root folders; do not run automatic deletion/reconciliation.
     mediaDirs = [ ];
     config.rootFolders = lib.mkForce [ ];
+    # Keep declared defaults aligned with the Usenet-only restored app state.
+    config.delayProfiles = lib.mkForce [
+      {
+        id = 1;
+        enableTorrent = false;
+        order = 2147483647;
+      }
+    ];
   };
   images = builtins.fromJSON (builtins.readFile ./containers.json);
   containers = {
@@ -65,6 +73,9 @@ in
     mediaDir = "/data/media";
     downloadsDir = "/data/usenet";
     serviceDependencies = [ "nixflix-nas-ready.service" ];
+    # This host uses Usenet only, including after future upstream merges.
+    flaresolverr.enable = lib.mkForce false;
+    torrentClients.qbittorrent.enable = lib.mkForce false;
     sonarr = arr "sonarr" 8990;
     sonarr-4k = arr "sonarr-4k" 8989;
     radarr = arr "radarr" 7879;
@@ -74,6 +85,7 @@ in
       enable = true;
       settings.server.bindaddress = if production then "*" else "127.0.0.1";
       config.apiKey = secret "prowlarr";
+      config.indexerProxies = lib.mkForce [ ];
       config.hostConfig = {
         inherit bindAddress;
         username = null;
@@ -100,7 +112,13 @@ in
       };
     };
     # Leave source download client state intact until explicitly reconciled.
-    downloadarr.enable = false;
+    downloadarr = {
+      enable = false;
+      qbittorrent.enable = lib.mkForce false;
+      rtorrent.enable = lib.mkForce false;
+      deluge.enable = lib.mkForce false;
+      transmission.enable = lib.mkForce false;
+    };
   };
   environment.etc."nixflix/recyclarr-settings.yml".source =
     (pkgs.formats.yaml { }).generate "recyclarr-settings.yml"
