@@ -189,14 +189,19 @@ in
           StateDirectoryMode = "0700";
           UMask = "0077";
           ExecStart = "${python}/bin/python3 ${../../scripts/configure-notifiarr.py} ${manifest}";
-          Restart = "on-failure";
-          RestartSec = "30s";
+          TimeoutStartSec = 240;
+          TimeoutStopSec = 5;
           ProtectSystem = "strict";
           ProtectHome = true;
           PrivateTmp = true;
         };
-        unitConfig.StartLimitBurst = 3;
-        unitConfig.StartLimitIntervalSec = 300;
+      };
+      systemd.timers.notifiarr-connections = {
+        wantedBy = [ "timers.target" ];
+        timerConfig = {
+          OnBootSec = "3m";
+          OnUnitInactiveSec = "5m";
+        };
       };
     })
   ];
