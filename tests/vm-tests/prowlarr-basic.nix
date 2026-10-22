@@ -33,23 +33,11 @@ pkgsUnfree.testers.runNixOSTest {
         };
       };
 
-      flaresolverr.enable = true;
-
-      torrentClients.qbittorrent = {
-        enable = true;
-        webuiPort = 8282;
-        password = "test123";
-        serverConfig = {
-          LegalNotice.Accepted = true;
-          Preferences = {
-            WebUI = {
-              Username = "admin";
-              Password_PBKDF2 = "@ByteArray(mLsFJ3Dsd3+uZt52Vu9FxA==:ON7uV17wWL0mlay5m5i7PYeBusWa7dgiH+eJG8wC/t+zihfqauUTS0q6DKTwsB5YtbOcmztixnuezjjApywXlw==)";
-            };
-            General.Locale = "en";
-          };
-        };
-      };
+      # Match the production Usenet-only setup; proxy/browser startup is not a
+      # dependency of Prowlarr when no indexer proxies are configured.
+      flaresolverr.enable = false;
+      torrentClients.qbittorrent.enable = false;
+      prowlarr.config.indexerProxies = [ ];
 
       usenetClients.sabnzbd = {
         enable = true;
@@ -74,12 +62,8 @@ pkgsUnfree.testers.runNixOSTest {
     machine.wait_for_unit("sabnzbd.service", timeout=60)
     machine.wait_for_open_port(9696, timeout=180)
     machine.wait_for_open_port(8080, timeout=60)
-    machine.wait_for_open_port(8282, timeout=60)
-    machine.wait_for_open_port(8191, timeout=60)
 
     # Wait for configuration services to complete
-    machine.wait_for_unit("qbittorrent.service", timeout=180)
-    machine.wait_for_unit("flaresolverr.service", timeout=180)
     machine.wait_for_unit("prowlarr-config.service", timeout=180)
 
     # Wait for prowlarr to come back up after restart
@@ -104,7 +88,7 @@ pkgsUnfree.testers.runNixOSTest {
     clients_list = json.loads(clients)
 
     print(f"Download clients: {clients}")
-    assert len(clients_list) == 2, f"Expected 2 download client, found {len(clients_list)}"
+    assert len(clients_list) == 1, f"Expected only SABnzbd, found {clients_list}"
 
     sabnzbd = next((c for c in clients_list if c["name"] == "SABnzbd"), None)
     assert sabnzbd is not None, \
@@ -112,48 +96,25 @@ pkgsUnfree.testers.runNixOSTest {
     assert sabnzbd['implementationName'] == 'SABnzbd', \
         "Expected SABnzbd implementation"
 
-    qbittorrent = next((c for c in clients_list if c["name"] == "qBittorrent"), None)
-    assert qbittorrent is not None, \
-        f"Expected qBittorrent download client, found {clients_list}"
-    assert qbittorrent['implementationName'] == 'qBittorrent', \
-        "Expected qBittorrent implementation"
-
     # Wait for tags and indexer proxies services
     machine.wait_for_unit("prowlarr-tags.service", timeout=60)
     machine.wait_for_unit("prowlarr-indexer-proxies.service", timeout=180)
 
-    # Check that "flaresolverr" tag was created
-    tags = machine.succeed(
-        "curl -s -H 'X-Api-Key: fedcba9876543210fedcba9876543210' "
+    # No CAPTCHA tags or proxies should be introduced into a Usenet-only setup.
+    tags = json.loads(machine.succeed(
+        "curl -fsS -H 'X-Api-Key: fedcba9876543210fedcba9876543210' "
         "http://127.0.0.1:9696/api/v1/tag"
-    )
-    tags_list = json.loads(tags)
-    print(f"Tags: {tags}")
-    flaresolverr_tag = next((t for t in tags_list if t["label"] == "flaresolverr"), None)
-    assert flaresolverr_tag is not None, \
-        f"Expected 'flaresolverr' tag, found {tags_list}"
-
-    # Check that FlareSolverr indexer proxy was created with correct host and tag
-    proxies = machine.succeed(
-        "curl -s -H 'X-Api-Key: fedcba9876543210fedcba9876543210' "
+    ))
+    assert not any(t["label"] == "flaresolverr" for t in tags), tags
+    proxies = json.loads(machine.succeed(
+        "curl -fsS -H 'X-Api-Key: fedcba9876543210fedcba9876543210' "
         "http://127.0.0.1:9696/api/v1/indexerProxy"
-    )
-    proxies_list = json.loads(proxies)
-    print(f"Indexer proxies: {proxies}")
-    flaresolverr_proxy = next((p for p in proxies_list if p["name"] == "FlareSolverr"), None)
-    assert flaresolverr_proxy is not None, \
-        f"Expected FlareSolverr indexer proxy, found {proxies_list}"
-
-    # Verify host field contains the correct port (8191)
-    host_field = next((f for f in flaresolverr_proxy["fields"] if f["name"] == "host"), None)
-    assert host_field is not None, \
-        f"Expected 'host' field in FlareSolverr proxy, found {flaresolverr_proxy['fields']}"
-    assert host_field["value"] == "http://127.0.0.1:8191", \
-        f"Expected host 'http://127.0.0.1:8191', got '{host_field['value']}'"
-
-    # Verify the flaresolverr tag is assigned to the proxy
-    assert flaresolverr_tag["id"] in flaresolverr_proxy["tags"], \
-        f"Expected tag ID {flaresolverr_tag['id']} in proxy tags {flaresolverr_proxy['tags']}"
+    ))
+    assert proxies == [], f"Expected no indexer proxies, found {proxies}"
+    for service in ["flaresolverr", "qbittorrent"]:
+        machine.succeed(
+            f"test $(systemctl show {service}.service --property=LoadState --value) = not-found"
+        )
 
     # Verify the service is running
     machine.succeed("pgrep Prowlarr")
