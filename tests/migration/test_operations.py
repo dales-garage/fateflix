@@ -15,6 +15,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 import nixflix_ops as ops
+import nixflix_playback as playback
 import nixflix_retention as retention
 
 
@@ -26,6 +27,7 @@ def load(name, filename):
 
 
 health = load("operations_health", "gitops-health.py")
+stash = load("stash_gpu", "configure-stash-gpu.py")
 
 
 class Capacity(unittest.TestCase):
@@ -259,6 +261,90 @@ class Advisory(unittest.TestCase):
             self.assertEqual(
                 value["advisories"]["applications"]["sonarr"]["status"], "warning"
             )
+
+
+class GPU(unittest.TestCase):
+    def test_enable_disable_enable_preserves_other_values_and_owner(self):
+        import yaml
+
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yml"
+            tool = Path(d) / "ffmpeg"
+            tool.touch()
+            path.write_text("other: preserved\nffmpeg:\n  unrelated: true\n")
+            path.chmod(0o640)
+            owner = path.stat().st_uid
+            for enabled in [True, False, True]:
+                stash.configure(
+                    path,
+                    str(tool) if enabled else "/usr/bin/ffmpeg",
+                    str(tool) if enabled else "/usr/bin/ffprobe",
+                    enabled,
+                )
+                value = yaml.safe_load(path.read_text())
+                self.assertEqual(value["ffmpeg"]["hardware_acceleration"], enabled)
+                self.assertTrue(value["ffmpeg"]["unrelated"])
+                self.assertEqual(value["other"], "preserved")
+                self.assertEqual(path.stat().st_uid, owner)
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+
+    def test_malformed_missing_tool_and_interruption_preserve_original(self):
+        import yaml
+
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "config.yml"
+            for original in ["invalid: [", "[]", "ffmpeg: false"]:
+                path.write_text(original)
+                with self.assertRaises((ValueError, yaml.YAMLError)):
+                    stash.configure(path, "/absent", "/absent", True)
+                self.assertEqual(path.read_text(), original)
+            path.write_text("other: preserved")
+            with self.assertRaises(ValueError):
+                stash.configure(path, "/absent", "/absent", True)
+            with patch.object(stash.os, "replace", side_effect=OSError):
+                with self.assertRaises(OSError):
+                    stash.configure(path, "/usr/bin/ffmpeg", "/usr/bin/ffprobe", False)
+            self.assertEqual(path.read_text(), "other: preserved")
+            self.assertEqual(list(Path(d).glob(".config-*")), [])
+
+    def test_timeout_and_missing_driver_are_separate_diagnostics(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(
+            ops, "STATE", Path(d)
+        ), patch.object(
+            ops,
+            "read_json",
+            return_value={
+                "enabled": True,
+                "ffmpeg": "/pinned/ffmpeg",
+                "fingerprint": ["test"],
+            },
+        ), patch.object(
+            playback, "command", side_effect=subprocess.TimeoutExpired("ffmpeg", 20)
+        ):
+            self.assertEqual(playback.playback(), 1)
+            value = json.loads((Path(d) / "playback.json").read_text())
+            self.assertEqual(len(value["checks"]), 3)
+            self.assertTrue(
+                all(
+                    v["error_type"] == "TimeoutExpired"
+                    for v in value["checks"].values()
+                )
+            )
+            self.assertFalse((Path(d) / "health.json").exists())
+
+    def test_unchanged_success_skips_transcoding(self):
+        cfg = {"enabled": True, "ffmpeg": "/pinned", "fingerprint": ["same"]}
+        with tempfile.TemporaryDirectory() as d, patch.object(
+            ops, "STATE", Path(d)
+        ), patch.object(
+            ops,
+            "read_json",
+            side_effect=[cfg, {"healthy": True, "fingerprint": ["same"]}],
+        ), patch.object(
+            playback, "command"
+        ) as cmd:
+            self.assertEqual(playback.playback(True), 0)
+            cmd.assert_not_called()
 
 
 class Retention(unittest.TestCase):

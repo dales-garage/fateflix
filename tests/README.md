@@ -197,9 +197,9 @@ Unit tests will show Nix evaluation errors. Check:
 
 Run `python -m unittest discover -s tests/migration -p 'test_*.py'` with PyYAML
 installed. `test_operations.py` injects NAS failures, stale results, a retained
-worker lock, failed service starts, holds, credential drift and
+worker lock, failed service starts, holds, codec timeouts, credential drift and
 interrupted atomic replacements without contacting production. `operations-eval`
-asserts storage limits, retry timers and timeouts.
+asserts storage limits, GPU enable/disable settings, retry timers and timeouts.
 
 Jellyfin manifest fixtures use `builtins.toFile` so their hashes and contents are
 available at evaluation time. Validate with `nix flake check --no-build` once with

@@ -19,6 +19,7 @@ import sys
 # Also works when imported by the migration test loader.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import nixflix_ops as ops
+import nixflix_playback
 import nixflix_retention
 
 STATE = Path("/var/lib/nixflix-gitops")
@@ -277,6 +278,11 @@ def hook():
     if phase == "deploy" and status == "done":
         event["system"] = os.path.realpath("/run/current-system")
         write_json("deployed.json", event)
+        subprocess.run(
+            ["systemctl", "start", "--no-block", "nixflix-playback.service"],
+            check=False,
+            timeout=10,
+        )
 
 
 def check_until_ready(wait_seconds):
@@ -357,7 +363,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "action",
-        choices=["check", "hook", "serve", "hold", "release", "retention"],
+        choices=["check", "hook", "serve", "hold", "release", "playback", "retention"],
     )
     parser.add_argument(
         "service",
@@ -365,6 +371,7 @@ def main():
         default="all",
         help="Configured systemd service name, or all",
     )
+    parser.add_argument("--if-changed", action="store_true")
     parser.add_argument(
         "--wait", type=int, default=0, help="Seconds to allow services to become ready"
     )
@@ -376,6 +383,8 @@ def main():
         return check_until_ready(args.wait)
     elif args.action in ("hold", "release"):
         ops.maintenance(args.action, args.service)
+    elif args.action == "playback":
+        return nixflix_playback.playback(args.if_changed)
     elif args.action == "retention":
         with ops.lock("retention", blocking=False):
             nixflix_retention.retention(http)

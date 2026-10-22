@@ -189,5 +189,5 @@ verify SSH, NAS, services and Comin return automatically. Finally merge a harmle
 configuration change and confirm its SHA is deployed automatically. These live
 acceptance checks require access to the VM and are not implied by passing CI.
 
-Capacity advisories, maintenance holds, retention reports, and the staged
+Playback, capacity advisories, maintenance holds, retention reports, and the staged
 acceptance procedure are documented in [operations](operations.md).
