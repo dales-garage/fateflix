@@ -32,7 +32,7 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
           fetch-depth: 0
-      - uses: cachix/install-nix-action@v31
+      - uses: DeterminateSystems/determinate-nix-action@v3.23.3
       - name: Generate hashes and plugin definitions
         id: generate
         env:
@@ -80,7 +80,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - uses: cachix/install-nix-action@v31
+      - uses: DeterminateSystems/determinate-nix-action@v3.23.3
       - name: Refresh ABI-compatible Jellyfin manifests when the update queue is empty
         env:
           GH_TOKEN: ${{ github.token }}
