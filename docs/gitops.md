@@ -89,9 +89,12 @@ Upstream merge conflicts abort without publishing a partial merge. Existing
 upstream/fallback PRs are left untouched. Check policy pins and workflows during
 upstream review. Actions uses `GITHUB_TOKEN`, not a PAT or production credentials;
 token-created commits explicitly dispatch `ci.yml` to run CI automatically. GitHub
-also creates a separate approval-held `pull_request` run for bot-created PRs;
-that banner is distinct from the dispatched run and its required check. Avoid
-approving the duplicate while the dispatched CI is running. See
+also creates a separate approval-held `pull_request` run for bot-created PRs.
+Live testing found that this can keep the PR blocked even after dispatched CI
+passes. After reviewing the generated diff, approve that specific workflow run;
+GitHub may run CI again. The explicit dispatch does not replace this approval.
+Fully automatic triggering requires separate GitHub App or PAT credentials, which
+this repository does not provision. See
 [GitHub's workflow-trigger behavior](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 
 CI compares each check's Nix derivation and the production derivation against the
