@@ -290,7 +290,7 @@ def publish(payload_path):
         "Refresh generated Nix update artifacts",
     )
     run("git", "push", "origin", f'HEAD:refs/heads/{pr["head"]["ref"]}')
-    # GITHUB_TOKEN pushes do not start pull_request CI automatically.
+    # GITHUB_TOKEN PR runs wait for approval; dispatch validated artifacts explicitly.
     run("gh", "workflow", "run", "ci.yml", "--repo", REPO, "--ref", pr["head"]["ref"])
 
 

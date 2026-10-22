@@ -15,7 +15,7 @@ in
     package = mkIf cfg.theme.enable (
       pkgs.caddy.withPlugins {
         plugins = [ "github.com/caddyserver/replace-response@v0.0.0-20250618171559-80962887e4c6" ];
-        hash = "sha256-Li9eQjPeyOytfPdJXgtM3fh7qK/4WtgjmaweltQAk14=";
+        hash = "sha256-HgMECADAg5wqp/nOrWZg4HikpnRWU32VlyK7YJeWgjQ=";
       }
     );
     globalConfig = ''
