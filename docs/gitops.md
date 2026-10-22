@@ -53,9 +53,19 @@ conflicting workflows. Check any upstream changes to policy pins during review.
 
 Actions creates PRs with `GITHUB_TOKEN`, then explicitly dispatches `ci.yml` at the
 bot branch because token-created PRs do not recursively trigger workflows. No PAT
-or production secrets are used. CI builds the production system, existing checks,
-and GitOps tooling. Every dependency job must pass `CI required`, including after
-manual dispatch. CI does not deploy or contact the VM.
+or production secrets are used. CI compares each check's Nix derivation and the production system derivation
+against the PR base (or the previous commit on main). Only changed derivations
+are built: for example, a Navidrome package update does not run an unchanged
+Radarr VM test. Shared modules and flake inputs automatically select their
+transitive dependents. GitOps tooling runs when its scripts, tests, workflows,
+or Renovate configuration change. The planning job records its selection in the
+Actions summary; evaluation can fetch sources but does not run VM tests.
+
+Manual dispatch compares against the branch's merge base with main; enable its
+`full` input to run the entire suite. Changes to CI selection itself and failed
+base comparisons require a full run. A head evaluation failure fails CI.
+`CI required` accepts skips only for jobs the plan did not select; selected jobs
+must succeed, including after manual dispatch. CI does not deploy or contact the VM.
 
 ## First deployment
 
