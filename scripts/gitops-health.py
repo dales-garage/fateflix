@@ -229,6 +229,15 @@ def hook():
         write_json("deployed.json", event)
 
 
+def check_until_ready(wait_seconds):
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        result = check()
+        if result == 0 or time.monotonic() >= deadline:
+            return result
+        time.sleep(min(10, max(0, deadline - time.monotonic())))
+
+
 def healthy(report, build, deploy, now, boot_id, system):
     return (
         report.get("healthy", False)
@@ -275,12 +284,15 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["check", "hook", "serve"])
+    parser.add_argument(
+        "--wait", type=int, default=0, help="Seconds to allow services to become ready"
+    )
     args = parser.parse_args()
     os.umask(0o077)
     if args.action == "hook":
         hook()
     elif args.action == "check":
-        return check()
+        return check_until_ready(args.wait)
     else:
         HTTPServer(("127.0.0.1", 9199), Handler).serve_forever()
     return 0
