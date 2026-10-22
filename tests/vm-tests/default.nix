@@ -14,7 +14,16 @@ let
   importTest =
     file:
     let
-      test = import (./. + "/${file}") { inherit system pkgs nixosModules; };
+      test = import (./. + "/${file}") {
+        inherit system pkgs;
+        nixosModules = {
+          imports = [ nixosModules ];
+          # Concurrent Arr migrations can flood the emulated serial console and
+          # stall the guest kernel. Retain full logs in the journal, forwarding
+          # only warnings to the console across all VM integration tests.
+          services.journald.settings.Journal.MaxLevelConsole = lib.mkForce "warning";
+        };
+      };
       fileContents = builtins.readFile (./. + "/${file}");
     in
     test
