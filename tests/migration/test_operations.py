@@ -339,12 +339,84 @@ class GPU(unittest.TestCase):
         ), patch.object(
             ops,
             "read_json",
-            side_effect=[cfg, {"healthy": True, "fingerprint": ["same"]}],
+            side_effect=[
+                cfg,
+                {
+                    "healthy": True,
+                    "fingerprint": ["same"],
+                    "probe_version": playback.PROBE_VERSION,
+                },
+            ],
         ), patch.object(
             playback, "command"
         ) as cmd:
             self.assertEqual(playback.playback(True), 0)
             cmd.assert_not_called()
+
+    def test_av1_fixture_uses_software_and_requires_native_hardware_decode(self):
+        cfg = {"enabled": True, "ffmpeg": "/pinned", "fingerprint": ["test"]}
+        with tempfile.TemporaryDirectory() as d, patch.object(
+            ops, "STATE", Path(d)
+        ), patch.object(ops, "read_json", return_value=cfg), patch.object(
+            playback, "command"
+        ) as cmd:
+            self.assertEqual(playback.playback(), 0)
+            commands = [call.args[0] for call in cmd.call_args_list]
+            av1 = [
+                args for args in commands if any(s.endswith("-av1.mkv") for s in args)
+            ]
+            encode, decode, cleanup = av1
+            self.assertIn("libsvtav1", encode)
+            self.assertIn("yuv420p10le", encode)
+            self.assertNotIn("av1_vaapi", encode)
+            self.assertEqual(decode[decode.index("-c:v") + 1], "av1")
+            self.assertLess(decode.index("-c:v"), decode.index("-i"))
+            self.assertIn("hwdownload,format=p010le", decode)
+            self.assertIn("-hwaccel_output_format", decode)
+            self.assertEqual(cleanup[:2], ["rm", "-f"])
+            result = json.loads((Path(d) / "playback.json").read_text())
+            self.assertEqual(result["checks"]["av1"]["encode_mode"], "software")
+            self.assertEqual(result["checks"]["av1"]["decode_mode"], "gpu")
+
+    def test_hardware_decode_failure_is_not_hidden_by_successful_fixture(self):
+        cfg = {"enabled": True, "ffmpeg": "/pinned", "fingerprint": ["test"]}
+
+        def command(args, **kwargs):
+            if "hwdownload,format=p010le" in args:
+                raise subprocess.CalledProcessError(1, args)
+
+        with tempfile.TemporaryDirectory() as d, patch.object(
+            ops, "STATE", Path(d)
+        ), patch.object(ops, "read_json", return_value=cfg), patch.object(
+            playback, "command", side_effect=command
+        ):
+            self.assertEqual(playback.playback(), 1)
+            result = json.loads((Path(d) / "playback.json").read_text())
+            self.assertTrue(result["checks"]["h264"]["healthy"])
+            self.assertFalse(result["checks"]["av1"]["healthy"])
+            self.assertEqual(result["checks"]["av1"]["stage"], "decode")
+
+    def test_legacy_success_rechecks_and_software_mode_does_not_use_gpu(self):
+        cfg = {"enabled": False, "ffmpeg": "/pinned", "fingerprint": ["same"]}
+        with tempfile.TemporaryDirectory() as d, patch.object(
+            ops, "STATE", Path(d)
+        ), patch.object(
+            ops,
+            "read_json",
+            side_effect=[cfg, {"healthy": True, "fingerprint": ["same"]}],
+        ), patch.object(
+            playback, "command"
+        ) as cmd:
+            self.assertEqual(playback.playback(True), 0)
+            commands = [call.args[0] for call in cmd.call_args_list]
+            self.assertTrue(any("libsvtav1" in args for args in commands))
+            self.assertTrue(all("-hwaccel" not in args for args in commands))
+            self.assertTrue(all("-vaapi_device" not in args for args in commands))
+            self.assertTrue(
+                all(
+                    args[0] == "/usr/bin/ffmpeg" for args in commands if args[0] != "rm"
+                )
+            )
 
 
 class Retention(unittest.TestCase):

@@ -124,14 +124,23 @@ sudo cat /var/lib/nixflix-gitops/playback.json
 sudo journalctl -u nixflix-playback --since '-30 minutes'
 ```
 
-The probe encodes and decodes one second of synthetic H.264, HEVC, and AV1 inside
-Stash, using local cache files and 20-second per-command limits inside the
+The probe encodes and decodes one second of synthetic H.264 and HEVC inside
+Stash. With GPU enabled, those codecs use hardware encoding and decoding. AV1
+uses a short software-generated 10-bit fixture followed by hardware decoding:
+the production UHD 750 supports AV1 decoding but has no AV1 encoding entrypoint.
+See Intel's [media-driver feature matrix](https://github.com/intel/media-driver#decodingencoding-features).
+FFmpeg's native AV1 decoder is selected explicitly, and a hardware-frame download
+is required so software fallback cannot report a successful GPU test. With GPU
+disabled, all three codecs use the container's software tools. The report records
+each codec's encode/decode mode and the failed stage when applicable.
+
+It uses local cache files and 20-second per-command limits inside the
 container plus an outer timeout. It removes its temporary files and never
 transcodes library content. Results are separate diagnostics; an unsupported
 codec or absent driver does not change core deployment health. It runs initially,
 on demand, and after a successful deployment when the kernel, firmware, Intel
 drivers, FFmpeg, Stash image, or GPU state fingerprint changes. A successful
-unchanged fingerprint skips the probe; a failed probe can retry at the next boot
+unchanged fingerprint and probe version skip the probe; a failed probe can retry at the next boot
 or deployment. There is no recurring background-transcode timer.
 
 These small synthetic tests do not establish HDR tone mapping, 4K throughput,
