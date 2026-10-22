@@ -1589,6 +1589,15 @@
     "owner": "JPKribs",
     "versions": [
       {
+        "changelog": "\n## Changed\n- Configuration says less. Each step states where it stands in one short line, and descriptions no longer repeat it.\n- Links to Advanced read as Advanced > Blocking, Advanced > Addresses and so on, the same way across the plugin.\n- Step 6 no longer repeats the time of the outside check, which its card already shows.\n\n## Developer\n- The Beginner's Guide has Free and Recommended tabs. Picking one switches every tab on the page, so only your path shows.\n- The docs use the same Advanced > Blocking style as the plugin, with new screenshots.",
+        "checksum": "fae365e104f58be4f4c6709e656b8cc2",
+        "hash": "sha256-zWc0rQRIqINA26oNGUpKf2G+E5to+XUzDL9EjSde3rU=",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-remoteaccess/releases/download/v12.2.4.2/jellyfin-plugin-remoteaccess-12.2.4.2.zip",
+        "targetAbi": "12.2.0.0",
+        "timestamp": "2026-10-22T07:05:56Z",
+        "version": "12.2.4.2"
+      },
+      {
         "changelog": "\n## Added\n- The top of Configuration shows how many of the six steps are done, with a bar for each step and a link to the next one that needs attention.\n- Configuration names the countries that can connect, in green, or says in yellow that the server's country is not known yet. A link goes straight to the country rule.\n- The share card has Copy URL and Copy Image. Copy Image puts the QR code on the clipboard, or saves it as a file where the browser cannot copy images.\n\n## Changed\n- A server now keeps one DDNS record, and its hostname is the proxy's address. Step 2 asks only for the provider, the hostname and the credentials that provider needs. Saving with older extra records keeps only the one shown.\n- Configuration has one Save for the whole page, and the steps use smaller buttons with the same spacing throughout.\n- The finer settings moved to Advanced. Dynamic DNS holds the record's options and Remove Record. Addresses holds Other addresses and Automatic port forwarding. Security holds Request a New Certificate.\n- The share card shows a Public or Home only badge, with a note pointing to step 2 when the address only works at home.\n- On Advanced, the server's country in the country rule is shown in green, or in yellow while it is unknown.\n\n## Developer\n- The docs explain the defaults worth knowing, the single record and the new Advanced sections, with new screenshots.",
         "checksum": "957f9a157a22dbfc74af17ad3eecd16a",
         "hash": "sha256-tY4TzFfhkGoPyCfdpz6ITGfY8VjjRw9XmbgBEolORZs=",
@@ -1831,10 +1840,19 @@
     "category": "General",
     "description": "Adds search functionality to filter dialogs (tags, genres, studios, etc.) and displays enabled/checked filters at the top of the list.",
     "guid": "b8f7e2c1-9a3d-4f5e-8b6c-1d2e3f4a5b6c",
-    "imageUrl": "https://raw.githubusercontent.com/rimseg/jellyfin-filter-search/main/icon.png",
+    "imageUrl": "https://raw.githubusercontent.com/rimseg/jellyfin-filter-search/main/docs/icon.png",
     "overview": "Adds search functionality to Jellyfin filter dialogs",
     "owner": "rimseg",
     "versions": [
+      {
+        "changelog": "For Jellyfin 12.2\n- No setup anymore: the script is added in memory while Jellyfin serves the web client (no chown, no File Transformation plugin, nothing written to index.html)\n- Removes the script block that 1.x wrote to index.html, when the file is writable\n- Modern UI: the \"Selected\" group stays correct on very large lists\n- Legacy UI: Select All skips hidden options, Reset Filters refreshes the list, long names wrap, light theme is readable\n- Remote control and gamepad keys leave the search box\n- Built against Jellyfin 12.2.0 / .NET 10",
+        "checksum": "94a78687fc7168a2b047559e5a3f58db",
+        "hash": "sha256-p9rK7ULT+9xD054GmSx+GKh9YQRx8cWN2oMPommn9zI=",
+        "sourceUrl": "https://github.com/rimseg/jellyfin-filter-search/releases/download/2.0.0.0/Jellyfin.Plugin.FilterSearch_12.2.0.zip",
+        "targetAbi": "12.2.0.0",
+        "timestamp": "2026-10-22T00:00:00",
+        "version": "2.0.0.0"
+      },
       {
         "changelog": "For Jellyfin 12.2\n- Filter search, Select All/None and selected-to-top now work in the modern web UI (no need to switch to Legacy Desktop)\n- Legacy Desktop layout keeps working\n- \"Selected\" heading is hidden while a search hides all selected items\n- Built against Jellyfin 12.2.0 / .NET 10",
         "checksum": "b47558a8bbb418a57d4e75a40ffb51ea",
@@ -6410,6 +6428,15 @@
     "versions": [
       {
         "changelog": "- See the full changelog at [GitHub](https://github.com/intro-skipper/segment-editor-plugin/blob/master/CHANGELOG.md)",
+        "checksum": "eaf7a37da8a285dbd1a96b4803ac0647",
+        "hash": "sha256-YOwcX43LgsXn2cxtxJROCmTHm+6Lszf5tCKDOgtLnAI=",
+        "sourceUrl": "https://github.com/intro-skipper/segment-editor-plugin/releases/download/v12.0.18.0/segment-editor-plugin-v12.0.18.0.zip",
+        "targetAbi": "12.2.0.0",
+        "timestamp": "2026-10-22T09:25:26Z",
+        "version": "12.0.18.0"
+      },
+      {
+        "changelog": "- See the full changelog at [GitHub](https://github.com/intro-skipper/segment-editor-plugin/blob/master/CHANGELOG.md)",
         "checksum": "334e56c3f51677e91ce848b87ea07f8f",
         "hash": "sha256-q6/1ow5tBQbTLjL9IU71Mw0UggkYOA1++lieSJliwNE=",
         "sourceUrl": "https://github.com/intro-skipper/segment-editor-plugin/releases/download/v12.0.17.0/segment-editor-plugin-v12.0.17.0.zip",
@@ -6443,15 +6470,6 @@
         "targetAbi": "12.1.0.0",
         "timestamp": "2026-09-25T09:37:27Z",
         "version": "12.0.14.0"
-      },
-      {
-        "changelog": "- See the full changelog at [GitHub](https://github.com/intro-skipper/segment-editor-plugin/blob/master/CHANGELOG.md)",
-        "checksum": "20f4d0a74ba0b63c9b748ec68b5bdad6",
-        "hash": "sha256-2Lhph+vT+xCU5xWRA3JEqmPyAEhOLbOv+2xl/II45V0=",
-        "sourceUrl": "https://github.com/intro-skipper/segment-editor-plugin/releases/download/v12.0.13.0/segment-editor-plugin-v12.0.13.0.zip",
-        "targetAbi": "12.1.0.0",
-        "timestamp": "2026-09-24T15:19:55Z",
-        "version": "12.0.13.0"
       }
     ]
   },
