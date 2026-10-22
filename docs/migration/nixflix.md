@@ -509,19 +509,40 @@ VA-API encoders. Its v0.29.3 release ignores arbitrary FFmpeg environment
 variables, so a managed pre-start updates the supported YAML keys atomically.
 Plex retains `HardwareAcceleratedCodecs=1` and its service user can access VA-API.
 
-The October 22 playback investigation found that HuC-only mode (`enable_guc=2`)
-was insufficient on this passed-through UHD 750: AV1 decoding succeeded, but
-H.264 encoding stalled and Safari HLS segments timed out. Plex also requested
-hardware transcoding but fell back to software. Rebooting into the current
-generation did not resolve it. Reloading i915 with `enable_guc=3` enabled GuC
-submission and fixed both applications; this is now the persistent setting.
-The same two-second AV1-to-H.264 hardware conversion completed in 0.33 seconds,
-and actual Stash HLS requests returned video segments promptly. Plex's diagnostic
-session reported `transcodeHwEncoding=vaapi` and `Intel (VA API)` with the existing
-active Plex Pass subscription. No Plex beta channel or media re-encoding was
-needed. GPU device visibility and enabled preferences alone are not sufficient
-proof of working hardware transcoding: verify real stream segments and Plex's
-per-session hardware flags after driver changes.
+The October 22 playback investigation found stalled GPU interrupts: AV1 decoding
+could succeed while H.264 encoding stalled, Stash HLS segments timed out, and Plex
+either stalled or fell back to software. Reloading i915 with GuC submission enabled
+briefly restored encoding, but repeated workloads stalled again. That experiment
+did not establish a GuC configuration fix; retain the managed `enable_guc=2` setting.
+
+The XCP-ng host logged `Unsupported MSI delivery mode 7` for the nixflix domain.
+[XCP-ng documents this passthrough issue](https://docs.xcp-ng.org/troubleshooting/common-problems/#pci-passthrough-error-unsupported-msi-delivery-mode-7)
+and its per-VM workaround. With XAPI 26.1.19-1.1 or newer installed, run on the host:
+
+```sh
+xe vm-param-set uuid=1c9a5660-2b39-5f13-3f59-7f99d55a07b5 platform:hvm-pirq=false
+```
+
+Restart the VM for this persistent hypervisor setting to take effect. This setting
+lives in XAPI, outside the guest's NixOS/Comin configuration. If recreating the VM,
+apply it to the new VM UUID. A host with installed but inactive Xen/kernel updates
+also needs a host reboot; coordinate shutdown and autostart of its other guests.
+
+After activating Xen 4.17.7 / XAPI 26.1.19 and disabling HVM PIRQ for nixflix,
+the normal guest boot (`enable_guc=2`, no `pci=nomsi`) used standard PCI MSI
+interrupts. The previously failing Stash scenes returned fresh first HLS segments
+in 0.77 and 0.98 seconds. A 60-second AV1-to-H.264 VA-API conversion completed in
+6.31 seconds. Plex delivered 12 consecutive AV1-to-H.264 HLS segments with both
+`transcodeHwDecoding=vaapi` and `transcodeHwEncoding=vaapi`, reporting 21x speed.
+GPU interrupts continued advancing, no new host MSI errors appeared, and all 26
+application health checks passed. The temporary diagnostic boot entry was removed.
+
+GPU device visibility and enabled preferences alone are not proof of working
+hardware transcoding. Verify fresh Stash HLS segments, repeated AV1-to-H.264
+conversions, advancing GPU interrupt counts, and Plex's per-session hardware flags.
+Plex's subscription was active and hardware decoding, encoding, and HDR tone
+mapping were enabled. [Hardware acceleration requires Plex Pass](https://support.plex.tv/articles/115002178853-using-hardware-accelerated-streaming/),
+but it does not require the optional [beta release channel](https://support.plex.tv/articles/201844613-early-access-beta-releases/).
 
 All restored Arr library identities, paths, monitored flags and history still
 match the protected snapshot. Missing-credential and missing-NAS tests passed
