@@ -9,7 +9,9 @@
   config = {
     hardware.firmware = lib.mkIf config.nixflixHost.gpuPassthrough.enable [ pkgs.linux-firmware ];
     boot.extraModprobeConfig = lib.mkIf config.nixflixHost.gpuPassthrough.enable ''
-      options i915 enable_guc=2
+      # Rocket Lake passthrough needs GuC submission as well as HuC firmware.
+      # HuC-only mode stalls AV1-to-H.264 streaming and Plex falls back to CPU.
+      options i915 enable_guc=3
     '';
     services.plex.accelerationDevices =
       if config.nixflixHost.gpuPassthrough.enable then [ "/dev/dri/renderD128" ] else [ ];

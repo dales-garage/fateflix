@@ -509,6 +509,20 @@ VA-API encoders. Its v0.29.3 release ignores arbitrary FFmpeg environment
 variables, so a managed pre-start updates the supported YAML keys atomically.
 Plex retains `HardwareAcceleratedCodecs=1` and its service user can access VA-API.
 
+The October 22 playback investigation found that HuC-only mode (`enable_guc=2`)
+was insufficient on this passed-through UHD 750: AV1 decoding succeeded, but
+H.264 encoding stalled and Safari HLS segments timed out. Plex also requested
+hardware transcoding but fell back to software. Rebooting into the current
+generation did not resolve it. Reloading i915 with `enable_guc=3` enabled GuC
+submission and fixed both applications; this is now the persistent setting.
+The same two-second AV1-to-H.264 hardware conversion completed in 0.33 seconds,
+and actual Stash HLS requests returned video segments promptly. Plex's diagnostic
+session reported `transcodeHwEncoding=vaapi` and `Intel (VA API)` with the existing
+active Plex Pass subscription. No Plex beta channel or media re-encoding was
+needed. GPU device visibility and enabled preferences alone are not sufficient
+proof of working hardware transcoding: verify real stream segments and Plex's
+per-session hardware flags after driver changes.
+
 All restored Arr library identities, paths, monitored flags and history still
 match the protected snapshot. Missing-credential and missing-NAS tests passed
 again through the `test-isolation` flake app and restored staged services.
