@@ -55,7 +55,8 @@ permissions, importing only validated version and lock JSON from the candidate.
 It regenerates Notifiarr's architecture hashes, Maintainerr's source/Yarn hashes,
 and Caddy's plugin hash as needed. A nixpkgs revision change also regenerates
 Navidrome options and Caddy's hash. Media changes refresh Jellyfin's ABI-aware
-manifest catalog on that same PR. The separate publisher only writes allowlisted
+manifest catalog on that same PR. Manual pushes do not trigger regeneration; use the local refresh command below.
+The separate publisher only writes allowlisted
 generated files, rejects a changed PR head, and never force-pushes. Its bot author
 is ignored by Renovate's manual-edit detection so normal rebasing remains enabled.
 
