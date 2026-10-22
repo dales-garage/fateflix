@@ -12,6 +12,7 @@
     ./staging.nix
     ./production.nix
     ./gpu.nix
+    ./remux.nix
     ./homepage.nix
     ./notifications.nix
     ./notifiarr.nix
