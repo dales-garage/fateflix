@@ -132,7 +132,7 @@ create a VM snapshot or establish that an arbitrary directory is a valid backup.
 An operator who explicitly chooses to proceed without a fresh backup can pass
 `--skip-backup`; that choice is recorded in `bootstrap-backup`.
 
-Existing SecretSpec/pass provisioning remains unchanged. Comin fetches the public
+SecretSpec/pass provisioning repairs incomplete generations and permission drift atomically; see [credential recovery](credential-recovery.md). Comin fetches the public
 repository without credentials. No API keys or GitHub write tokens enter Git or
 the Nix store. The old `deploy.py` refuses activation once Comin owns the machine.
 
