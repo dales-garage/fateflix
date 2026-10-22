@@ -143,6 +143,11 @@
             inherit pkgs;
             host = self.nixosConfigurations.nixflix-production;
           };
+          remux-eval = import ./tests/migration/remux-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-production;
+            staging = self.nixosConfigurations.nixflix-staging;
+          };
           docs-build = self.packages.${system}.docs;
           four-instance-eval = import ./tests/migration/four-instance-eval.nix {
             inherit pkgs;

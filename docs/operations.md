@@ -211,3 +211,5 @@ valid generations remain untouched. Installation writes and syncs every file and
 the generation before atomically changing `current`. A failed preparation leaves
 the previous generation selected and prints no credential values. An already
 incomplete old generation is retained for inspection rather than edited in place.
+
+For a finite batch of AV1 MKVs, see the [verified MP4 remux queue](remux.md).
