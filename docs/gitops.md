@@ -88,8 +88,11 @@ without enabling them on production. The inherited omnibus updater is not schedu
 Upstream merge conflicts abort without publishing a partial merge. Existing
 upstream/fallback PRs are left untouched. Check policy pins and workflows during
 upstream review. Actions uses `GITHUB_TOKEN`, not a PAT or production credentials;
-token-created commits explicitly dispatch `ci.yml` because they do not recursively
-trigger PR workflows.
+token-created commits explicitly dispatch `ci.yml` to run CI automatically. GitHub
+also creates a separate approval-held `pull_request` run for bot-created PRs;
+that banner is distinct from the dispatched run and its required check. Avoid
+approving the duplicate while the dispatched CI is running. See
+[GitHub's workflow-trigger behavior](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 
 CI compares each check's Nix derivation and the production derivation against the
 PR base (or previous main commit). Only affected checks run, including the union

@@ -214,7 +214,7 @@ def main():
             "--body-file",
             body.name,
         )
-    # GITHUB_TOKEN-created PRs do not trigger pull_request workflows recursively.
+    # GITHUB_TOKEN PR runs wait for approval; dispatch the generated update explicitly.
     run("gh", "workflow", "run", "ci.yml", "--repo", repository, "--ref", branch)
 
 
