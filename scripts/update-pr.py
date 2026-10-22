@@ -54,6 +54,22 @@ def changed_files():
     return sorted(set(filter(None, tracked + new)))
 
 
+def formatted_changes(patterns):
+    changed = changed_files()
+    if not allowed_changes(changed, patterns):
+        raise RuntimeError(
+            "Updater changed files outside its allowlist: " + ", ".join(changed)
+        )
+    nix_files = [p for p in changed if p.endswith(".nix") and Path(p).exists()]
+    if nix_files:
+        run("nix", "fmt", "--", *nix_files)
+        run("nix", "fmt", "--", "--no-cache", "--fail-on-change", *nix_files)
+    changed = changed_files()
+    if not allowed_changes(changed, patterns):
+        raise RuntimeError("Formatter changed files outside the updater allowlist")
+    return changed
+
+
 def sync_upstream():
     run("git", "fetch", "https://github.com/kiriwalawren/nixflix.git", "main")
     sha = run("git", "rev-parse", "FETCH_HEAD", capture=True).stdout.strip()
@@ -141,19 +157,10 @@ def main():
     else:
         command, patterns = UPDATERS[args.kind]
         run("nix", "develop", "--command", *command)
-        changed = changed_files()
+        changed = formatted_changes(patterns)
         if not changed:
             print("Already current; no PR needed.")
             return
-        if not allowed_changes(changed, patterns):
-            raise RuntimeError(
-                "Updater changed files outside its allowlist: " + ", ".join(changed)
-            )
-        nix_files = [p for p in changed if p.endswith(".nix") and Path(p).exists()]
-        if nix_files:
-            run("nix", "fmt", "--", *nix_files)
-        if not allowed_changes(changed_files(), patterns):
-            raise RuntimeError("Formatter changed files outside the updater allowlist")
         run("git", "add", "--", *changed)
         run("git", "commit", "-m", "Update " + args.kind)
     run("git", "push", "origin", "HEAD:refs/heads/" + branch)
