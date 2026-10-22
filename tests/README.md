@@ -206,3 +206,8 @@ available at evaluation time. Validate with `nix flake check --no-build` once wi
 a new `XDG_CACHE_HOME` and again with the same cache, then build affected checks.
 Runtime acceptance and isolated SABnzbd pause/manual-resume testing are described
 in [operations](../docs/operations.md).
+
+CI planning tests cover file scopes, grouped changes, rename handling, missing
+bases, network/KVM matrix metadata and the required-check gate. Run
+`python -m unittest discover -s tests/migration -p 'test_ci_plan.py'` without Nix.
+See [CI validation scopes](../docs/gitops.md) for when full VM testing is selected.
