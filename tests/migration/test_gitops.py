@@ -22,6 +22,25 @@ notifiarr = load("notifiarr_update", "pkgs/notifiarr/update.py")
 
 
 class HealthTests(unittest.TestCase):
+    def test_startup_failure_is_retried_until_ready(self):
+        with (
+            patch.object(health, "check", side_effect=[1, 0]) as check,
+            patch.object(health.time, "monotonic", return_value=0),
+            patch.object(health.time, "sleep") as sleep,
+        ):
+            self.assertEqual(health.check_until_ready(120), 0)
+            self.assertEqual(check.call_count, 2)
+            sleep.assert_called_once_with(10)
+
+    def test_persistent_failure_remains_failed_after_grace_period(self):
+        with (
+            patch.object(health, "check", return_value=1),
+            patch.object(health.time, "monotonic", side_effect=[0, 120]),
+            patch.object(health.time, "sleep") as sleep,
+        ):
+            self.assertEqual(health.check_until_ready(120), 1)
+            sleep.assert_not_called()
+
     def test_proxy_probe_uses_authenticated_api_without_login_redirect(self):
         with (
             patch.object(health.Path, "read_text", return_value="production\n"),

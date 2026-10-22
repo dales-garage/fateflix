@@ -104,7 +104,9 @@ depends on the account's existing service-notification configuration and an
 available Notifiarr client; journals remain available independently.
 
 `deployed.json` records successful Comin activation, not proof of application
-health. A build failure leaves the running generation intact. A post-activation
+health. Automated checks allow up to two minutes for restarted services to become
+ready before failing; manual checks return immediately unless `--wait` is given.
+A build failure leaves the running generation intact. A post-activation
 health failure does not automatically roll back. Cloud Plex webhooks and remote
 notification delivery must be checked during rollout; the periodic probe uses
 Plex's local API so cloud outages do not mark the VM unhealthy.

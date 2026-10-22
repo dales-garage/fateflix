@@ -79,7 +79,7 @@ in
       ];
       serviceConfig = {
         Type = "oneshot";
-        ExecStart = "${lib.getExe health} check";
+        ExecStart = "${lib.getExe health} check --wait 120";
         TimeoutStartSec = 300;
         UMask = "0077";
       };
