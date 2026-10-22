@@ -15,6 +15,7 @@
     ./homepage.nix
     ./notifications.nix
     ./notifiarr.nix
+    ./gitops.nix
     ./proxy.nix
     (modulesPath + "/virtualisation/xen-domU.nix")
   ];

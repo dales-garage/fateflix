@@ -86,7 +86,7 @@ for plugin_name in $(echo "$PLUGINS_JSON" | jq -r 'keys[]'); do
 
   if ! nix eval --raw --impure --expr "
         let
-          lib = (import <nixpkgs> {}).lib;
+          lib = (builtins.getFlake \"$REPO_ROOT\").inputs.nixpkgs.lib;
           gen = import ${PLUGINS_DIR}/schemaToOptions.nix { inherit lib; };
           input = builtins.fromJSON (builtins.readFile \"$WORKDIR/input.json\");
         in gen.mkPluginFile input
@@ -104,7 +104,8 @@ done
 
 if [ "${#FAILED[@]}" -gt 0 ]; then
   echo ""
-  echo "WARNING: failed to regenerate: ${FAILED[*]}" >&2
+  echo "ERROR: failed to regenerate: ${FAILED[*]}" >&2
+  exit 1
 fi
 
 echo "Done."

@@ -1,3 +1,5 @@
+> Personal VM operations: [Comin GitOps and updates](docs/gitops.md).
+
 <h1 align="center">
   <img src="https://raw.githubusercontent.com/kiriwalawren/nixflix/refs/heads/main/docs/assets/logo.svg" width="250px"/>
   <div>Nixflix</div>

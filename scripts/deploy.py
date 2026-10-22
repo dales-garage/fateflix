@@ -32,6 +32,16 @@ def main():
     p.add_argument("action", choices=["build", "test", "switch", "rollback"])
     p.add_argument("revision", help="Jujutsu revision, normally migration/nixflix")
     a = p.parse_args()
+    if a.action != "build":
+        managed = subprocess.run(
+            SSH + [REMOTE, "test -e /etc/nixos/README.gitops"], check=False
+        )
+        if managed.returncode == 0:
+            p.error(
+                "Comin manages this host. Merge a PR or follow docs/gitops.md for emergency recovery."
+            )
+        if managed.returncode != 1:
+            p.error("Could not verify deployment ownership over SSH")
     commit = subprocess.check_output(
         ["jj", "log", "--no-graph", "-r", a.revision, "-T", "commit_id"], text=True
     ).strip()

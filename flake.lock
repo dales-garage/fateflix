@@ -1,5 +1,45 @@
 {
   "nodes": {
+    "comin": {
+      "inputs": {
+        "flake-compat": "flake-compat",
+        "nixpkgs": [
+          "nixpkgs-host"
+        ],
+        "treefmt-nix": [
+          "treefmt-nix"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792310586,
+        "narHash": "sha256-4gaALWPUrc+coBvu02PB5WAuwSGdDgfJkkVX65buXX0=",
+        "owner": "nlewo",
+        "repo": "comin",
+        "rev": "1399adecc682e557bc3ee914d929f8e20391a148",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nlewo",
+        "repo": "comin",
+        "type": "github"
+      }
+    },
+    "flake-compat": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1765121682,
+        "narHash": "sha256-4VBOP18BFeiPkyhy9o4ssBNQEvfvv1kXkasAYd0+rrA=",
+        "owner": "NixOS",
+        "repo": "flake-compat",
+        "rev": "65f23138d8d09a92e30f1e5c87611b23ef451bf3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
     "mkdocs-catppuccin": {
       "flake": false,
       "locked": {
@@ -66,6 +106,7 @@
     },
     "root": {
       "inputs": {
+        "comin": "comin",
         "mkdocs-catppuccin": "mkdocs-catppuccin",
         "nixpkgs": "nixpkgs",
         "nixpkgs-host": "nixpkgs-host",

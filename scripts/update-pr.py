@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+"""Publish one reviewed PR per updater; never write to the production branch."""
+
+import argparse
+import fnmatch
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+UPDATERS = {
+    "notifiarr": (
+        ["python3", "pkgs/notifiarr/update.py"],
+        ["pkgs/notifiarr/default.nix"],
+    ),
+    "maintainerr": (
+        ["bash", "pkgs/maintainerr/update.sh"],
+        ["pkgs/maintainerr/default.nix", "pkgs/maintainerr/missing-hashes.json"],
+    ),
+    "caddy": (["bash", "modules/caddy/update.sh"], ["modules/caddy/default.nix"]),
+    "jellyfin-plugins": (
+        ["bash", "modules/jellyfin/plugins/update.sh", "--manifest-only"],
+        ["modules/jellyfin/plugins/plugins.json"],
+    ),
+    "navidrome-plugins": (
+        ["bash", "modules/navidrome/plugins/update.sh"],
+        ["modules/navidrome/plugins/gen/*-plugin.nix"],
+    ),
+}
+
+
+def run(*args, capture=False, check=True):
+    return subprocess.run(
+        args, check=check, text=True, stdout=subprocess.PIPE if capture else None
+    )
+
+
+def allowed_changes(paths, patterns):
+    return all(
+        any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns)
+        for path in paths
+    )
+
+
+def changed_files():
+    tracked = run(
+        "git", "diff", "--name-only", "-z", "HEAD", capture=True
+    ).stdout.split("\0")
+    new = run(
+        "git", "ls-files", "--others", "--exclude-standard", "-z", capture=True
+    ).stdout.split("\0")
+    return sorted(set(filter(None, tracked + new)))
+
+
+def sync_upstream():
+    run("git", "fetch", "https://github.com/kiriwalawren/nixflix.git", "main")
+    sha = run("git", "rev-parse", "FETCH_HEAD", capture=True).stdout.strip()
+    if (
+        run("git", "merge-base", "--is-ancestor", sha, "HEAD", check=False).returncode
+        == 0
+    ):
+        return False
+    result = run("git", "merge", "--no-ff", "--no-edit", sha, check=False)
+    if result.returncode:
+        conflicts = run(
+            "git", "diff", "--name-only", "--diff-filter=U", capture=True
+        ).stdout
+        run("git", "merge", "--abort")
+        summary = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary:
+            with open(summary, "a") as stream:
+                stream.write(
+                    "Upstream sync stopped; no partial merge published.\n\nConflicting files:\n```\n"
+                    + conflicts
+                    + "```\n"
+                )
+        raise RuntimeError("Upstream merge needs manual conflict resolution")
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("kind", choices=["upstream", *UPDATERS])
+    args = parser.parse_args()
+    repository = os.environ["GITHUB_REPOSITORY"]
+    if repository != "declarative-dale/nixflix":
+        parser.error("This publisher is scoped to declarative-dale/nixflix")
+    branch = "automated/" + args.kind
+    existing = json.loads(
+        run(
+            "gh",
+            "pr",
+            "list",
+            "--repo",
+            repository,
+            "--base",
+            "main",
+            "--head",
+            branch,
+            "--state",
+            "open",
+            "--json",
+            "number",
+            capture=True,
+        ).stdout
+    )
+    if existing:
+        print("An update PR is already open; review it before generating another.")
+        return
+    if (
+        run(
+            "git",
+            "ls-remote",
+            "--exit-code",
+            "--heads",
+            "origin",
+            branch,
+            capture=True,
+            check=False,
+        ).returncode
+        == 0
+    ):
+        raise RuntimeError(
+            "Closed update branch still exists; delete it after review before rerunning"
+        )
+    run("git", "config", "user.name", "github-actions[bot]")
+    run(
+        "git",
+        "config",
+        "user.email",
+        "41898282+github-actions[bot]@users.noreply.github.com",
+    )
+    run("git", "fetch", "origin", "main")
+    run("git", "checkout", "-b", branch, "origin/main")
+    if args.kind == "upstream":
+        if not sync_upstream():
+            print("Upstream is already included.")
+            return
+    else:
+        command, patterns = UPDATERS[args.kind]
+        run("nix", "develop", "--command", *command)
+        changed = changed_files()
+        if not changed:
+            print("Already current; no PR needed.")
+            return
+        if not allowed_changes(changed, patterns):
+            raise RuntimeError(
+                "Updater changed files outside its allowlist: " + ", ".join(changed)
+            )
+        nix_files = [p for p in changed if p.endswith(".nix") and Path(p).exists()]
+        if nix_files:
+            run("nix", "fmt", "--", *nix_files)
+        if not allowed_changes(changed_files(), patterns):
+            raise RuntimeError("Formatter changed files outside the updater allowlist")
+        run("git", "add", "--", *changed)
+        run("git", "commit", "-m", "Update " + args.kind)
+    run("git", "push", "origin", "HEAD:refs/heads/" + branch)
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md") as body:
+        body.write(
+            f"Update {args.kind} against current main.\n\nCI must pass and the owner must review and merge. Comin deploys merged main.\n"
+        )
+        if args.kind == "upstream":
+            body.write(
+                "\nUse a merge commit to preserve upstream ancestry. Review host overrides, state migrations, and update workflows.\n"
+            )
+        body.flush()
+        run(
+            "gh",
+            "pr",
+            "create",
+            "--repo",
+            repository,
+            "--base",
+            "main",
+            "--head",
+            branch,
+            "--title",
+            "Update " + args.kind,
+            "--body-file",
+            body.name,
+        )
+    # GITHUB_TOKEN-created PRs do not trigger pull_request workflows recursively.
+    run("gh", "workflow", "run", "ci.yml", "--repo", repository, "--ref", branch)
+
+
+if __name__ == "__main__":
+    main()

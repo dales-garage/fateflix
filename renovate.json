@@ -1,0 +1,85 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "forkProcessing": "enabled",
+  "nix": {
+    "enabled": true
+  },
+  "timezone": "America/Chicago",
+  "schedule": [
+    "* 6-10 * * 0"
+  ],
+  "prConcurrentLimit": 5,
+  "automerge": false,
+  "dependencyDashboard": true,
+  "baseBranchPatterns": [
+    "main"
+  ],
+  "enabledManagers": [
+    "nix",
+    "github-actions",
+    "custom.regex"
+  ],
+  "lockFileMaintenance": {
+    "enabled": false
+  },
+  "packageRules": [
+    {
+      "description": "Update flake revisions without advancing the stable NixOS channel",
+      "matchManagers": [
+        "nix"
+      ],
+      "groupName": "flake inputs",
+      "pinDigests": true
+    },
+    {
+      "description": "Media policy data needs a deliberate manual update",
+      "matchManagers": [
+        "nix"
+      ],
+      "matchDepNames": [
+        "trash-guides",
+        "recyclarr-templates"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Keep the host on its existing NixOS release",
+      "matchManagers": [
+        "nix"
+      ],
+      "matchDepNames": [
+        "nixpkgs-host"
+      ],
+      "allowedVersions": "/^nixos-26\\.05$/"
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "groupName": null
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^hosts/nixflix/containers\\.json$/"
+      ],
+      "matchStrings": [
+        "\"(?:mylar3|stash)\"\\s*:\\s*\"(?<depName>[^\"@]+)@(?<currentDigest>sha256:[a-f0-9]{64})\""
+      ],
+      "datasourceTemplate": "docker",
+      "currentValueTemplate": "latest",
+      "versioningTemplate": "docker"
+    }
+  ]
+}

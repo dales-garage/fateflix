@@ -2,6 +2,11 @@
   description = "Generic NixOS Jellyfin media server configuration with Arr stack";
 
   inputs = {
+    comin = {
+      url = "github:nlewo/comin";
+      inputs.nixpkgs.follows = "nixpkgs-host";
+      inputs.treefmt-nix.follows = "treefmt-nix";
+    };
     trash-guides = {
       url = "github:TRaSH-Guides/Guides";
       flake = false;
@@ -126,6 +131,11 @@
         in
         {
           formatting = treefmt.config.build.check self;
+          gitops-eval = import ./tests/migration/gitops-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-production;
+            staging = self.nixosConfigurations.nixflix-staging;
+          };
           docs-build = self.packages.${system}.docs;
           four-instance-eval = import ./tests/migration/four-instance-eval.nix {
             inherit pkgs;

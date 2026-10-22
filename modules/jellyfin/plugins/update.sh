@@ -100,6 +100,11 @@ update_plugins() {
 
 update_plugins
 
+# Scheduled updates own only the manifest; examples remain independently reviewed.
+if [[ "${1:-}" == "--manifest-only" ]]; then
+  exit 0
+fi
+
 # === Part 3: Update plugin versions + download hashes for tests & examples ===
 
 echo ""
