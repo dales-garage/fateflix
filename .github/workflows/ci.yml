@@ -38,9 +38,7 @@ jobs:
         run: python3 scripts/renovate-artifacts.py check
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
+        uses: DeterminateSystems/determinate-nix-action@v3.23.3
 
       - name: Plan checks from changed derivations
         id: checks
@@ -73,16 +71,9 @@ jobs:
           persist-credentials: false
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v31
+        uses: DeterminateSystems/determinate-nix-action@v3.23.3
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
-
-      # Enable KVM for VM tests
-      - name: Enable KVM group perms
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
+          kvm: true
 
       - name: Run Check 📋
         run: |
@@ -104,7 +95,7 @@ jobs:
           persist-credentials: false
       - name: Free runner space for the production closure
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
-      - uses: cachix/install-nix-action@v31
+      - uses: DeterminateSystems/determinate-nix-action@v3.23.3
       - run: nix build --no-write-lock-file --no-link -L .#nixosConfigurations.nixflix-production.config.system.build.toplevel
 
   gitops:
