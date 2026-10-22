@@ -112,6 +112,27 @@ class HealthTests(unittest.TestCase):
 
 
 class UpdateTests(unittest.TestCase):
+    def test_formatting_only_update_is_noop(self):
+        path = "modules/navidrome/plugins/gen/lyrics-plugin.nix"
+        with (
+            patch.object(updates, "changed_files", side_effect=[[path], []]),
+            patch.object(updates.Path, "exists", return_value=True),
+            patch.object(updates, "run"),
+        ):
+            self.assertEqual(updates.formatted_changes([path]), [])
+
+    def test_formatter_cannot_publish_unrelated_changes(self):
+        path = "pkgs/notifiarr/default.nix"
+        with (
+            patch.object(
+                updates, "changed_files", side_effect=[[path], [path, "flake.nix"]]
+            ),
+            patch.object(updates.Path, "exists", return_value=True),
+            patch.object(updates, "run"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "outside the updater allowlist"):
+                updates.formatted_changes([path])
+
     def test_allowlist_rejects_workflows_and_unrelated_files(self):
         patterns = updates.UPDATERS["notifiarr"][1]
         self.assertTrue(
