@@ -12,12 +12,8 @@ in
 pkgsUnfree.testers.runNixOSTest {
   name = "full-stack-test";
 
-  nodes.machine = { pkgs, lib, ... }: {
+  nodes.machine = { pkgs, ... }: {
     imports = [ nixosModules ];
-
-    # Concurrent Arr migrations flood the emulated serial console and can stall
-    # the guest kernel. Keep full logs in the journal, but only forward warnings.
-    services.journald.settings.Journal.MaxLevelConsole = lib.mkForce "warning";
 
     virtualisation = {
       cores = 4;
