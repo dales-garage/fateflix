@@ -78,6 +78,8 @@ removes the obsolete local flake/lock. `/etc/nixos/configuration.nix` explains
 Comin ownership rather than retaining a stale independent deployment source.
 The supplied backup directory records the operator's backup; the script does not
 create a VM snapshot or establish that an arbitrary directory is a valid backup.
+An operator who explicitly chooses to proceed without a fresh backup can pass
+`--skip-backup`; that choice is recorded in `bootstrap-backup`.
 
 Existing SecretSpec/pass provisioning remains unchanged. Comin fetches the public
 repository without credentials. No API keys or GitHub write tokens enter Git or
@@ -108,19 +110,21 @@ notification delivery must be checked during rollout; the periodic probe uses
 Plex's local API so cloud outages do not mark the VM unhealthy.
 
 For recovery, suspend Comin and wait until `comin status` shows no deployment in
-progress. Then stop it so the failed revision cannot immediately be reapplied:
+progress. Keep the daemon suspended while selecting a known-good generation:
 
 ```sh
 sudo comin suspend
 sudo comin status
-sudo systemctl stop comin
-sudo nix-env --profile /nix/var/nix/profiles/system --list-generations
+sudo nix-env --profile /nix/var/nix/profiles/system-profiles/comin --list-generations
 # Select a known-good generation from the list, then:
-sudo nix-env --profile /nix/var/nix/profiles/system --switch-generation GENERATION
-sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
+sudo nix-env --profile /nix/var/nix/profiles/system-profiles/comin --switch-generation GENERATION
+sudo /nix/var/nix/profiles/system-profiles/comin/bin/switch-to-configuration switch
 ```
 
+Comin generations live in `system-profiles/comin`; the original bootstrap and
+pre-Comin generations are separately available in `/nix/var/nix/profiles/system`.
 Keep Comin suspended until a reviewed revert/fix commit has merged into main.
+Do not restart Comin or reboot before the fix: suspension is process-local.
 Use a new revert commit, never a backward force push (Comin requires forward
 history). Restart/resume with `sudo systemctl start comin` and `sudo comin resume`,
 then check deployment and health. If activation changed database schemas, restore

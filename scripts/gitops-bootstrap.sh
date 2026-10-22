@@ -5,8 +5,8 @@ if [[ $EUID != 0 || $(hostname) != nixflix ]]; then
   echo 'Run as root on nixflix.' >&2
   exit 1
 fi
-backup_dir=${1:?Usage: gitops-bootstrap.sh /absolute/path/to/fresh-consistent-backup}
-if [[ $backup_dir != /* || ! -d $backup_dir ]]; then
+backup_dir=${1:?Usage: gitops-bootstrap.sh /absolute/path/to/fresh-consistent-backup or --skip-backup}
+if [[ $backup_dir != --skip-backup && ( $backup_dir != /* || ! -d $backup_dir ) ]]; then
   echo 'Supply the absolute directory of the completed application-consistent backup.' >&2
   exit 1
 fi
