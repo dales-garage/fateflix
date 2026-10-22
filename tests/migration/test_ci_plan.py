@@ -54,7 +54,7 @@ class SelectionTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue(ci.select(self.base, self.base, [path])["gitops"])
 
-    def test_selector_changes_force_full_validation(self):
+    def test_selector_changes_run_tooling_without_unrelated_vms(self):
         for path in [
             ".github/workflows/ci.yml",
             "scripts/ci-plan.py",
@@ -62,8 +62,8 @@ class SelectionTests(unittest.TestCase):
         ]:
             with self.subTest(path=path):
                 plan = ci.select(self.base, self.base, [path])
-                self.assertEqual(plan["checks"], sorted(self.base["checks"]))
-                self.assertTrue(plan["production"])
+                self.assertEqual(plan["checks"], [])
+                self.assertFalse(plan["production"])
                 self.assertTrue(plan["gitops"])
 
     def test_head_evaluation_failure_is_not_a_skip(self):

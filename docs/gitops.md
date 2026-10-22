@@ -62,8 +62,8 @@ or Renovate configuration change. The planning job records its selection in the
 Actions summary; evaluation can fetch sources but does not run VM tests.
 
 Manual dispatch compares against the branch's merge base with main; enable its
-`full` input to run the entire suite. Changes to CI selection itself and failed
-base comparisons require a full run. A head evaluation failure fails CI.
+`full` input to run the entire suite. Failed base comparisons require a full run. Changes to CI selection run its
+GitOps regression tests and only changed Nix checks. A head evaluation failure fails CI.
 `CI required` accepts skips only for jobs the plan did not select; selected jobs
 must succeed, including after manual dispatch. CI does not deploy or contact the VM.
 

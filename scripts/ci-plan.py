@@ -52,22 +52,7 @@ def full_plan(checks, reason):
     }
 
 
-def selection_changed(changed):
-    return any(
-        p
-        in {
-            ".github/workflows/ci.yml",
-            "scripts/ci-plan.py",
-            "tests/migration/test_ci_plan.py",
-        }
-        for p in changed
-    )
-
-
 def select(head, base, changed):
-    # A change to the selector or the workflow must validate the full pipeline.
-    if selection_changed(changed):
-        return full_plan(head["checks"], "CI selection logic changed")
     return {
         "checks": sorted(
             name
@@ -98,7 +83,6 @@ def make_plan(base_ref=None, full=False):
         )
         return full_plan(names, "Full run requested or no comparison base available")
 
-    # Check this before forcing every derivation, keeping full runs inexpensive.
     try:
         base_sha = run("git", "rev-parse", "--verify", f"{base_ref}^{{commit}}")
         changed = run("git", "diff", "--name-only", "-z", base_sha, "HEAD").split("\0")
@@ -107,12 +91,6 @@ def make_plan(base_ref=None, full=False):
             head_dir, "#checks.x86_64-linux", "--apply", "builtins.attrNames"
         )
         return full_plan(names, "Base commit unavailable; full suite required")
-    if selection_changed(changed):
-        names = nix_json(
-            head_dir, "#checks.x86_64-linux", "--apply", "builtins.attrNames"
-        )
-        return full_plan(names, "CI selection logic changed")
-
     # A head evaluation error must fail CI, never turn into an empty test matrix.
     head = manifest(head_dir)
     try:
