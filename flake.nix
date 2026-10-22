@@ -8,11 +8,11 @@
       inputs.treefmt-nix.follows = "treefmt-nix";
     };
     trash-guides = {
-      url = "github:TRaSH-Guides/Guides";
+      url = "github:TRaSH-Guides/Guides/56cb176ef4b59d734d3643287e66aafd7c809bd4";
       flake = false;
     };
     recyclarr-templates = {
-      url = "github:recyclarr/config-templates";
+      url = "github:recyclarr/config-templates/9faf65ff745d74ab906fd73cadaa25f08eb9d981";
       flake = false;
     };
     nixpkgs-host.url = "github:NixOS/nixpkgs/nixos-26.05";
