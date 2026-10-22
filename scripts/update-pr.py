@@ -103,7 +103,33 @@ def main():
     repository = os.environ["GITHUB_REPOSITORY"]
     if repository != "declarative-dale/nixflix":
         parser.error("This publisher is scoped to declarative-dale/nixflix")
-    branch = "automated/" + args.kind
+    if args.kind == "jellyfin-plugins":
+        # Only the ABI-aware manifest aggregator still needs scheduled discovery.
+        # Yield to Renovate instead of opening a second update backlog.
+        pending = json.loads(
+            run(
+                "gh",
+                "pr",
+                "list",
+                "--repo",
+                repository,
+                "--state",
+                "open",
+                "--json",
+                "headRefName",
+                "--limit",
+                "100",
+                capture=True,
+            ).stdout
+        )
+        if any(
+            p["headRefName"].startswith(("renovate/", "automated/")) for p in pending
+        ):
+            print("Another update PR is open; defer the Jellyfin-only refresh.")
+            return
+    branch = "automated/" + (
+        "media-applications" if args.kind == "jellyfin-plugins" else args.kind
+    )
     existing = json.loads(
         run(
             "gh",

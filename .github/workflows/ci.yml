@@ -34,6 +34,9 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      - name: Require synchronized update artifacts
+        run: python3 scripts/renovate-artifacts.py check
+
       - name: Install Nix
         uses: cachix/install-nix-action@v31
         with:

@@ -16,10 +16,18 @@ esac
 
 echo "=== Updating Caddy replace-response plugin ==="
 
-# Get latest commit for caddyserver/replace-response
-RESPONSE=$(curl -sf "https://api.github.com/repos/caddyserver/replace-response/commits?per_page=1")
-NEW_SHA=$(echo "$RESPONSE" | jq -r '.[0].sha')
-COMMIT_DATE=$(echo "$RESPONSE" | jq -r '.[0].commit.committer.date')
+# Renovate supplies an exact commit; manual invocation can still discover latest.
+if [[ -n "${1:-}" ]]; then
+  [[ "$1" =~ ^[a-f0-9]{40}$ ]] || { echo "Expected a full commit SHA" >&2; exit 1; }
+  RESPONSE=$(curl -fsSL "https://api.github.com/repos/caddyserver/replace-response/commits/$1")
+  NEW_SHA=$(echo "$RESPONSE" | jq -er '.sha')
+  [[ "$NEW_SHA" == "$1" ]] || { echo "Commit mismatch" >&2; exit 1; }
+  COMMIT_DATE=$(echo "$RESPONSE" | jq -er '.commit.committer.date')
+else
+  RESPONSE=$(curl -fsSL "https://api.github.com/repos/caddyserver/replace-response/commits?per_page=1")
+  NEW_SHA=$(echo "$RESPONSE" | jq -er '.[0].sha')
+  COMMIT_DATE=$(echo "$RESPONSE" | jq -er '.[0].commit.committer.date')
+fi
 
 # Build Go pseudo-version: v0.0.0-YYYYMMDDHHMMSS-<first 12 chars of SHA>
 TIMESTAMP=$(date -u -d "$COMMIT_DATE" '+%Y%m%d%H%M%S')
@@ -27,7 +35,7 @@ NEW_VERSION="v0.0.0-${TIMESTAMP}-${NEW_SHA:0:12}"
 
 CURRENT_VERSION=$(grep -o 'replace-response@[^"]*' "$TARGET_FILE" | head -1 | cut -d'@' -f2)
 
-if [[ "$NEW_VERSION" == "$CURRENT_VERSION" ]]; then
+if [[ "$NEW_VERSION" == "$CURRENT_VERSION" && "${2:-}" != "--force" ]]; then
   echo "  replace-response: already at $CURRENT_VERSION"
   echo "Done."
   exit 0
@@ -44,7 +52,7 @@ CURRENT_HASH=$(grep -A3 'pkgs.caddy.withPlugins' "$TARGET_FILE" |
 
 # Build with fake hash to obtain the real vendorHash from the error output
 TMP_NIX=$(mktemp --suffix=.nix)
-trap "rm -f $TMP_NIX" EXIT
+trap 'rm -f "$TMP_NIX"' EXIT
 
 cat >"$TMP_NIX" <<EOF
 let

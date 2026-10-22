@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Update both official Linux binaries and their fixed-output hashes atomically."""
 
+import argparse
 import base64
 import gzip
 import hashlib
@@ -32,10 +33,18 @@ def release_hash(data, machine, digest=None):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("version", nargs="?")
+    args = parser.parse_args()
+    if args.version and not re.fullmatch(r"\d+\.\d+\.\d+", args.version):
+        parser.error("Expected a stable release version")
     path = Path(__file__).with_name("default.nix")
     source = path.read_text()
     release = json.loads(
-        fetch("https://api.github.com/repos/Notifiarr/notifiarr/releases/latest")
+        fetch(
+            "https://api.github.com/repos/Notifiarr/notifiarr/releases/"
+            + ("tags/v" + args.version if args.version else "latest")
+        )
     )
     version = release["tag_name"].removeprefix("v")
     if (
@@ -44,6 +53,8 @@ def main():
         or release["draft"]
     ):
         raise ValueError("Expected a stable release")
+    if args.version and version != args.version:
+        raise ValueError("Release did not match requested version")
     current = re.search(r'version = "([^"]+)";', source).group(1)
     if current == version:
         print("Notifiarr is already current.")

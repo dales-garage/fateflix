@@ -9,9 +9,9 @@
   },
   "timezone": "America/Chicago",
   "schedule": [
-    "* 6-10 * * 0"
+    "* 6-10 * * *"
   ],
-  "prConcurrentLimit": 5,
+  "prConcurrentLimit": 1,
   "automerge": false,
   "dependencyDashboard": true,
   "baseBranchPatterns": [
@@ -26,7 +26,9 @@
     "enabled": true,
     "schedule": [
       "* 6-10 * * 0"
-    ]
+    ],
+    "groupName": "System dependencies",
+    "groupSlug": "system-dependencies"
   },
   "packageRules": [
     {
@@ -34,8 +36,9 @@
       "matchManagers": [
         "nix"
       ],
-      "groupName": "flake inputs",
-      "pinDigests": false
+      "groupName": "System dependencies",
+      "pinDigests": false,
+      "groupSlug": "system-dependencies"
     },
     {
       "description": "Media policy data needs a deliberate manual update",
@@ -62,7 +65,24 @@
       "matchManagers": [
         "github-actions"
       ],
-      "groupName": "GitHub Actions"
+      "groupName": "CI tooling",
+      "groupSlug": "ci-tooling"
+    },
+    {
+      "matchDatasources": [
+        "docker",
+        "github-releases"
+      ],
+      "groupName": "Media applications",
+      "groupSlug": "media-applications"
+    },
+    {
+      "matchDepNames": [
+        "caddyserver/replace-response"
+      ],
+      "groupName": "System dependencies",
+      "groupSlug": "system-dependencies",
+      "pinDigests": true
     },
     {
       "matchUpdateTypes": [
@@ -89,6 +109,32 @@
       "datasourceTemplate": "docker",
       "currentValueTemplate": "latest",
       "versioningTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/package-versions\\.json$/"
+      ],
+      "matchStrings": [
+        "\"(?<depName>Notifiarr/notifiarr|Maintainerr/Maintainerr)\"\\s*:\\s*\"(?<currentValue>[^\" ]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "versioningTemplate": "semver",
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/package-versions\\.json$/"
+      ],
+      "matchStrings": [
+        "\"(?<depName>caddyserver/replace-response)\"\\s*:\\s*\"(?<currentValue>master)@(?<currentDigest>[a-f0-9]{40})\""
+      ],
+      "datasourceTemplate": "github-digest"
     }
+  ],
+  "branchConcurrentLimit": 1,
+  "gitIgnoredAuthors": [
+    "41898282+github-actions[bot]@users.noreply.github.com"
   ]
 }

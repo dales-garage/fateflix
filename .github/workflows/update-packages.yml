@@ -1,31 +1,87 @@
-name: Custom package updates
+name: Update artifacts
 on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    paths:
+      - .github/package-versions.json
+      - flake.lock
+      - hosts/nixflix/containers.json
   workflow_dispatch:
   schedule:
     - cron: '30 12 * * 0'
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
 concurrency:
-  group: custom-package-updates
+  group: update-artifacts-${{ github.event.pull_request.number || 'scheduled' }}
   cancel-in-progress: false
 jobs:
-  update:
-    if: github.repository == 'declarative-dale/nixflix'
+  generate:
+    if: >-
+      github.event_name == 'pull_request_target' && github.actor == 'renovate[bot]' && github.repository == 'declarative-dale/nixflix' && github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.event.pull_request.head.ref, 'renovate/') && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: [notifiarr, maintainerr, caddy, jellyfin-plugins, navidrome-plugins]
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      changed: ${{ steps.generate.outputs.changed }}
+    steps:
+      # Execute only the reviewed base scripts. The helper imports validated
+      # version/lock data from the PR; it never checks out or runs PR scripts.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v31
+      - name: Generate hashes and plugin definitions
+        id: generate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 scripts/renovate-artifacts.py generate --pr "$PR_NUMBER" --payload /tmp/artifacts.json
+      - uses: actions/upload-artifact@v7
+        if: steps.generate.outputs.changed == 'true'
+        with:
+          name: update-artifacts
+          path: /tmp/artifacts.json
+          retention-days: 1
+  publish:
+    needs: generate
+    if: needs.generate.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+      - name: Preserve the reviewed publisher
+        run: cp scripts/renovate-artifacts.py "$RUNNER_TEMP/publish-artifacts.py"
+      - uses: actions/download-artifact@v8
+        with:
+          name: update-artifacts
+          path: ${{ runner.temp }}/update-artifacts
+      - name: Commit generated files and start CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 "$RUNNER_TEMP/publish-artifacts.py" publish --payload "$RUNNER_TEMP/update-artifacts/artifacts.json"
+  jellyfin-manifests:
+    if: github.event_name != 'pull_request_target' && github.repository == 'declarative-dale/nixflix'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
     steps:
       - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
       - uses: cachix/install-nix-action@v31
-      - name: Generate scoped update PR and dispatch CI
+      - name: Refresh ABI-compatible Jellyfin manifests when the update queue is empty
         env:
           GH_TOKEN: ${{ github.token }}
-          PACKAGE: ${{ matrix.package }}
-        run: python3 scripts/update-pr.py "$PACKAGE"
+        run: python3 scripts/update-pr.py jellyfin-plugins
