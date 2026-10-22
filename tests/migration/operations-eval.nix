@@ -1,6 +1,10 @@
 { pkgs, host }:
 let
   cfg = host.config;
+  disabled =
+    (host.extendModules {
+      modules = [ { nixflixHost.gpuPassthrough.enable = pkgs.lib.mkForce false; } ];
+    }).config;
   withoutReadarr =
     (host.extendModules { modules = [ { services.readarr.enable = pkgs.lib.mkForce false; } ]; })
     .config;
@@ -22,6 +26,16 @@ assert !(cfg.systemd.services.notifiarr-connections.serviceConfig ? Restart);
 assert cfg.systemd.services.nixflix-capacity-probe.serviceConfig.TimeoutStartSec == 45;
 assert cfg.systemd.services.nixflix-capacity-probe.serviceConfig.ProtectSystem == "strict";
 assert cfg.systemd.services.nixflix-nas-ready.serviceConfig.TimeoutStartSec == 10;
+assert cfg.systemd.services.nixflix-playback.serviceConfig.TimeoutStartSec == 210;
+assert pkgs.lib.hasInfix "enabled" cfg.systemd.services.podman-stash.preStart;
+assert pkgs.lib.hasInfix "/usr/bin/ffmpeg /usr/bin/ffprobe disabled"
+  disabled.systemd.services.podman-stash.preStart;
+assert disabled.services.plex.accelerationDevices == [ ];
+assert !(disabled.virtualisation.oci-containers.containers.stash.environment ? LIBVA_DRIVER_NAME);
+assert
+  !(builtins.elem "--device=/dev/dri:/dev/dri" disabled.virtualisation.oci-containers.containers.stash.extraOptions);
+assert
+  !(builtins.elem "/nix/store:/nix/store:ro" disabled.virtualisation.oci-containers.containers.stash.volumes);
 assert builtins.all
   (
     path:
