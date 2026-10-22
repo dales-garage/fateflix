@@ -143,5 +143,5 @@ MPL 2.0
 
 This fork also manages the NixOS staging VM at `10.69.0.18`. See the [migration and operations runbook](docs/migration/nixflix.md) for Jujutsu workflow, exact-revision deployment, secrets, isolation, backups, and rollback.
 
-Production storage advisories and persistent maintenance holds
+Production playback diagnostics, storage advisories, and persistent maintenance holds
 are described in the [operations guide](docs/operations.md).

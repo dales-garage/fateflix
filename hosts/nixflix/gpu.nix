@@ -34,12 +34,29 @@
           LIBVA_DRIVER_NAME = "iHD";
           LIBVA_DRIVERS_PATH = "/run/opengl-driver/lib/dri";
         };
-    systemd.services.podman-stash.preStart = lib.mkIf config.nixflixHost.gpuPassthrough.enable (
-      lib.mkBefore ''
-        ${pkgs.python3.withPackages (p: [ p.pyyaml ])}/bin/python3 ${../../scripts/configure-stash-gpu.py} \
-          /var/lib/nixflix-containers/stash/config/config.yml \
-          ${pkgs.ffmpeg}/bin/ffmpeg ${pkgs.ffmpeg}/bin/ffprobe
-      ''
-    );
+    systemd.services.podman-stash.preStart = lib.mkBefore ''
+      ${pkgs.python3.withPackages (p: [ p.pyyaml ])}/bin/python3 ${../../scripts/configure-stash-gpu.py} \
+        /var/lib/nixflix-containers/stash/config/config.yml \
+        ${
+          if config.nixflixHost.gpuPassthrough.enable then
+            "${pkgs.ffmpeg}/bin/ffmpeg ${pkgs.ffmpeg}/bin/ffprobe enabled"
+          else
+            "/usr/bin/ffmpeg /usr/bin/ffprobe disabled"
+        }
+    '';
+    environment.etc."nixflix/playback.json".text = builtins.toJSON {
+      enabled = config.nixflixHost.gpuPassthrough.enable;
+      ffmpeg = "${pkgs.ffmpeg}/bin/ffmpeg";
+      # Store paths form a deployment-sensitive fingerprint without rebooting.
+      fingerprint = [
+        "${config.boot.kernelPackages.kernel}"
+        "${config.hardware.firmware}"
+        "${config.hardware.graphics.package}"
+        "${pkgs.ffmpeg}"
+        config.virtualisation.oci-containers.containers.stash.image
+        (if config.nixflixHost.gpuPassthrough.enable then "gpu" else "software")
+      ]
+      ++ map toString config.hardware.graphics.extraPackages;
+    };
   };
 }

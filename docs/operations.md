@@ -107,6 +107,37 @@ one does not directly start it; the next recovery pass reconciles it. A plain
 for example `podman-stash`, without `.service`. Global and per-service holds
 combine; releasing a per-service hold does not override a global hold.
 
+## Playback diagnostics
+
+GPU enablement sets Stash's pinned host FFmpeg/FFprobe, Intel driver environment,
+and device/driver mounts. Disabling it removes those GPU additions and restores
+`/usr/bin/ffmpeg`, `/usr/bin/ffprobe`, and software acceleration settings in the
+Alpine container. Both transitions preserve unrelated YAML values, file ownership
+and private permission bits, using a synced temporary file and atomic replacement.
+Malformed YAML and missing enabled FFmpeg tools fail before replacement. The first
+original is retained as private `config.before-gpu.yml`; it is not an automatic
+rollback of application data. Comments and YAML presentation can be normalized.
+
+```sh
+sudo nixflix-health playback
+sudo cat /var/lib/nixflix-gitops/playback.json
+sudo journalctl -u nixflix-playback --since '-30 minutes'
+```
+
+The probe encodes and decodes one second of synthetic H.264, HEVC, and AV1 inside
+Stash, using local cache files and 20-second per-command limits inside the
+container plus an outer timeout. It removes its temporary files and never
+transcodes library content. Results are separate diagnostics; an unsupported
+codec or absent driver does not change core deployment health. It runs initially,
+on demand, and after a successful deployment when the kernel, firmware, Intel
+drivers, FFmpeg, Stash image, or GPU state fingerprint changes. A successful
+unchanged fingerprint skips the probe; a failed probe can retry at the next boot
+or deployment. There is no recurring background-transcode timer.
+
+These small synthetic tests do not establish HDR tone mapping, 4K throughput,
+client compatibility, or end-to-end AV1 fallback. Keep the existing stable Plex
+package, local transcode paths, memory limits and CIFS layout.
+
 ## Read-only retention report
 
 ```sh
@@ -124,6 +155,31 @@ differ. Watched status combines Plex's account view count with completed watches
 in Tautulli; retained history can be incomplete. Neither Maintainerr nor deletion
 is enabled. See the [Tautulli API reference](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference).
 
+## Hypervisor preflight
+
+Run these read-only checks from the XCP-ng host's administrative session, keeping
+hypervisor credentials off the media VM. Substitute the VM and host UUIDs after
+listing them:
+
+```sh
+xe vm-list name-label=nixflix params=uuid,name-label,power-state,resident-on
+xe vm-param-get uuid=VM_UUID param-name=other-config param-key=pci
+xe vm-param-get uuid=VM_UUID param-name=platform param-key=hvm-pirq
+xe host-param-get uuid=HOST_UUID param-name=software-version
+uname -r
+xl info
+lspci -nnk
+xl pci-list VM_DOMAIN_ID
+```
+
+Confirm the intended Intel device is assigned to this VM and absent from other
+VM assignments, `hvm-pirq` is `false`, and record the **running** Xen/kernel/XAPI
+versions as well as installed packages. Obtain the domain ID with `xl list`.
+On hosts supporting it, `xe pci-list` shows PCI inventory. Review
+[XCP-ng PCI passthrough documentation](https://docs.xcp-ng.org/compute/) before
+interpreting host-specific results. These commands do not change passthrough,
+reload drivers or request a reboot.
+
 ## Promotion and acceptance
 
 Promote sequential reviewed changes: (1) credential and evaluation-fixture fixes,
@@ -133,8 +189,6 @@ and production build when its derivation changes. Keep documents with their
 corresponding implementation. Observe each runtime rollout for 30 minutes during
 low usage before promoting the next one. Do not combine fault injection with
 production acceptance.
-
-Playback diagnostics and the read-only hypervisor preflight arrive in the dependent playback PR.
 
 For each rollout record the SHA and Comin status, core and advisory responses,
 service journals, free space, and notification problem/recovery delivery. Run the

@@ -12,6 +12,7 @@ let
     runtimeInputs = [
       pkgs.systemd
       pkgs.util-linux
+      pkgs.podman
     ];
     text = ''
       exec ${python}/bin/python3 ${../../scripts}/gitops-health.py "$@"
@@ -129,6 +130,21 @@ in
         OnBootSec = "2m";
         OnUnitInactiveSec = "5m";
       };
+    };
+    systemd.services.nixflix-playback = {
+      description = "Synthetic playback diagnostics after relevant deployment changes";
+      after = [ "podman-stash.service" ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${lib.getExe health} playback --if-changed";
+        TimeoutStartSec = 210;
+        TimeoutStopSec = 5;
+        UMask = "0077";
+      };
+    };
+    systemd.timers.nixflix-playback = {
+      wantedBy = [ "timers.target" ];
+      timerConfig.OnBootSec = "3m";
     };
     systemd.services.nixflix-health-endpoint = {
       description = "Loopback-only deployment health for Notifiarr";
