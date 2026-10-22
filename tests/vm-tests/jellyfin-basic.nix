@@ -14,7 +14,7 @@ let
       toHashFormat = "sri";
     };
 
-  lapseManifest = pkgs.writeText "lapse-manifest.json" (
+  lapseManifest = builtins.toFile "lapse-manifest.json" (
     builtins.toJSON [
       {
         guid = "486090e1-ca92-46e1-8549-9f6bb914a1d0";

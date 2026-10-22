@@ -192,3 +192,8 @@ Unit tests will show Nix evaluation errors. Check:
 
 - [NixOS VM Tests Documentation](https://nixos.org/manual/nixos/stable/#sec-nixos-tests)
 - [Testing NixOS Modules](https://nix.dev/tutorials/nixos/integration-testing-using-virtual-machines)
+
+## Credential and fixture regression checks
+
+See [credential recovery](../docs/credential-recovery.md) for regression coverage
+and fresh/warm cache evaluation commands. Existing assertions stay enabled.
