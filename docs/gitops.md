@@ -64,7 +64,11 @@ or accepting a version-only change before its hashes are generated. An initial
 Renovate commit can briefly show this pending-artifact failure; the helper commits
 the artifacts and explicitly dispatches CI on the completed branch. A failed
 helper leaves the PR blocked. Input repository/channel changes require manual
-artifact preparation rather than executing arbitrary PR-provided flakes.
+artifact preparation rather than executing arbitrary PR-provided flakes. For a
+manual update, edit the version manifest/lock first, then run
+`python3 scripts/renovate-artifacts.py refresh --base origin/main`, review the
+resulting diff, and commit it with the input change. This command runs local
+scripts and does not publish or merge anything.
 
 Jellyfin manifests cannot be discovered reliably through generic GitHub releases:
 they combine multiple upstream catalogs and Jellyfin ABI constraints. A Sunday

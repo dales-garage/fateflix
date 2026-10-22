@@ -222,6 +222,33 @@ def generate(number, destination):
             stream.write(f'changed={str(bool(payload["files"])).lower()}\n')
 
 
+def refresh(base):
+    """Prepare a manually reviewed update without requiring a Renovate PR."""
+    before = {
+        "packages": read_ref(base, VERSIONS),
+        "nixpkgs": read_ref(base, "flake.lock")["nodes"]["nixpkgs"]["locked"],
+        "containers": read_ref(base, "hosts/nixflix/containers.json"),
+    }
+    current = inputs()
+    validate_versions(before["packages"], current["packages"])
+    for command in commands(before, current, grouped_media=False):
+        run("nix", "develop", "--command", *command)
+    paths = sorted(
+        {
+            str(p)
+            for pattern in OUTPUTS
+            for p in Path(".").glob(pattern)
+            if p.suffix == ".nix"
+        }
+    )
+    if paths:
+        run("nix", "fmt", "--", *paths)
+    Path(STATE).write_text(
+        json.dumps({"inputs": fingerprint(current)}, indent=2) + "\n"
+    )
+    check()
+
+
 def output_allowed(path):
     return ".." not in Path(path).parts and any(
         fnmatch.fnmatchcase(path, pattern) for pattern in OUTPUTS
@@ -269,12 +296,17 @@ def publish(payload_path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["check", "generate", "publish"])
+    parser.add_argument("mode", choices=["check", "generate", "publish", "refresh"])
     parser.add_argument("--pr", type=int)
+    parser.add_argument("--base")
     parser.add_argument("--payload", default="/tmp/renovate-artifacts.json")
     args = parser.parse_args()
     if args.mode == "check":
         check()
+    elif args.mode == "refresh":
+        if not args.base:
+            parser.error("refresh requires an explicit --base commit")
+        refresh(args.base)
     elif args.mode == "generate":
         generate(args.pr, args.payload)
     else:
