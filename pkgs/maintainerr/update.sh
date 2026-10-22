@@ -23,6 +23,11 @@ else
   VERSION="$1"
 fi
 
+if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Expected a stable release version" >&2
+  exit 1
+fi
+
 CURRENT=$(grep -oP '(?<=version = ")[^"]+' "$DEFAULT_NIX" | head -1)
 if [[ "$VERSION" == "$CURRENT" ]]; then
   echo "Already at v${VERSION}." >&2

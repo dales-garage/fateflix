@@ -25,47 +25,73 @@ Merge only after the required CI check passes. Do not enable Comin against the o
 
 ## Update ownership
 
-| Updates | Owner | Review policy |
+| Group | Updates | Owner |
 | --- | --- | --- |
-| Branch-tracking flake inputs and lock revisions | Renovate lock-file maintenance | Sunday 06:00–10:59 America/Chicago; manual merge |
-| Actions and active Mylar3/Stash image digests | Renovate | Separate from flake updates; major updates separate |
-| Upstream nixflix | `upstream-sync.yml` | Sunday 12:00 UTC or manual; merge commit required |
-| Notifiarr, Maintainerr, Caddy and plugin hashes | `update-packages.yml` | Sunday 12:30 UTC or manual; one PR per updater |
-| TRaSH/Recyclarr policy inputs | Owner | Deliberate policy review; excluded from Renovate |
-| NixOS release channel | Owner | Explicit release-upgrade PR; never change stateVersion |
+| System dependencies | Flake lock revisions, Caddy replace-response commit/hash, Navidrome generated plugin options | Renovate plus artifact helper |
+| Media applications | Mylar3/Stash digests, Maintainerr, Notifiarr, ABI-compatible Jellyfin plugin manifests | Renovate plus artifact helper |
+| CI tooling | GitHub Actions and runtime versions recognized by that manager | Renovate |
+| Major upgrades | Explicit major releases stay in separate PRs | Renovate; manual review |
+| Upstream nixflix | Upstream merge commits | `upstream-sync.yml`; Sunday 12:00 UTC or manual |
+| TRaSH/Recyclarr policy and NixOS release channel | Deliberate policy/release changes | Owner; excluded from automatic upgrades |
 
-UTC workflow schedules run at 06:00/06:30 CST or 07:00/07:30 CDT. Renovate allows
-five concurrent PRs. Historical container pins and disabled Apprise are excluded.
-Lock-file maintenance refreshes NixOS packages, Comin, and other tracked inputs.
-TRaSH/Recyclarr policy URLs are pinned to exact reviewed revisions in `flake.nix`
-as well as excluded from Renovate: disabling a package rule alone does not prevent
-`nix flake update` from advancing an unpinned input. Nix digest pinning is disabled
-because it fails to rewrite these branch-only URLs; the lock file provides the pins.
-The NixOS host channel stays on 26.05. The inherited omnibus updater is not
-scheduled. Optional Jellyfin/Navidrome modules remain maintained for the fork,
-without enabling them on the production host.
+Renovate allows one active branch/PR at a time, with a daily 06:00–10:59
+America/Chicago window. A subsequent bot run can open the next group after a
+merge; merges remain manual. Weekly flake lock maintenance runs on Sunday in
+that window. Grouping reduces repeated rebases; unrelated main changes can still
+require a group to rebase. Security alerts may bypass Renovate's regular PR limit.
 
-Custom workflows have explicit changed-file allowlists, detect no-op updates, and
-leave existing open update PRs untouched. Merge/delete the bot branch before the
-next run. Upstream merge conflicts abort without pushing; Actions' job summary
-lists the files. They cannot overwrite your personal modules or silently resolve
-conflicting workflows. Check any upstream changes to policy pins during review.
+Renovate owns package discovery through `.github/package-versions.json`:
+Notifiarr and Maintainerr use stable GitHub releases; Caddy's replace-response
+plugin tracks an exact commit on its existing master branch. The Caddy server
+itself and Navidrome plugin packages follow nixpkgs. Digest updates to `latest`
+container tags have no reliable semantic-major classification and remain in the
+media group for review. Jellyfin's plugin versions use upstream ABI metadata,
+not application-wide semantic versioning; refreshing the catalog does not enable
+plugins or change the independently pinned test/example selections.
 
-Actions creates PRs with `GITHUB_TOKEN`, then explicitly dispatches `ci.yml` at the
-bot branch because token-created PRs do not recursively trigger workflows. No PAT
-or production secrets are used. CI compares each check's Nix derivation and the production system derivation
-against the PR base (or the previous commit on main). Only changed derivations
-are built: for example, a Navidrome package update does not run an unchanged
-Radarr VM test. Shared modules and flake inputs automatically select their
-transitive dependents. GitOps tooling runs when its scripts, tests, workflows,
-or Renovate configuration change. The planning job records its selection in the
-Actions summary; evaluation can fetch sources but does not run VM tests.
+The hosted Renovate app cannot run our Nix hash-generation scripts. On its PRs,
+`update-packages.yml` runs reviewed **base-branch** scripts with read-only
+permissions, importing only validated version and lock JSON from the candidate.
+It regenerates Notifiarr's architecture hashes, Maintainerr's source/Yarn hashes,
+and Caddy's plugin hash as needed. A nixpkgs revision change also regenerates
+Navidrome options and Caddy's hash. Media changes refresh Jellyfin's ABI-aware
+manifest catalog on that same PR. The separate publisher only writes allowlisted
+generated files, rejects a changed PR head, and never force-pushes. Its bot author
+is ignored by Renovate's manual-edit detection so normal rebasing remains enabled.
 
-Manual dispatch compares against the branch's merge base with main; enable its
-`full` input to run the entire suite. Failed base comparisons require a full run. Changes to CI selection run its
-GitOps regression tests and only changed Nix checks. A head evaluation failure fails CI.
-`CI required` accepts skips only for jobs the plan did not select; selected jobs
-must succeed, including after manual dispatch. CI does not deploy or contact the VM.
+An input fingerprint in `.github/update-artifacts.json` prevents CI from building
+or accepting a version-only change before its hashes are generated. An initial
+Renovate commit can briefly show this pending-artifact failure; the helper commits
+the artifacts and explicitly dispatches CI on the completed branch. A failed
+helper leaves the PR blocked. Input repository/channel changes require manual
+artifact preparation rather than executing arbitrary PR-provided flakes.
+
+Jellyfin manifests cannot be discovered reliably through generic GitHub releases:
+they combine multiple upstream catalogs and Jellyfin ABI constraints. A Sunday
+12:30 UTC/manual fallback creates one `automated/media-applications` PR when no
+Renovate or other automated update PR is open. The five independent scheduled
+package updater jobs have been removed. The fallback is outside Renovate's PR
+counter; a later Renovate run can still open its own PR while that fallback is open.
+
+Historical container pins and disabled Apprise are excluded. TRaSH/Recyclarr
+policy URLs stay pinned to reviewed revisions in `flake.nix`: disabling a package
+rule alone does not stop lock maintenance advancing an unpinned input. Nix digest
+pinning stays disabled for branch-only flake URLs; the lock file supplies pins.
+The host stays on NixOS 26.05. Optional Jellyfin/Navidrome modules remain maintained
+without enabling them on production. The inherited omnibus updater is not scheduled.
+
+Upstream merge conflicts abort without publishing a partial merge. Existing
+upstream/fallback PRs are left untouched. Check policy pins and workflows during
+upstream review. Actions uses `GITHUB_TOKEN`, not a PAT or production credentials;
+token-created commits explicitly dispatch `ci.yml` because they do not recursively
+trigger PR workflows.
+
+CI compares each check's Nix derivation and the production derivation against the
+PR base (or previous main commit). Only affected checks run, including the union
+of changes in a grouped PR. Shared dependency changes select their transitive
+dependents. Missing/broken base evaluation selects the full suite; head evaluation
+errors fail CI. `CI required` permits skips only for checks the plan did not select.
+CI does not deploy or contact the VM.
 
 ## First deployment
 
