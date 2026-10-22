@@ -345,6 +345,7 @@ class GPU(unittest.TestCase):
                     "healthy": True,
                     "fingerprint": ["same"],
                     "probe_version": playback.PROBE_VERSION,
+                    "boot_id": ops.BOOT.read_text().strip(),
                 },
             ],
         ), patch.object(
@@ -352,6 +353,31 @@ class GPU(unittest.TestCase):
         ) as cmd:
             self.assertEqual(playback.playback(True), 0)
             cmd.assert_not_called()
+
+    def test_previous_boot_success_rechecks_the_running_kernel(self):
+        cfg = {"enabled": True, "ffmpeg": "/pinned", "fingerprint": ["same"]}
+        with tempfile.TemporaryDirectory() as d, patch.object(
+            ops, "STATE", Path(d)
+        ), patch.object(
+            ops,
+            "read_json",
+            side_effect=[
+                cfg,
+                {
+                    "healthy": True,
+                    "fingerprint": ["same"],
+                    "probe_version": playback.PROBE_VERSION,
+                    "boot_id": "previous-boot",
+                },
+            ],
+        ), patch.object(
+            playback, "command"
+        ) as cmd:
+            self.assertEqual(playback.playback(True), 0)
+            self.assertTrue(cmd.called)
+            report = json.loads((Path(d) / "playback.json").read_text())
+            self.assertEqual(report["boot_id"], ops.BOOT.read_text().strip())
+            self.assertEqual(report["running_kernel"], os.uname().release)
 
     def test_av1_fixture_uses_software_and_requires_native_hardware_decode(self):
         cfg = {"enabled": True, "ffmpeg": "/pinned", "fingerprint": ["test"]}

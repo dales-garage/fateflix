@@ -25,11 +25,13 @@ def command(args, seconds=20):
 def playback(if_changed=False):
     cfg = ops.read_json(CONFIG)
     with ops.lock("playback", blocking=False):
+        boot_id = ops.BOOT.read_text().strip()
         if if_changed:
             try:
                 previous = ops.read_json(ops.STATE / "playback.json")
                 if (
                     previous.get("probe_version") == PROBE_VERSION
+                    and previous.get("boot_id") == boot_id
                     and previous.get("fingerprint") == cfg["fingerprint"]
                     and previous.get("healthy")
                 ):
@@ -115,6 +117,8 @@ def playback(if_changed=False):
         report = {
             "checked": time.time(),
             "probe_version": PROBE_VERSION,
+            "boot_id": boot_id,
+            "running_kernel": os.uname().release,
             "fingerprint": cfg["fingerprint"],
             "mode": "gpu" if cfg["enabled"] else "software",
             "healthy": all(v["healthy"] for v in checks.values()),
