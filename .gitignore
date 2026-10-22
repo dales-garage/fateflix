@@ -1,6 +1,7 @@
 /result
 .direnv/
 .envrc
+__pycache__/
 
 docs/reference/*/
 !docs/reference/index.md
@@ -24,3 +25,4 @@ staging/
 migration-payloads/
 result-*
 __pycache__/
+modules/jellyfin/plugins/.source-cache/

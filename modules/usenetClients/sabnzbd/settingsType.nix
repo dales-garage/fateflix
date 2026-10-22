@@ -1,7 +1,4 @@
-{
-  lib,
-  config,
-}:
+{ lib, config }:
 let
   inherit (lib) types mkOption;
   secrets = import ../../../lib/secrets { inherit lib; };
@@ -38,12 +35,8 @@ let
         example = 443;
         description = "Port of the server.";
       };
-      username = secrets.mkSecretOption {
-        description = "Username for server authentication.";
-      };
-      password = secrets.mkSecretOption {
-        description = "Password for server authentication.";
-      };
+      username = secrets.mkSecretOption { description = "Username for server authentication."; };
+      password = secrets.mkSecretOption { description = "Password for server authentication."; };
       connections = mkOption {
         type = types.int;
         default = 10;
@@ -150,14 +143,15 @@ let
         type = types.str;
         default =
           if config.nixflix.vpn.enable && config.nixflix.usenetClients.sabnzbd.vpn.enable then
-            config.vpnNamespaces.wg.namespaceAddress
+            config.vpnNamespaces.${cfg.vpn.namespace}.namespaceAddress
           else if config.nixflix.reverseProxy.enable then
             "127.0.0.1"
           else
             "0.0.0.0";
         defaultText = lib.literalExpression ''
           if config.nixflix.vpn.enable && config.nixflix.usenetClients.sabnzbd.vpn.enable
-          then config.vpnNamespaces.wg.namespaceAddress
+          then config.vpnNamespaces.$${config.nixflix.usenetClients.sabnzbd.vpn.namespace}.namespaceAddress
+
           else if config.nixflix.reverseProxy.enable then "127.0.0.1"
           else "0.0.0.0"
         '';
@@ -189,9 +183,7 @@ let
         '';
       };
 
-      nzb_key = secrets.mkSecretOption {
-        description = "NZB key for adding downloads via URL.";
-      };
+      nzb_key = secrets.mkSecretOption { description = "NZB key for adding downloads via URL."; };
 
       port = mkOption {
         type = types.port;

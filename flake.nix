@@ -84,11 +84,7 @@
       };
 
       packages = perSystem (
-        {
-          system,
-          pkgs,
-          ...
-        }:
+        { system, pkgs, ... }:
         (import ./docs { inherit pkgs inputs; })
         // {
           default = self.packages.${system}.docs;
@@ -97,11 +93,7 @@
       );
 
       apps = perSystem (
-        {
-          system,
-          pkgs,
-          ...
-        }:
+        { system, pkgs, ... }:
         {
           docs-serve = {
             type = "app";
@@ -163,12 +155,7 @@
       );
 
       devShells = perSystem (
-        {
-          pkgs,
-          treefmt,
-          ...
-        }:
-        {
+        { pkgs, treefmt, ... }: {
           default = pkgs.mkShell {
             nativeBuildInputs = [
               treefmt.config.build.wrapper

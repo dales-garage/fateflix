@@ -1,8 +1,4 @@
-{
-  config,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 with lib;
 let
   cfg = config.nixflix.vpn;
@@ -34,6 +30,17 @@ in
       ];
       ```
     '';
+
+    namespace = mkOption {
+      type = types.str;
+      default = "wg";
+      description = ''
+        Name of the network namespace this VPN is configured in.
+
+        Nixflix services confined to the VPN (via `nixflix.<service>.vpn.enable = true`)
+        default to this namespace.
+      '';
+    };
 
     wgConfFile = mkOption {
       type = types.path;
@@ -100,7 +107,7 @@ in
   };
 
   config = mkIf cfg.enable {
-    vpnNamespaces.wg = {
+    vpnNamespaces.${cfg.namespace} = {
       enable = true;
       wireguardConfigFile = cfg.wgConfFile;
       inherit (cfg) accessibleFrom;

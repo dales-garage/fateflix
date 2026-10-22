@@ -61,12 +61,25 @@ in
         serverUrl = "http://127.0.0.1:8000";
         configurationKey = "media";
         tags = "media";
-        onGrab = false;
-        onDownload = true;
-        onUpgrade = false;
-        onHealthIssue = true;
-        onHealthRestored = true;
-        onManualInteractionRequired = true;
+        triggers = {
+          sonarr = [
+            "onDownload"
+            "onHealthIssue"
+            "onHealthRestored"
+            "onManualInteractionRequired"
+          ];
+          radarr = [
+            "onDownload"
+            "onHealthIssue"
+            "onHealthRestored"
+            "onManualInteractionRequired"
+          ];
+          lidarr = [
+            "onReleaseImport"
+            "onHealthIssue"
+            "onHealthRestored"
+          ];
+        };
       }
     ];
   };

@@ -8,9 +8,8 @@ let
   client = cfg.nixflix.notifiarr;
   unit = cfg.systemd.services.notifiarr;
   withoutReadarr =
-    (host.extendModules {
-      modules = [ { services.readarr.enable = pkgs.lib.mkForce false; } ];
-    }).config;
+    (host.extendModules { modules = [ { services.readarr.enable = pkgs.lib.mkForce false; } ]; })
+    .config;
 in
 assert client.enable;
 assert !staging.config.nixflix.notifiarr.enable;

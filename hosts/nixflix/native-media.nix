@@ -1,5 +1,4 @@
-{ config, pkgs, ... }:
-{
+{ config, pkgs, ... }: {
   services.bazarr = {
     enable = true;
     group = "media";

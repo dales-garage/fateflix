@@ -1,8 +1,4 @@
-{
-  lib,
-  config,
-  ...
-}:
+{ lib, config, ... }:
 with lib;
 let
   mkStrOption =
@@ -238,17 +234,13 @@ in
           };
         });
       default = [
-        {
-          itemType = "Movie";
-        }
+        { itemType = "Movie"; }
         {
           itemType = "MusicVideo";
           disabledMetadataFetchers = [ "The Open Movie Database" ];
           disabledImageFetchers = [ "The Open Movie Database" ];
         }
-        {
-          itemType = "Series";
-        }
+        { itemType = "Series"; }
         {
           itemType = "MusicAlbum";
           disabledMetadataFetchers = [ "TheAudioDB" ];
@@ -257,15 +249,9 @@ in
           itemType = "MusicArtist";
           disabledMetadataFetchers = [ "TheAudioDB" ];
         }
-        {
-          itemType = "BoxSet";
-        }
-        {
-          itemType = "Season";
-        }
-        {
-          itemType = "Episode";
-        }
+        { itemType = "BoxSet"; }
+        { itemType = "Season"; }
+        { itemType = "Episode"; }
       ];
       description = ''
         Configure metadata fetching options for different media types.
@@ -352,32 +338,19 @@ in
                 Supports SRI (`sha256-Uc6ovnXI3T0WfCqzcnwUZwYCH1tTDYb86pfNlvbOam0=`) or nix32 (`0vbarvv9dkcpxby8c3akbcgh41k72iy75craghb3vpf8fnzaikji`) formats.
               '';
             };
-
-            fallback = mkOption {
-              type = types.bool;
-              default = false;
-              internal = true;
-              description = ''
-                Whether this repository is a last-resort match when resolving
-                `fromRepo` plugins by name. If a plugin version is found in
-                both a fallback repository and a non-fallback repository, the
-                non-fallback repository is used without raising an ambiguity
-                error. Only the bundled Jellyfin Universal Plugin Repo sets this.
-              '';
-            };
           };
         });
       default = { };
       defaultText = literalExpression ''
         {
-          "Jellyfin Universal Plugin Repo" = {
+          "Jellyfin Official" = {
             url = "https://repo.jellyfin.org/files/plugin/manifest.json";
             hash = "1ykrpwya7px7dz4h92994kpqlf5jd429z7r4dckbw13236x5mpbx";
             enabled = true;
           };
         }
       '';
-      description = "Configure which plugin repositories you use. Jellyfin Universal Plugin Repo is always present in the set. Adding new plugin repositories will not remove it.";
+      description = "Configure which plugin repositories you use.";
     };
 
     enableExternalContentInSuggestions = mkOption {
@@ -422,9 +395,7 @@ in
 
     corsHosts = mkOption {
       type = with types; listOf str;
-      default = [
-        "*"
-      ];
+      default = [ "*" ];
     };
 
     activityLogRetentionDays = mkOption {
@@ -645,15 +616,6 @@ in
       description = ''
         Enable legacy authorization mode for backwards compatibility.
       '';
-    };
-  };
-
-  config.nixflix.jellyfin.system.pluginRepositories = {
-    "Jellyfin Universal Plugin Repo" = {
-      url = "https://raw.githubusercontent.com/kiriwalawren/nixflix/9bd61380363c07d35ee3e4cb0253c998cda422fe/modules/jellyfin/system/jellyfin-universal-plugin-manifest.json";
-      hash = "sha256-hvuHFrGWwxRveRLPJdCwv0X6CmG7ZWvORte47YcaE/Q=";
-      enabled = true;
-      fallback = true;
     };
   };
 }

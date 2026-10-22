@@ -6,11 +6,7 @@ let
   ]);
   app = name: runtimeInputs: text: {
     type = "app";
-    program = pkgs.lib.getExe (
-      pkgs.writeShellApplication {
-        inherit name runtimeInputs text;
-      }
-    );
+    program = pkgs.lib.getExe (pkgs.writeShellApplication { inherit name runtimeInputs text; });
   };
   script =
     name: dependencies:

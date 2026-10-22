@@ -1,18 +1,20 @@
 { lib }:
 with lib;
 let
-  secretOrStrType = types.oneOf [
-    types.str
-    (types.submodule {
-      options._secret = mkOption {
-        type = types.oneOf [
-          types.str
-          types.path
-        ];
-        description = "Path to a file containing the secret value";
-      };
-    })
-  ];
+  secretOr =
+    type:
+    types.oneOf [
+      type
+      (types.submodule {
+        options._secret = mkOption {
+          type = types.oneOf [
+            types.nonEmptyStr
+            types.path
+          ];
+          description = "Path to a file containing the secret value";
+        };
+      })
+    ];
 in
 rec {
   isSecretRef = value: (builtins.isAttrs value) && (value ? _secret) && !(value ? __unfix__);
@@ -27,7 +29,7 @@ rec {
   mkSecretOption =
     {
       nullable ? false,
-      type ? secretOrStrType,
+      type ? types.str,
       default ? null,
       defaultText ? null,
       example ? null,
@@ -35,7 +37,7 @@ rec {
     }:
     mkOption {
       inherit default defaultText;
-      type = if nullable then types.nullOr type else type;
+      type = if nullable then types.nullOr (secretOr type) else (secretOr type);
       example =
         if example != null then
           example
@@ -83,12 +85,13 @@ rec {
 
   # Recursively replace every ._secret ref with null, leaving all other
   # values intact so builtins.toJSON produces safe JSON with no file paths.
+  # Null attributes and attrsets that strip down to empty are dropped.
   stripSecretRefs =
     value:
     if isSecretRef value then
       null
     else if builtins.isAttrs value && !(value ? __unfix__) then
-      lib.mapAttrs (_: stripSecretRefs) value
+      lib.filterAttrs (_: v: v != null && v != { }) (lib.mapAttrs (_: stripSecretRefs) value)
     else if builtins.isList value then
       map stripSecretRefs value
     else
