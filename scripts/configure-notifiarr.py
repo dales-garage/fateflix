@@ -2,6 +2,7 @@
 """Reconcile notification connections, preserving unrelated providers and backups."""
 
 import copy
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -212,6 +213,21 @@ def connect_plex(app, webhook):
         pass
 
 
+def reconcile(item):
+    name, job = item
+    for attempt in range(3):
+        try:
+            job()
+            print(name + ": configured", flush=True)
+            return None
+        except (ConnectionError, TimeoutError, urllib.error.URLError):
+            if attempt == 2:
+                return name
+            time.sleep(3)
+        except Exception:
+            return name
+
+
 def main():
     os.umask(0o077)
     cfg = resolve(json.loads(Path(sys.argv[1]).read_text()))
@@ -225,21 +241,9 @@ def main():
         for app in cfg["bazarr"]
     ]
     jobs += [("plex-webhooks", lambda: connect_plex(cfg["plex"], cfg["plexWebhook"]))]
-    failed = []
-    for name, job in jobs:
-        for attempt in range(3):
-            try:
-                job()
-                print(name + ": configured", flush=True)
-                break
-            except (ConnectionError, TimeoutError, urllib.error.URLError):
-                if attempt == 2:
-                    failed.append(name)
-                else:
-                    time.sleep(3)
-            except Exception:
-                failed.append(name)
-                break
+
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        failed = [name for name in executor.map(reconcile, jobs) if name]
     if failed:
         sys.exit(
             "Notifiarr connections failed (details suppressed to protect credentials): "

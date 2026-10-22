@@ -136,6 +136,10 @@
             host = self.nixosConfigurations.nixflix-production;
             staging = self.nixosConfigurations.nixflix-staging;
           };
+          operations-eval = import ./tests/migration/operations-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-production;
+          };
           docs-build = self.packages.${system}.docs;
           four-instance-eval = import ./tests/migration/four-instance-eval.nix {
             inherit pkgs;

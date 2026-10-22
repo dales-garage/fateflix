@@ -83,8 +83,11 @@ assert builtins.all (
 assert builtins.all (name: builtins.elem "data.mount" cfg.systemd.services.${name}.bindsTo) native;
 assert builtins.all (
   name:
-  cfg.systemd.services.${name}.unitConfig.ConditionPathExists
-  == "/var/lib/nixflix-migration/ready/${name}"
+  cfg.systemd.services.${name}.unitConfig.ConditionPathExists == [
+    "/var/lib/nixflix-migration/ready/${name}"
+    "!/var/lib/nixflix-gitops/holds/all"
+    "!/var/lib/nixflix-gitops/holds/${name}"
+  ]
 ) native;
 assert
   builtins.attrNames cfg.virtualisation.oci-containers.containers == [

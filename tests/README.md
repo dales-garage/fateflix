@@ -193,7 +193,16 @@ Unit tests will show Nix evaluation errors. Check:
 - [NixOS VM Tests Documentation](https://nixos.org/manual/nixos/stable/#sec-nixos-tests)
 - [Testing NixOS Modules](https://nix.dev/tutorials/nixos/integration-testing-using-virtual-machines)
 
-## Credential and fixture regression checks
+## Reliability regression checks
 
-See [credential recovery](../docs/credential-recovery.md) for regression coverage
-and fresh/warm cache evaluation commands. Existing assertions stay enabled.
+Run `python -m unittest discover -s tests/migration -p 'test_*.py'` with PyYAML
+installed. `test_operations.py` injects NAS failures, stale results, a retained
+worker lock, failed service starts, holds, credential drift and
+interrupted atomic replacements without contacting production. `operations-eval`
+asserts storage limits, retry timers and timeouts.
+
+Jellyfin manifest fixtures use `builtins.toFile` so their hashes and contents are
+available at evaluation time. Validate with `nix flake check --no-build` once with
+a new `XDG_CACHE_HOME` and again with the same cache, then build affected checks.
+Runtime acceptance and isolated SABnzbd pause/manual-resume testing are described
+in [operations](../docs/operations.md).

@@ -145,7 +145,7 @@ sudo cat /var/lib/nixflix-gitops/health.json
 curl --fail http://127.0.0.1:9199/health
 ```
 
-Health uses live systemd, HTTP and authenticated API checks, NAS mount mode,
+Health uses live systemd, HTTP and authenticated API checks, locally cached NAS access/mount mode,
 credential permissions, Seerr webhook configuration, and Notifiarr connections.
 It never writes media or relies on historical ready-marker files. The report is
 root-only. The loopback endpoint returns only healthy/unhealthy, rejects reports
@@ -188,3 +188,6 @@ Keep three bootable Comin generations. During a separately scheduled reboot,
 verify SSH, NAS, services and Comin return automatically. Finally merge a harmless
 configuration change and confirm its SHA is deployed automatically. These live
 acceptance checks require access to the VM and are not implied by passing CI.
+
+Capacity advisories, maintenance holds, retention reports, and the staged
+acceptance procedure are documented in [operations](operations.md).

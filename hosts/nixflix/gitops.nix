@@ -14,7 +14,7 @@ let
       pkgs.util-linux
     ];
     text = ''
-      exec ${python}/bin/python3 ${../../scripts/gitops-health.py} "$@"
+      exec ${python}/bin/python3 ${../../scripts}/gitops-health.py "$@"
     '';
   };
   hook = pkgs.writeShellScript "nixflix-comin-hook" ''
@@ -24,7 +24,46 @@ let
 in
 {
   imports = [ inputs.comin.nixosModules.comin ];
+  options.nixflixHost.capacity =
+    let
+      threshold =
+        warning: critical:
+        lib.mkOption {
+          type = lib.types.submodule {
+            options = {
+              warning = lib.mkOption {
+                type = lib.types.ints.positive;
+                default = warning;
+              };
+              critical = lib.mkOption {
+                type = lib.types.ints.positive;
+                default = critical;
+              };
+            };
+          };
+          default = { };
+        };
+    in
+    {
+      nas = threshold 1099511627776 536870912000;
+      root = threshold 21474836480 10737418240;
+      probeMaxAge = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 180;
+      };
+    };
   config = lib.mkIf config.nixflixHost.production.enable {
+    assertions =
+      map
+        (name: {
+          assertion =
+            config.nixflixHost.capacity.${name}.warning > config.nixflixHost.capacity.${name}.critical;
+          message = "${name} capacity warning must exceed critical";
+        })
+        [
+          "nas"
+          "root"
+        ];
     services.comin = {
       enable = true;
       package = inputs.comin.packages.${pkgs.stdenv.hostPlatform.system}.comin;
@@ -112,6 +151,28 @@ in
         interval = "5m";
         timeout = "10s";
       }
-    ];
+    ]
+    ++
+      map
+        (name: {
+          name = "nixflix-advisory-${name}";
+          type = "http";
+          check = "http://127.0.0.1:9199/advisory/${name}";
+          expect = "200";
+          interval = "5m";
+          timeout = "10s";
+        })
+        [
+          "capacity-warning"
+          "capacity-critical"
+          "sonarr"
+          "sonarr-4k"
+          "radarr"
+          "radarr-4k"
+          "lidarr"
+          "prowlarr"
+          "readarr"
+          "whisparr"
+        ];
   };
 }

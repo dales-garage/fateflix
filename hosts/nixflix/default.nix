@@ -134,26 +134,20 @@
   '';
   # No credential values enter the store. The SMB client reads the persistent file.
   systemd.services.nixflix-nas-ready = {
-    requires = [ "data.mount" ];
-    after = [ "data.mount" ];
+    requires = [
+      "data.mount"
+      "nixflix-capacity-probe.service"
+    ];
+    after = [
+      "data.mount"
+      "nixflix-capacity-probe.service"
+    ];
     bindsTo = [ "data.mount" ];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
+      ExecStart = "${pkgs.python3}/bin/python3 ${../../scripts}/nixflix_ops.py nas-ready";
+      TimeoutStartSec = 10;
     };
-    script = ''
-      test "$(${pkgs.util-linux}/bin/findmnt -n -o FSTYPE --mountpoint /data)" = cifs
-      ${
-        if config.nixflixHost.production.enable then
-          ''
-            # Only create download category directories after the real NAS is mounted.
-            ${pkgs.coreutils}/bin/install -d -m 0775 \
-              /data/usenet/sonarr /data/usenet/sonarr-4k \
-              /data/usenet/radarr /data/usenet/radarr-4k /data/usenet/lidarr
-          ''
-        else
-          ""
-      }
-    '';
   };
 }

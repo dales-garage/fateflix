@@ -6,26 +6,36 @@
 }:
 let
   production = config.nixflixHost.production.enable;
-  native = [
-    "sonarr"
-    "sonarr-4k"
-    "radarr"
-    "radarr-4k"
-    "lidarr"
-    "prowlarr"
-    "sabnzbd"
-    "plex"
-    "seerr"
-    "bazarr"
-    "bazarr-4k"
-    "tautulli"
-    "audiobookshelf"
-    "readarr"
-    "whisparr"
-  ];
+  native =
+    lib.filter
+      (
+        name:
+        name == "bazarr-4k"
+        || (config.services.${name}.enable or false)
+        || (config.nixflix.${name}.enable or false)
+        || (name == "sabnzbd" && config.nixflix.usenetClients.sabnzbd.enable)
+      )
+      [
+        "sonarr"
+        "sonarr-4k"
+        "radarr"
+        "radarr-4k"
+        "lidarr"
+        "prowlarr"
+        "sabnzbd"
+        "plex"
+        "seerr"
+        "bazarr"
+        "bazarr-4k"
+        "tautulli"
+        "audiobookshelf"
+        "readarr"
+        "whisparr"
+      ];
   containers = map (n: "podman-${n}") (
     builtins.attrNames config.virtualisation.oci-containers.containers
   );
+  operations = "${pkgs.python3}/bin/python3 ${../../scripts}/nixflix_ops.py";
   # Setup jobs may reconcile/delete restored state. They are explicit operations in staging.
   automation =
     lib.concatMap
@@ -71,16 +81,29 @@ in
     nixflix-nas-recover = {
       description = "Recover staged media services after NAS connectivity returns";
       path = [ pkgs.systemd ];
-      serviceConfig.Type = "oneshot";
-      script = ''
-        set -eu
-        if systemctl is-active --quiet data.mount && systemctl is-active --quiet nixflix-nas-ready.service; then
-          exit 0
-        fi
-        systemctl start data.mount
-        systemctl start nixflix-nas-ready.service
-        systemctl start ${lib.concatMapStringsSep " " (n: "${n}.service") (native ++ containers)}
-      '';
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${operations} recover";
+        TimeoutStartSec = 240;
+        UMask = "0077";
+      };
+    };
+    nixflix-capacity-probe = {
+      description = "Single isolated NAS access and capacity worker";
+      after = [ "data.mount" ];
+      path = [ pkgs.util-linux ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${operations} probe";
+        TimeoutStartSec = 45;
+        TimeoutStopSec = 5;
+        UMask = "0077";
+        ProtectSystem = "strict";
+        ReadWritePaths = [ "/var/lib/nixflix-gitops" ];
+        ProtectHome = true;
+        PrivateTmp = true;
+        NoNewPrivileges = true;
+      };
     };
 
     nixflix-staging-network = {
@@ -119,7 +142,11 @@ in
     bindsTo = [ "data.mount" ];
     unitConfig = {
       RequiresMountsFor = [ "/data" ];
-      ConditionPathExists = "/var/lib/nixflix-migration/ready/${name}";
+      ConditionPathExists = [
+        "/var/lib/nixflix-migration/ready/${name}"
+        "!/var/lib/nixflix-gitops/holds/all"
+        "!/var/lib/nixflix-gitops/holds/${name}"
+      ];
     };
     serviceConfig = {
       Slice = "nixflix-staging.slice";
@@ -153,6 +180,18 @@ in
       OnUnitInactiveSec = "1min";
     };
   };
+  systemd.timers.nixflix-capacity-probe = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "30s";
+      OnUnitInactiveSec = "1m";
+    };
+  };
+  environment.etc."nixflix/operations.json".text = builtins.toJSON {
+    services = native ++ containers;
+    nasMode = if production then "rw" else "ro";
+    inherit (config.nixflixHost.capacity) nas root probeMaxAge;
+  };
   systemd.timers.recyclarr.wantedBy = lib.mkForce [ ];
   # Do not create media/download directories on the read-only production mount.
   systemd.tmpfiles.settings."10-nixflix" = lib.mkForce {
@@ -170,5 +209,9 @@ in
     };
   };
   # Per-service credentials are loaded by systemd from root-owned persistent files.
-  systemd.tmpfiles.rules = [ "d /var/lib/nixflix-migration/ready 0700 root root -" ];
+  systemd.tmpfiles.rules = [
+    "d /var/lib/nixflix-migration/ready 0700 root root -"
+    "d /var/lib/nixflix-gitops 0700 root root -"
+    "d /var/lib/nixflix-gitops/holds 0700 root root -"
+  ];
 }
