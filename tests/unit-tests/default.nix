@@ -25,6 +25,7 @@ let
         {
           # Minimal NixOS config stubs needed for evaluation
           nixpkgs.hostPlatform = system;
+          system.stateVersion = "26.05";
         }
       ]
       ++ modules;
@@ -347,7 +348,7 @@ in
   jellyfin-plugin-repo-service-generation =
     let
       targetAbi = "${pkgs.jellyfin.version}.0";
-      manifest = pkgs.writeText "jellyfin-plugin-repo-service-generation.json" (
+      manifest = builtins.toFile "jellyfin-plugin-repo-service-generation.json" (
         builtins.toJSON [
           {
             guid = "c83d86bb-a1e0-4c35-a113-e2101cf4ee6b";
@@ -409,7 +410,7 @@ in
 
   jellyfin-plugin-repo-relaxed-version-check =
     let
-      manifest = pkgs.writeText "jellyfin-plugin-relaxed-version-check.json" (
+      manifest = builtins.toFile "jellyfin-plugin-relaxed-version-check.json" (
         builtins.toJSON [
           {
             guid = "486090e1-ca92-46e1-8549-9f6bb914a1d0";
@@ -467,7 +468,7 @@ in
   jellyfin-plugin-repo-ambiguity-assertion =
     let
       targetAbi = "${pkgs.jellyfin.version}.0";
-      manifestA = pkgs.writeText "jellyfin-plugin-repo-a.json" (
+      manifestA = builtins.toFile "jellyfin-plugin-repo-a.json" (
         builtins.toJSON [
           {
             guid = "11111111-1111-1111-1111-111111111111";
@@ -482,7 +483,7 @@ in
           }
         ]
       );
-      manifestB = pkgs.writeText "jellyfin-plugin-repo-b.json" (
+      manifestB = builtins.toFile "jellyfin-plugin-repo-b.json" (
         builtins.toJSON [
           {
             guid = "22222222-2222-2222-2222-222222222222";
