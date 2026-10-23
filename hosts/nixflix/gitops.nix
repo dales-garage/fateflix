@@ -128,7 +128,9 @@ in
       serviceConfig = {
         Type = "oneshot";
         ExecStart = "${lib.getExe health} check --wait 120";
-        TimeoutStartSec = 300;
+        # Readiness retries (120s), reconciliation completion (245s), and the
+        # remaining bounded HTTP checks must all fit inside the unit budget.
+        TimeoutStartSec = 480;
         UMask = "0077";
       };
     };

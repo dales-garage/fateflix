@@ -22,6 +22,12 @@ assert cfg.nixflixHost.capacity.root.warning == 21474836480;
 assert cfg.nixflixHost.capacity.root.critical == 10737418240;
 assert cfg.systemd.timers.notifiarr-connections.timerConfig.OnUnitInactiveSec == "5m";
 assert cfg.systemd.services.notifiarr-connections.serviceConfig.TimeoutStartSec == 240;
+assert
+  cfg.systemd.services.nixflix-health.serviceConfig.TimeoutStartSec
+  >= cfg.systemd.services.notifiarr-connections.serviceConfig.TimeoutStartSec
+  + cfg.systemd.services.notifiarr-connections.serviceConfig.TimeoutStopSec
+  + 120
+  + 60;
 assert !(cfg.systemd.services.notifiarr-connections.serviceConfig ? Restart);
 assert cfg.systemd.services.nixflix-capacity-probe.serviceConfig.TimeoutStartSec == 45;
 assert cfg.systemd.services.nixflix-capacity-probe.serviceConfig.ProtectSystem == "strict";
