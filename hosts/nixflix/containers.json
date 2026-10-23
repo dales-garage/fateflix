@@ -1,7 +1,7 @@
 {
   "readarr": "lscr.io/linuxserver/readarr@sha256:b6a7420770adeea5cac1f3ee5da606183d014e3f96fb473f3abd88ed11d9f344",
   "whisparr": "ghcr.io/hotio/whisparr@sha256:363d9d8463237665a3f2fb2d33c96da4544b0ae4d30e72d56eacf8e88a1003e2",
-  "mylar3": "ghcr.io/linuxserver/mylar3@sha256:0b45139c69d8e79478ccf6e85a5cc9368a7e3bc3e4229fe338149f196430ef11",
+  "mylar3": "ghcr.io/linuxserver/mylar3@sha256:85f41065ad9f264f5f9000abcf17215a9b2b0cd207c954fb6b47c6dcf950389f",
   "notifiarr": "golift/notifiarr@sha256:65f4ddfc323fedb4f51acd6346286bfeb61f6e15961d3c43662517ff0f4733c2",
   "bazarr": "ghcr.io/hotio/bazarr@sha256:3eaf8bebb1e60508377d6a1e4221f52018bef083eaf0bc1d361e97088a63fbf4",
   "bazarr-4k": "ghcr.io/hotio/bazarr@sha256:3eaf8bebb1e60508377d6a1e4221f52018bef083eaf0bc1d361e97088a63fbf4",
