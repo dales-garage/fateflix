@@ -118,6 +118,12 @@ deployment reports `done` and `/health` returns 200. Preserve the failed history
 do not edit health/deployment JSON to make an unsuccessful rollout appear healthy.
 This retries configuration activation and does not restore application databases.
 
+Readiness/probe/recovery units reference only `nixflix_ops.py`. The health command
+packages its four Python modules explicitly. Unrelated CI and remux script edits
+therefore do not change readiness unit paths or restart dependent media services.
+The first rollout of this packaging change updates those paths once; validate it
+during low usage using the normal runtime rollout procedure.
+
 ## Playback diagnostics
 
 GPU enablement sets Stash's pinned host FFmpeg/FFprobe, Intel driver environment,

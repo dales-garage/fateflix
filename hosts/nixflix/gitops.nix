@@ -7,6 +7,14 @@
 }:
 let
   python = pkgs.python3.withPackages (p: [ p.pyyaml ]);
+  # Keep CI/remux tooling out of the health closure. Python needs these four
+  # sibling modules, not every script in the repository.
+  runtime = pkgs.runCommand "nixflix-health-runtime" { } ''
+    install -Dm444 ${../../scripts/gitops-health.py} "$out/gitops-health.py"
+    install -Dm444 ${../../scripts/nixflix_ops.py} "$out/nixflix_ops.py"
+    install -Dm444 ${../../scripts/nixflix_playback.py} "$out/nixflix_playback.py"
+    install -Dm444 ${../../scripts/nixflix_retention.py} "$out/nixflix_retention.py"
+  '';
   health = pkgs.writeShellApplication {
     name = "nixflix-health";
     runtimeInputs = [
@@ -15,7 +23,7 @@ let
       pkgs.podman
     ];
     text = ''
-      exec ${python}/bin/python3 ${../../scripts}/gitops-health.py "$@"
+      exec ${python}/bin/python3 ${runtime}/gitops-health.py "$@"
     '';
   };
   hook = pkgs.writeShellScript "nixflix-comin-hook" ''

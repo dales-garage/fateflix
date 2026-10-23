@@ -14,6 +14,11 @@ permissions:
 concurrency:
   group: update-artifacts-${{ github.event.pull_request.number || 'scheduled' }}
   cancel-in-progress: false
+env:
+  NIX_CONFIG: |
+    eval-cores = 1
+    max-jobs = 1
+    cores = 2
 jobs:
   generate:
     if: >-
@@ -22,6 +27,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+    timeout-minutes: 60
     outputs:
       changed: ${{ steps.generate.outputs.changed }}
     steps:
@@ -33,6 +39,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - uses: DeterminateSystems/determinate-nix-action@v3.23.3
+        with:
+          kvm: false
       - name: Generate hashes and plugin definitions
         id: generate
         env:
@@ -46,6 +54,7 @@ jobs:
           path: /tmp/artifacts.json
           retention-days: 1
   publish:
+    timeout-minutes: 10
     needs: generate
     if: needs.generate.outputs.changed == 'true'
     runs-on: ubuntu-latest
@@ -69,6 +78,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: python3 "$RUNNER_TEMP/publish-artifacts.py" publish --payload "$RUNNER_TEMP/update-artifacts/artifacts.json"
   jellyfin-manifests:
+    timeout-minutes: 45
     if: github.event_name != 'pull_request_target' && github.repository == 'declarative-dale/nixflix'
     runs-on: ubuntu-latest
     permissions:
@@ -81,6 +91,8 @@ jobs:
           ref: main
           fetch-depth: 0
       - uses: DeterminateSystems/determinate-nix-action@v3.23.3
+        with:
+          kvm: false
       - name: Refresh ABI-compatible Jellyfin manifests when the update queue is empty
         env:
           GH_TOKEN: ${{ github.token }}
