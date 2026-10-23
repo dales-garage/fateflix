@@ -157,8 +157,11 @@ Stash. With GPU enabled, those codecs use hardware encoding and decoding. AV1
 uses a short software-generated 10-bit fixture followed by hardware decoding:
 the production UHD 750 supports AV1 decoding but has no AV1 encoding entrypoint.
 See Intel's [media-driver feature matrix](https://github.com/intel/media-driver#decodingencoding-features).
-FFmpeg's native AV1 decoder is selected explicitly, and a hardware-frame download
-is required so software fallback cannot report a successful GPU test. With GPU
+FFmpeg's native AV1 decoder is selected explicitly with VA-API and `p010le`
+output. The decoder copies frames to CPU memory before its context is destroyed;
+H.264/HEVC retain an explicit hardware-frame download. A missing GPU fails the
+AV1 test rather than falling back to libdav1d. The report records AV1's
+`decode_transfer = decoder-copyback`. With GPU
 disabled, all three codecs use the container's software tools. The report records
 each codec's encode/decode mode and the failed stage when applicable.
 
@@ -173,6 +176,20 @@ Boot ID and running kernel release are recorded; a new boot always rechecks, so 
 pre-reboot success cannot stand in for testing a newly booted kernel. A failed
 probe can retry at the next boot or deployment. There is no recurring
 background-transcode timer.
+
+On October 23, the AV1 probe intermittently aborted or segfaulted after the host
+reboot. The guest still had its expected UHD 750, working firmware and AV1 VA-API
+capability. A synthetic-process backtrace showed `hwdownload` calling
+`vaSyncSurface` into Intel's AV1 status-report code after the decoder thread had
+finished. This matches the decoder/surface lifetime race described in
+[Intel media-driver issue 1879](https://github.com/intel/media-driver/issues/1879#issuecomment-5823263516).
+Selecting one decoder thread did not eliminate the failure. Decoder-owned
+copy-back passed 40 repeated host/container tests, including complete frame
+counts, while an absent-device control failed as required. Twenty synthetic
+AV1-to-H.264 GPU transcodes also passed. Probe version 3 uses the verified
+copy-back path; it does not claim the driver's filter-thread download race is
+fixed. No driver reset, passthrough change or reboot is required for this probe
+change, and it does not alter Stash's streaming arguments or the conversion queue.
 
 These small synthetic tests do not establish HDR tone mapping, 4K throughput,
 client compatibility, or end-to-end AV1 fallback. Keep the existing stable Plex
