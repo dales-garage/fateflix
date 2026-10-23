@@ -13,6 +13,7 @@
     ./production.nix
     ./gpu.nix
     ./remux.nix
+    ./imports.nix
     ./homepage.nix
     ./notifications.nix
     ./notifiarr.nix

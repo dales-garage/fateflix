@@ -340,13 +340,21 @@ class Queue:
         require(result["count"] <= 10, "file has too many scene associations")
         return result["scenes"]
 
+    def destination_suffix(self):
+        return ".mp4"
+
+    def finalize(self, job):
+        """Optional integration work after verified media replacement."""
+
     def process(self, job):
         exclusion = candidate_exclusion(job["path"])
         if exclusion:
             raise Skip(exclusion)
         src = self.host_path(job["path"])
-        dst = src.with_suffix(".mp4")
-        mp4_path = str(PurePosixPath(job["path"]).with_suffix(".mp4"))
+        dst = src.with_suffix(self.destination_suffix())
+        mp4_path = str(
+            PurePosixPath(job["path"]).with_suffix(self.destination_suffix())
+        )
         if job["phase"] == "pending":
             require(not os.path.lexists(dst), "MP4 destination already exists")
             require(job["audio_codec"] == "aac", "non-AAC audio requires review")
@@ -649,6 +657,9 @@ class Queue:
                 self.api(
                     "mutation($id:ID!){destroyFiles(ids:[$id])}", {"id": job["id"]}
                 )
+            self.save(job, phase="finalizing")
+        if job["phase"] == "finalizing":
+            self.finalize(job)
             self.save(job, phase="complete", status="complete", completed=time.time())
 
     def run(self, limit=None, retry=False):
