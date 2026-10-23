@@ -1589,6 +1589,24 @@
     "owner": "JPKribs",
     "versions": [
       {
+        "changelog": "## Added\r\n- A Verify External Access scheduled task runs the outside check every hour and writes an error to the activity log when no place on the internet can connect to port 443, with an entry when it works again.\r\n\r\n## Developer\r\n- The docs list the new task and its activity log entries.",
+        "checksum": "64a1e2d2133c31f92cd6329011ed2157",
+        "hash": "sha256-AaXxChMWObWW3uW2IJ4HQ5nO7KoJZvkNFloisRDKuws=",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-remoteaccess/releases/download/v12.2.4.4/jellyfin-plugin-remoteaccess-12.2.4.4.zip",
+        "targetAbi": "12.2.0.0",
+        "timestamp": "2026-10-23T18:43:09Z",
+        "version": "12.2.4.4"
+      },
+      {
+        "changelog": "## Fixed\r\n- A DNS provider that redirects to another server is no longer followed there, so API keys sent in headers only ever reach the server they were entered for.\r\n- The logs, the activity log and saved status mask many more kinds of credentials, such as keys, passwords and hashes in addresses, provider replies and errors, and never show the credentials a request was sent with.\r\n- A location database that will not open falls back to the one it replaced, and a damaged one no longer stays locked so it can be replaced.\r\n\r\n## Changed\r\n- The self-signed root can only vouch for your proxy's names, localhost and private addresses, and lasts three years. A root from an older version is replaced once, so install the new one on each device and remove the old one.\r\n- With Only through the proxy on, Jellyfin stays on this server alone when the proxy stops working, instead of opening up on its own. The server log says how to turn the proxy off by hand, and to close the router's ports first.\r\n- Credentials are never stored unencrypted. When the plugin cannot set up its encryption keys, saving a credential is refused with the steps to fix it.\r\n- Step 4 names the device that says it forwarded the ports, and warns when it is not this server's default gateway.\r\n- Advanced > Blocking warns under Country rule when the location database is not loaded, and says whether everyone or nobody can connect.\r\n\r\n## Developer\r\n- The Beginner's Guide compares Free and Recommended in a table, with one pair of tabs for the only step that differs.\r\n- The docs cover checking a router's forward and what to do if the proxy stops working with Only through the proxy on.",
+        "checksum": "369fe5b1063f3220aef96f68a85604ef",
+        "hash": "sha256-45atSLl42WU7CQKRtxKQFQrUo+4FnuH+2dwlrLufl8g=",
+        "sourceUrl": "https://github.com/JPKribs/jellyfin-plugin-remoteaccess/releases/download/v12.2.4.3/jellyfin-plugin-remoteaccess-12.2.4.3.zip",
+        "targetAbi": "12.2.0.0",
+        "timestamp": "2026-10-22T21:27:43Z",
+        "version": "12.2.4.3"
+      },
+      {
         "changelog": "\n## Changed\n- Configuration says less. Each step states where it stands in one short line, and descriptions no longer repeat it.\n- Links to Advanced read as Advanced > Blocking, Advanced > Addresses and so on, the same way across the plugin.\n- Step 6 no longer repeats the time of the outside check, which its card already shows.\n\n## Developer\n- The Beginner's Guide has Free and Recommended tabs. Picking one switches every tab on the page, so only your path shows.\n- The docs use the same Advanced > Blocking style as the plugin, with new screenshots.",
         "checksum": "fae365e104f58be4f4c6709e656b8cc2",
         "hash": "sha256-zWc0rQRIqINA26oNGUpKf2G+E5to+XUzDL9EjSde3rU=",
@@ -1872,6 +1890,15 @@
     "overview": "Stremio addons as Jellyfin library items: search, catalogs and on-demand streams through AIOStreams.",
     "owner": "lstb1t",
     "versions": [
+      {
+        "changelog": "## [0.26.28.0] - 2026-10-22\n\n### 🚀 Features\n\n- Take settings and addon changes without a restart (#320)\n- Show the cast on a title's first open (#327)\n\n### 🐛 Bug Fixes\n\n- Run the other segment providers when gelato introdb is disabled (#322)\n- An empty addon url in a per-user override means the global addon (#323)\n- Honor a user's parental in search and insert (#324)\n- Support more meta providers for series (#325)\n- Show actors with any meta provider (#326)\n- Keep your place in a movie after a short stream (#328)\n- Get skip credits back for a title added again (#329)\n",
+        "checksum": "f80ada08800e4f0cdd5dc8da73b9f992",
+        "hash": "sha256-JMSLRF4BCcs8hRExrRCr7TFoP1GA2lTx+GEBj+g6H0I=",
+        "sourceUrl": "https://github.com/lostb1t/Gelato/releases/download/v0.26.28.0/gelato_0.26.28.0.zip",
+        "targetAbi": "12.1.0.0",
+        "timestamp": "2026-10-22T19:42:24Z",
+        "version": "0.26.28.0"
+      },
       {
         "changelog": "## [0.26.27.0] - 2026-10-19\n\n### 🚀 Features\n\n- Syncplay source syncing (#120)\n- Look up IntroDB's end credits for movies (#310)\n- List movie and series search results by rank (#311)\n- List a person's titles outside the library on their page (#314)\n- Hide titles opened from search until someone plays them (#316)\n- Sync series trees when extending local series is switched (#318)\n\n### 🐛 Bug Fixes\n\n- Offer every version in a playback info that names none (#313)\n- List upcoming episodes with the unreleased filter on (#315)\n- Move playback on from a short clip without taking it for a dead stream (#317)\n\n### 📚 Documentation\n\n- Reword the settings page and the README in one voice (#319)\n\n### ⚡ Performance\n\n- Build an owned title's sources once per search (#312)\n",
         "checksum": "bb1ce7a767266e25c69d971ac9a60436",
@@ -2422,6 +2449,15 @@
     "owner": "Namo",
     "versions": [
       {
+        "changelog": "## Changelog\n### Features\n- Switch between alternate versions of an item (e.g. 4K and 1080p) directly inside the preview\n- Play button for collapsed list items\n- List other video files inside a standalone movie's folder (can be toggled on in the plugin settings)\n### Fixes\n- The preview button will now appear for episodes that start with a pre-roll intro (e.g. from the Local Intros plugin)\n- Jellyfin pages will now load faster, the plugin script is smaller, no longer blocks page loading and is cached by the browser\n- Long group names will now be truncated, the full name is shown on hover\n- List items without an index number will no longer show a gap in front of their title\n- Playback progress will no longer be applied to the wrong item right after switching to another item\n### Maintenance\n- Removed the Jellyfin SDK type/build dependency\n- Bumped frontend build dependencies to their latest versions",
+        "checksum": "8d9c65b62849b8c58404ac82947c89a4",
+        "hash": "sha256-3G2cz2LxK8GSlnmXe0oJK+ziBTGllPSVdsfYEXBIJLY=",
+        "sourceUrl": "https://github.com/Namo2/InPlayerEpisodePreview/releases/download/v2.5.0/InPlayerEpisodePreview_2.5.0.3-12.0.zip",
+        "targetAbi": "12.0",
+        "timestamp": "2026-10-23T12:30:30Z",
+        "version": "2.5.0.3"
+      },
+      {
         "changelog": "## Changelog\n### Features\n- Include Videos with multiple parts (can be toggled in the plugin settings)\n- Auto close the preview popup when starting a new episode (can be toggled in the plugin settings)\n- Switch the display mode for the season summary by clicking on the label\n### Fixes\n- Episode playstate will not be reset anymore on a rewatch\n- Spoiler blur will now be updated immediately when triggering the playstate button inside the preview popup\n- Video progress bar and season summary will now be live updated\n- Season summary will now be displayed at the correct position during season selection\n- Empty descriptions will now be shown empty instead of \"loading...\"",
         "checksum": "b9a58cf11e362d4e4f38359d849363bb",
         "hash": "sha256-BKrWPiUm4k2w8SMlJsWNxQocqP3LDZcEjF59OhyRfkk=",
@@ -2503,6 +2539,15 @@
     "overview": "Automatically detect and skip intros in television episodes",
     "owner": "AbandonedCart, rlauuzo, jumoog (forked from ConfusedPolarBear)",
     "versions": [
+      {
+        "changelog": "- See the full changelog at [GitHub](https://github.com/intro-skipper/intro-skipper/releases/tag/12.0/v12.0.6.0)\n",
+        "checksum": "05c5d373a175204b4e5fbadff56ece33",
+        "hash": "sha256-g8Oiyt4NK8pyCXt2M1B7EpEL71kUGGkxtXSzKndUuOQ=",
+        "sourceUrl": "https://github.com/intro-skipper/intro-skipper/releases/download/12.0/v12.0.6.0/intro-skipper-v12.0.6.0.zip",
+        "targetAbi": "12.0.0.0",
+        "timestamp": "2026-10-23T19:18:12Z",
+        "version": "12.0.6.0"
+      },
       {
         "changelog": "- See the full changelog at [GitHub](https://github.com/intro-skipper/intro-skipper/releases/tag/12.0/v12.0.5.0)\n",
         "checksum": "d3fc1c17efa61ed85e86228f3c2c940f",
