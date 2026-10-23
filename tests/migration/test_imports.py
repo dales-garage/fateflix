@@ -161,6 +161,21 @@ class IntakeTests(unittest.TestCase):
 
 
 class PolicyTests(unittest.TestCase):
+    def test_startup_waits_before_mutating_policy_and_has_a_finite_deadline(self):
+        with patch.object(
+            imports.time, "monotonic", side_effect=[0, 1, 121]
+        ), patch.object(imports.time, "sleep") as sleep:
+            calls = []
+
+            def unavailable(cfg, method, path, value=None):
+                calls.append((method, path))
+                raise ConnectionRefusedError()
+
+            with self.assertRaises(ConnectionRefusedError):
+                imports.reconcile({}, unavailable)
+        self.assertEqual(calls, [("GET", "system/status"), ("GET", "system/status")])
+        sleep.assert_called_once_with(2)
+
     def test_codec_preferences_keep_fallbacks_and_unrelated_policy_and_are_idempotent(
         self,
     ):
