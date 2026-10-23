@@ -8,7 +8,7 @@ import time
 import nixflix_ops as ops
 
 CONFIG = Path("/etc/nixflix/playback.json")
-PROBE_VERSION = 2
+PROBE_VERSION = 3
 
 
 def command(args, seconds=20):
@@ -93,17 +93,20 @@ def playback(if_changed=False):
                         "-hwaccel_device",
                         "/dev/dri/renderD128",
                         "-hwaccel_output_format",
-                        "vaapi",
+                        "p010le" if codec == "av1" else "vaapi",
                     ]
                     if codec == "av1":
                         # libdav1d is often the default and cannot use VA-API.
                         decode += ["-c:v", "av1"]
+                        # Copy on the decoder thread, before context teardown.
+                        # Intel's AV1 status-report path can race a later
+                        # filter-thread hwdownload against decoder destruction.
+                        result["decode_transfer"] = "decoder-copyback"
                 decode += ["-i", target]
-                if cfg["enabled"]:
+                if cfg["enabled"] and codec != "av1":
                     # Requiring a hardware-frame download makes silent software
                     # fallback fail instead of reporting a GPU success.
-                    pixel_format = "p010le" if codec == "av1" else "nv12"
-                    decode += ["-vf", "hwdownload,format=" + pixel_format]
+                    decode += ["-vf", "hwdownload,format=nv12"]
                 command(decode + ["-f", "null", "-"])
                 result["healthy"] = True
             except (OSError, subprocess.SubprocessError) as error:

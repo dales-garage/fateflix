@@ -449,18 +449,24 @@ class GPU(unittest.TestCase):
             self.assertNotIn("av1_vaapi", encode)
             self.assertEqual(decode[decode.index("-c:v") + 1], "av1")
             self.assertLess(decode.index("-c:v"), decode.index("-i"))
-            self.assertIn("hwdownload,format=p010le", decode)
-            self.assertIn("-hwaccel_output_format", decode)
+            self.assertEqual(decode[decode.index("-hwaccel") + 1], "vaapi")
+            self.assertEqual(
+                decode[decode.index("-hwaccel_output_format") + 1], "p010le"
+            )
+            self.assertNotIn("-vf", decode)
             self.assertEqual(cleanup[:2], ["rm", "-f"])
             result = json.loads((Path(d) / "playback.json").read_text())
             self.assertEqual(result["checks"]["av1"]["encode_mode"], "software")
             self.assertEqual(result["checks"]["av1"]["decode_mode"], "gpu")
+            self.assertEqual(
+                result["checks"]["av1"]["decode_transfer"], "decoder-copyback"
+            )
 
     def test_hardware_decode_failure_is_not_hidden_by_successful_fixture(self):
         cfg = {"enabled": True, "ffmpeg": "/pinned", "fingerprint": ["test"]}
 
         def command(args, **kwargs):
-            if "hwdownload,format=p010le" in args:
+            if "-c:v" in args and args[args.index("-c:v") + 1] == "av1":
                 raise subprocess.CalledProcessError(1, args)
 
         with tempfile.TemporaryDirectory() as d, patch.object(
