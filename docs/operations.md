@@ -2,6 +2,8 @@
 
 For Whisparr codec preferences, new-import scan/identify, and the separately
 authorized H.264 backfill/conversion queue, see [AV1 import automation](imports.md).
+For FreeCORE disk/pool alerts to the existing Discord errors channel, see
+[FreeCORE alert installation](freecore-alerts.md).
 
 Production changes go through reviewed PRs, required CI, and Comin. Keep hosted
 Renovate and its existing groups, schedules, and manual merge decisions. If
