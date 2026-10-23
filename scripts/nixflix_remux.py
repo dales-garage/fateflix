@@ -69,6 +69,15 @@ def require(condition, message):
         raise Skip(message)
 
 
+def candidate_exclusion(api_path):
+    path = PurePosixPath(api_path)
+    if any(part.startswith(".") for part in path.parts):
+        return "hidden file or directory excluded"
+    if ".av1-work-" in path.name.lower():
+        return "temporary AV1 work file excluded"
+    return None
+
+
 def tags(value):
     return {k.lower(): v for k, v in value.get("tags", {}).items()}
 
@@ -230,7 +239,11 @@ class Queue:
                 )["findFiles"]
                 batch = result["files"]
                 files.extend(
-                    f for f in batch if f and f["path"].lower().endswith(".mkv")
+                    f
+                    for f in batch
+                    if f
+                    and f["path"].lower().endswith(".mkv")
+                    and not candidate_exclusion(f["path"])
                 )
                 if page * 200 >= result["count"]:
                     break
@@ -328,6 +341,9 @@ class Queue:
         return result["scenes"]
 
     def process(self, job):
+        exclusion = candidate_exclusion(job["path"])
+        if exclusion:
+            raise Skip(exclusion)
         src = self.host_path(job["path"])
         dst = src.with_suffix(".mp4")
         mp4_path = str(PurePosixPath(job["path"]).with_suffix(".mp4"))
@@ -648,9 +664,25 @@ class Queue:
                     if path.exists()
                     else {**candidate, "phase": "pending", "status": "pending"}
                 )
-                if job["status"] == "complete" or (
-                    job["status"] in {"skipped", "failed"} and not retry
-                ):
+                if job["status"] == "complete":
+                    continue
+                # Old discovery plans can contain indexed encoder work files.
+                # Classify them locally before resolving paths or retrying a
+                # failed job; even --retry must never process these artifacts.
+                exclusion = candidate_exclusion(
+                    candidate["path"]
+                ) or candidate_exclusion(job["path"])
+                if exclusion:
+                    if job["status"] != "skipped" or job.get("error") != exclusion:
+                        previous = job.get("error")
+                        self.save(
+                            job,
+                            status="skipped",
+                            error=exclusion,
+                            **({"previous_error": previous} if previous else {}),
+                        )
+                    continue
+                if job["status"] in {"skipped", "failed"} and not retry:
                     continue
                 self.save(job, status="running", error=None)
                 print(

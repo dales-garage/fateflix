@@ -359,6 +359,124 @@ class QueueTests(unittest.TestCase):
         ):
             self.assertEqual(self.queue.status()["counts"], {"pending": 1})
 
+    def test_discovery_excludes_hidden_and_encoder_work_files_without_media_access(
+        self,
+    ):
+        paths = [
+            "data/studio/test.mkv",
+            "data/studio/.test.av1-work-1043.mkv",
+            "data/.encoder/test.mkv",
+            "data/studio/test.AV1-WORK-1043.mkv",
+        ]
+        files = [
+            dict(self.queue.source_file, id=str(i), path=p) for i, p in enumerate(paths)
+        ]
+        (self.queue.state / "plan.json").unlink()
+        with patch.object(
+            self.queue,
+            "api",
+            return_value={"findFiles": {"count": len(files), "files": files}},
+        ), patch.object(self.queue, "host_path", side_effect=AssertionError):
+            result = self.queue.plan()
+        plan = json.loads((self.queue.state / "plan.json").read_text())
+        self.assertEqual(result["candidates"], 1)
+        self.assertEqual(plan["files"], [files[0]])
+
+    def test_old_work_entries_are_excluded_before_media_access_in_every_phase(self):
+        work = self.source.with_name(".test.av1-work-1043.mkv")
+        work.write_bytes(b"encoder-owned contents")
+        plan_path = self.queue.state / "plan.json"
+        candidate = dict(self.queue.source_file, path="data/studio/" + work.name)
+        remux.atomic_json(plan_path, {"files": [candidate]})
+        for phase in (
+            "pending",
+            "remuxing",
+            "verified",
+            "published",
+            "attached",
+            "selected",
+        ):
+            for retry in (False, True):
+                with self.subTest(phase=phase, retry=retry):
+                    job = dict(
+                        candidate,
+                        phase=phase,
+                        status="failed",
+                        error="original missing-source failure",
+                    )
+                    remux.atomic_json(self.queue.jobs / "10.json", job)
+                    with patch.object(
+                        self.queue, "host_path", side_effect=AssertionError
+                    ), patch.object(
+                        self.queue, "api", side_effect=AssertionError
+                    ), patch.object(
+                        self.queue, "process", side_effect=AssertionError
+                    ):
+                        result = self.queue.run(retry=retry)
+                    self.assertEqual(result["counts"], {"skipped": 1})
+                    self.assertEqual(self.job()["phase"], phase)
+                    self.assertEqual(
+                        self.job()["previous_error"], "original missing-source failure"
+                    )
+                    self.assertEqual(work.read_bytes(), b"encoder-owned contents")
+                    self.assertFalse(work.with_suffix(".mp4").exists())
+                    with patch.object(self.queue, "save", side_effect=AssertionError):
+                        self.queue.run(retry=retry)
+
+    def test_excluded_old_entry_does_not_prevent_next_real_media_job(self):
+        plan_path = self.queue.state / "plan.json"
+        plan = json.loads(plan_path.read_text())
+        work = dict(
+            self.queue.source_file, id="99", path="data/studio/.missing.av1-work-1.mkv"
+        )
+        plan["files"].insert(0, work)
+        remux.atomic_json(plan_path, plan)
+        remux.atomic_json(
+            self.queue.jobs / "99.json",
+            dict(work, phase="pending", status="failed", error="missing source"),
+        )
+        result = self.queue.run()
+        self.assertEqual(result["counts"], {"skipped": 1, "complete": 1})
+        self.assertTrue(self.source.with_suffix(".mp4").exists())
+        self.assertFalse(self.source.exists())
+
+    def test_direct_processing_rejects_work_file_before_resolving_paths(self):
+        for path in (
+            "data/studio/.work.mkv",
+            "data/.encoder/work.mkv",
+            "data/studio/work.av1-work-1.mkv",
+        ):
+            with self.subTest(path=path), patch.object(
+                self.queue, "host_path", side_effect=AssertionError
+            ), self.assertRaises(remux.Skip):
+                self.queue.process({"path": path, "phase": "selected"})
+
+    def test_completed_work_entry_and_other_failed_jobs_are_not_rewritten(self):
+        plan_path = self.queue.state / "plan.json"
+        plan = json.loads(plan_path.read_text())
+        work = dict(self.queue.source_file, id="99", path="data/studio/.work.mkv")
+        plan["files"].append(work)
+        remux.atomic_json(plan_path, plan)
+        remux.atomic_json(
+            self.queue.jobs / "10.json",
+            dict(
+                self.queue.source_file,
+                phase="remuxed",
+                status="failed",
+                error="hash mismatch",
+            ),
+        )
+        remux.atomic_json(
+            self.queue.jobs / "99.json", dict(work, phase="complete", status="complete")
+        )
+        before = {p.name: p.read_bytes() for p in self.queue.jobs.glob("*.json")}
+        with patch.object(self.queue, "save", side_effect=AssertionError):
+            result = self.queue.run()
+        self.assertEqual(result["counts"], {"failed": 1, "complete": 1})
+        self.assertEqual(
+            before, {p.name: p.read_bytes() for p in self.queue.jobs.glob("*.json")}
+        )
+
     def test_paths_cannot_escape_media_root(self):
         for p in ("/other/test.mkv", "data/../test.mkv"):
             with self.assertRaises(remux.Skip):

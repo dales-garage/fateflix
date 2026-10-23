@@ -22,6 +22,13 @@ below `/data/media/porn`. It does not scan media contents or modify media. Revie
 library paths. An existing plan is never overwritten. Newly downloaded files
 are not automatically added to the batch.
 
+Discovery excludes hidden files/directories and AV1 encoder work files whose
+names contain `.av1-work-`. Existing plans receive the same exclusion before
+any media path resolution, API access, or subprocess starts, including with
+`--retry`. Unfinished excluded entries are recorded as skipped; an earlier
+failure is retained in the private journal's `previous_error`. Completed entries
+are unchanged. No work file or its Stash record is modified or removed.
+
 The service has one worker, low CPU/I/O scheduling priority, a 768 MiB memory
 limit, no timer, and no automatic restart. Deployment and reboot do not start
 the queue. It retains the configured free-space reserve (500 GiB by default),
@@ -75,6 +82,12 @@ Ordinary resume skips previously failed/skipped jobs. After resolving their
 cause, stop the service and run `sudo nixflix-remux run --retry`. For an isolated
 one-file trial, stop the service and run `sudo nixflix-remux run --limit 1`.
 Never run fault-injection tests against the live NAS.
+
+If an older plan stopped on a hidden encoder work file, deploy the exclusion
+guard and use the ordinary `systemctl start nixflix-remux` command. It classifies
+the old work-file entries locally without retrying other failures. Retain the
+original plan and journals; do not delete the temporary files or rewrite a
+failed job as completed to clear the queue.
 
 A timeout, unavailable API, or insufficient capacity stops the whole worker.
 Inspect the reported failed job before resuming it. Subprocesses inherit the
