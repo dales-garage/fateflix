@@ -139,6 +139,39 @@ def credentials():
         assert stat.st_uid == 0 and not stat.st_mode & 0o077
 
 
+def completed_oneshot(name, wait_seconds=245):
+    # A running oneshot has no exit timestamp yet. Wait read-only for its
+    # bounded execution instead of publishing a false failure on each retry.
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        output = subprocess.check_output(
+            [
+                "systemctl",
+                "show",
+                name,
+                "-p",
+                "ActiveState",
+                "-p",
+                "Result",
+                "-p",
+                "ExecMainExitTimestampMonotonic",
+            ],
+            text=True,
+            timeout=5,
+        )
+        state = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+        if state["ActiveState"] not in ("activating", "deactivating"):
+            assert state["Result"] == "success"
+            assert int(state["ExecMainExitTimestampMonotonic"]) > 0
+            return
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(
+                "Reconciliation did not finish within its execution limit"
+            )
+        time.sleep(min(1, remaining))
+
+
 def notifiarr():
     active("notifiarr")
     http("http://127.0.0.1:5454/", probe=True)
@@ -154,23 +187,7 @@ def notifiarr():
         "tautulli",
     ):
         assert cfg.get(name), name
-    status = subprocess.check_output(
-        ["systemctl", "show", "notifiarr-connections", "-p", "Result", "--value"],
-        text=True,
-    ).strip()
-    assert status == "success"
-    timestamp = subprocess.check_output(
-        [
-            "systemctl",
-            "show",
-            "notifiarr-connections",
-            "-p",
-            "ExecMainExitTimestampMonotonic",
-            "--value",
-        ],
-        text=True,
-    ).strip()
-    assert int(timestamp) > 0
+    completed_oneshot("notifiarr-connections")
 
 
 def seerr():
