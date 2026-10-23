@@ -107,6 +107,23 @@ one does not directly start it; the next recovery pass reconciles it. A plain
 for example `podman-stash`, without `.service`. Global and per-service holds
 combine; releasing a per-service hold does not override a global hold.
 
+If a service briefly fails during activation, its retry timer can restore it
+while Comin still records the deployment as failed. `/health` stays at 503 until
+the deployment succeeds. Inspect the failed unit and resolve its cause first.
+Run `sudo nixflix-health check`, then compare `sudo comin deployment latest`
+with the expected reviewed commit and `readlink /run/current-system`. When the
+latest deployment is the intended, already-selected generation, retry it with
+`sudo comin deployment submit-latest --operation switch`. Verify the latest
+deployment reports `done` and `/health` returns 200. Preserve the failed history;
+do not edit health/deployment JSON to make an unsuccessful rollout appear healthy.
+This retries configuration activation and does not restore application databases.
+
+Readiness/probe/recovery units reference only `nixflix_ops.py`. The health command
+packages its four Python modules explicitly. Unrelated CI and remux script edits
+therefore do not change readiness unit paths or restart dependent media services.
+The first rollout of this packaging change updates those paths once; validate it
+during low usage using the normal runtime rollout procedure.
+
 ## Playback diagnostics
 
 GPU enablement sets Stash's pinned host FFmpeg/FFprobe, Intel driver environment,
@@ -124,15 +141,27 @@ sudo cat /var/lib/nixflix-gitops/playback.json
 sudo journalctl -u nixflix-playback --since '-30 minutes'
 ```
 
-The probe encodes and decodes one second of synthetic H.264, HEVC, and AV1 inside
-Stash, using local cache files and 20-second per-command limits inside the
+The probe encodes and decodes one second of synthetic H.264 and HEVC inside
+Stash. With GPU enabled, those codecs use hardware encoding and decoding. AV1
+uses a short software-generated 10-bit fixture followed by hardware decoding:
+the production UHD 750 supports AV1 decoding but has no AV1 encoding entrypoint.
+See Intel's [media-driver feature matrix](https://github.com/intel/media-driver#decodingencoding-features).
+FFmpeg's native AV1 decoder is selected explicitly, and a hardware-frame download
+is required so software fallback cannot report a successful GPU test. With GPU
+disabled, all three codecs use the container's software tools. The report records
+each codec's encode/decode mode and the failed stage when applicable.
+
+It uses local cache files and 20-second per-command limits inside the
 container plus an outer timeout. It removes its temporary files and never
 transcodes library content. Results are separate diagnostics; an unsupported
 codec or absent driver does not change core deployment health. It runs initially,
 on demand, and after a successful deployment when the kernel, firmware, Intel
 drivers, FFmpeg, Stash image, or GPU state fingerprint changes. A successful
-unchanged fingerprint skips the probe; a failed probe can retry at the next boot
-or deployment. There is no recurring background-transcode timer.
+unchanged fingerprint and probe version skip the probe within the same boot.
+Boot ID and running kernel release are recorded; a new boot always rechecks, so a
+pre-reboot success cannot stand in for testing a newly booted kernel. A failed
+probe can retry at the next boot or deployment. There is no recurring
+background-transcode timer.
 
 These small synthetic tests do not establish HDR tone mapping, 4K throughput,
 client compatibility, or end-to-end AV1 fallback. Keep the existing stable Plex

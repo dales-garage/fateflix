@@ -35,7 +35,7 @@ let
   containers = map (n: "podman-${n}") (
     builtins.attrNames config.virtualisation.oci-containers.containers
   );
-  operations = "${pkgs.python3}/bin/python3 ${../../scripts}/nixflix_ops.py";
+  operations = "${pkgs.python3}/bin/python3 ${../../scripts/nixflix_ops.py}";
   # Setup jobs may reconcile/delete restored state. They are explicit operations in staging.
   automation =
     lib.concatMap

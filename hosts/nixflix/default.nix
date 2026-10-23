@@ -147,7 +147,7 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = "${pkgs.python3}/bin/python3 ${../../scripts}/nixflix_ops.py nas-ready";
+      ExecStart = "${pkgs.python3}/bin/python3 ${../../scripts/nixflix_ops.py} nas-ready";
       TimeoutStartSec = 10;
     };
   };
