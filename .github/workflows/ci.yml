@@ -109,7 +109,7 @@ jobs:
       - name: Free runner space for VM tests
         if: matrix.vm
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
-      - uses: DeterminateSystems/determinate-nix-action@v3.23.3
+      - uses: DeterminateSystems/determinate-nix-action@v3.24.0
         with:
           kvm: ${{ matrix.vm }}
       - name: Build and run selected check
@@ -141,7 +141,7 @@ jobs:
           persist-credentials: false
       - name: Free runner space for the production closure
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
-      - uses: DeterminateSystems/determinate-nix-action@v3.23.3
+      - uses: DeterminateSystems/determinate-nix-action@v3.24.0
         with:
           kvm: false
       - run: nix build --no-write-lock-file --no-link -L .#nixosConfigurations.nixflix-production.config.system.build.toplevel
