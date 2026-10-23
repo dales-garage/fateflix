@@ -75,6 +75,14 @@ five minutes after completion, including after failures. Each invocation is
 limited to 240 seconds; independent application connections run concurrently.
 Unrelated webhooks/providers and the successful-key idempotency markers remain
 preserved. Inspect `journalctl -u notifiarr-connections` after an extended outage.
+The health checker waits read-only for an in-progress reconciliation to finish,
+for at most 245 seconds, rather than treating its temporarily empty exit timestamp
+as a failure. It reads state, result and completion timestamp together. Completed
+failures, timeouts and a reconciliation that has never completed remain unhealthy.
+The existing report stays available while the check waits, subject to its normal
+freshness, boot and generation checks. Health checks never start reconciliation.
+The health service has an eight-minute overall limit to accommodate the readiness
+retry window, this completion wait, and the remaining bounded API checks.
 
 ## Recovery and maintenance
 

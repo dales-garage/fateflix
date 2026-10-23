@@ -30,6 +30,58 @@ health = load("operations_health", "gitops-health.py")
 stash = load("stash_gpu", "configure-stash-gpu.py")
 
 
+class ReconciliationHealth(unittest.TestCase):
+    running = (
+        "ActiveState=activating\nResult=success\nExecMainExitTimestampMonotonic=0\n"
+    )
+    success = (
+        "ActiveState=inactive\nResult=success\nExecMainExitTimestampMonotonic=42\n"
+    )
+
+    def test_running_reconciliation_waits_for_completed_success(self):
+        with patch.object(
+            health.subprocess, "check_output", side_effect=[self.running, self.success]
+        ) as show, patch.object(health.time, "sleep") as sleep:
+            health.completed_oneshot("notifiarr-connections")
+            self.assertEqual(show.call_count, 2)
+            sleep.assert_called_once()
+            self.assertTrue(
+                all(
+                    call.args[0][:2] == ["systemctl", "show"]
+                    for call in show.call_args_list
+                )
+            )
+
+    def test_running_reconciliation_does_not_hide_a_completed_failure(self):
+        failed = self.success.replace("Result=success", "Result=exit-code")
+        with patch.object(
+            health.subprocess, "check_output", side_effect=[self.running, failed]
+        ), patch.object(health.time, "sleep"):
+            with self.assertRaises(AssertionError):
+                health.completed_oneshot("notifiarr-connections")
+
+    def test_unstarted_reconciliation_is_not_healthy(self):
+        unstarted = self.success.replace("=42", "=0")
+        with patch.object(health.subprocess, "check_output", return_value=unstarted):
+            with self.assertRaises(AssertionError):
+                health.completed_oneshot("notifiarr-connections")
+
+    def test_running_reconciliation_has_a_finite_wait(self):
+        with patch.object(
+            health.subprocess, "check_output", return_value=self.running
+        ), patch.object(health.time, "monotonic", side_effect=[0, 1]):
+            with self.assertRaises(TimeoutError):
+                health.completed_oneshot("notifiarr-connections", wait_seconds=1)
+
+    def test_completed_reconciliation_returns_without_waiting(self):
+        with patch.object(
+            health.subprocess, "check_output", return_value=self.success
+        ) as show, patch.object(health.time, "sleep") as sleep:
+            health.completed_oneshot("notifiarr-connections")
+            show.assert_called_once()
+            sleep.assert_not_called()
+
+
 class Capacity(unittest.TestCase):
     def measure(self, available, files=0, free=0, inodes=True):
         fs = SimpleNamespace(
