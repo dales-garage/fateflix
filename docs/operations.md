@@ -1,5 +1,8 @@
 # Playback reliability and recovery
 
+For Whisparr codec preferences, new-import scan/identify, and the separately
+authorized H.264 backfill/conversion queue, see [AV1 import automation](imports.md).
+
 Production changes go through reviewed PRs, required CI, and Comin. Keep hosted
 Renovate and its existing groups, schedules, and manual merge decisions. If
 hosted restrictions become recurrent, assess GitHub Actions before adding update
