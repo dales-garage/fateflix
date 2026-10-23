@@ -7,6 +7,8 @@ upgrade cutoffs and upgrade enablement are preserved. Codec preferences apply
 within Whisparr's existing quality ranking and depend on release-title labels.
 The unrelated old `Custom_HEVC_x265` format is preserved; it was a language rule
 with a zero score rather than an effective codec preference.
+The bounded reconciliation waits up to two minutes for Whisparr's API during
+startup and retries every five minutes after completion or failure.
 
 ## New imports
 

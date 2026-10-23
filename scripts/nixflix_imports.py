@@ -66,6 +66,15 @@ def enqueue(inbox, environ):
 
 
 def reconcile(cfg, call=arr):
+    deadline = time.monotonic() + 120
+    while True:
+        try:
+            call(cfg, "GET", "system/status")
+            break
+        except (OSError, ET.ParseError):
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(2)
     formats = call(cfg, "GET", "customformat")
     managed = {}
     for name, regex in FORMATS.items():
