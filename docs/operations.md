@@ -12,6 +12,58 @@ they do not restore application databases or reverse database migrations.
 Readarr stays enabled with its existing library pending a separate replacement
 assessment. This batch enables no media deletion or database migrations.
 
+## Updating packages safely
+
+The operating-system modules track NixOS 26.05 (`nixpkgs-host`). The locked
+`nixpkgs-media` input supplies newer native Plex, SABnzbd, Bazarr, Tautulli,
+Audiobookshelf and Seerr packages, plus the 6.18 LTS kernel. Both Bazarr
+instances use the same selected package. Seerr 3.5.1 is temporarily sourced
+explicitly until Nixpkgs catches up; its dependency lock is unchanged, and its
+Node runtime comes from the fresh package set. Later packaged Seerr releases
+automatically replace this override. Hardware settings, FFmpeg, containers,
+service users and media paths retain their existing configuration.
+
+Update from current `main`, rather than rebuilding an old migration bookmark.
+In the colocated Jujutsu checkout, preserve pending work with a recovery bookmark
+before starting an empty change on `main@origin`:
+
+```sh
+jj bookmark create recovery/before-update -r @
+jj git fetch --remote origin
+jj new main@origin
+nix flake update
+nix build --no-link .#nixosConfigurations.nixflix-production.config.system.build.toplevel
+```
+
+Review the lock diff and submit it through the existing PR/CI/Comin workflow.
+Do not update the deliberately pinned TRaSH/Recyclarr policy revisions as part
+of a package refresh. `system.stateVersion` describes persistent state defaults;
+it stays at 26.05. Kernel installation takes effect on the next planned boot;
+activation alone does not replace the running kernel.
+
+Before switching application versions, take consistent SQLite backups and copy
+other application state to a private local recovery directory. Nix generations
+do not restore those databases. A failed activation can still have started a
+newer application, so inspect its logs and database compatibility before any
+software downgrade. The Comin profile and the ordinary system profile can have
+different histories: verify the intended generation's Stash image, operations
+files and service definitions before activating it. Never select an old image
+against a newer Stash database. Preserve the failed generation and working-tree
+changes for diagnosis. After recovery, build from current main and use the
+explicit production target for any authorized manual switch:
+
+```sh
+sudo nixos-rebuild switch --flake .#nixflix-production
+sudo nixflix-health check
+systemctl --failed
+```
+
+The October refresh leaves Whisparr on its packaged v2 release and Readarr on its
+existing retired release. Whisparr's separate newer release still embeds .NET 6
+and needs an isolated database and import-API compatibility check before rollout;
+a package refresh must preserve the conversion/relinking workflow. Stash already
+runs the latest stable 0.31.1 image and is not downgraded.
+
 ## Storage and advisories
 
 SABnzbd has `download_free = 500G`, `complete_free = 500G`, and

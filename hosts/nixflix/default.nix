@@ -9,6 +9,7 @@
     ./hardware-configuration.nix
     ./services.nix
     ./native-media.nix
+    ./packages.nix
     ./staging.nix
     ./production.nix
     ./gpu.nix
