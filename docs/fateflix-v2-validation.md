@@ -65,8 +65,37 @@ checks. KVM integration tests and live staging deployment/rollback remain
 unverified.
 
 FreeCORE telemetry now has an explicit `freecore` aspect and
-`modules/_modules/monitoring/freecore.nix` implementation. It owns the existing
+`capabilities/freecore/default.nix` implementation. It owns the existing
 SMB/HTTPS availability checks and exposes the unchanged NAS bridge payload in
-production. The NAS address lives in `modules/_hosts/nixflix/freecore.nix`.
+production. The NAS address lives in `hosts/nixflix/freecore.nix`.
 Regression checks confirm staging has neither the payload nor the probes, and
 both host closures build with the module included.
+
+## Capability dependency refinement
+
+The implementation moves to root `capabilities/`, `integrations/` and `hosts/`
+directories, all outside the flake-parts discovery root. FreeCORE owns a separate
+directory, `processing` replaces the ambiguous imports aspect, and capabilities
+include their declared dependencies. The integration owns a schema-only
+`nixflix-api` aspect to avoid a storage/media activation cycle. Restored download
+path overrides belong to the complete host profile.
+
+`fateflix` is the preferred production output alias; `nixflix`,
+`nixflix-production` and `nixflix-staging` remain available. Comin still selects
+`nixflix-production` from `main`, and runtime hostnames and credential namespaces
+remain unchanged. Live staging and rollback acceptance remains pending.
+
+The refinement's before/after host contracts are byte-for-byte identical for
+both roles, including identities, mounts, service wiring, runtime credential
+references, package versions and runtime metadata. Full flake evaluation passed,
+and the preferred `fateflix` alias and both named host derivations were explicitly
+evaluated. Both x86_64 closures built, and runtime-generated secret canaries
+remained absent from configuration, recursive derivations and build output.
+
+All 168 Python tests passed in the pinned development shell, including the
+FFmpeg scenarios and vendor-provenance inventory check. Isolated Den composition
+regressions exercise FreeCORE without monitoring, downloads without media, and
+software playback with its required dependencies supplied transitively.
+The updater metadata check passed, and relocated shared integration/capability
+paths select the full CI suite. `flake.lock` remains unchanged. All operations
+use temporary VM checkouts and store builds; no production activation occurred.

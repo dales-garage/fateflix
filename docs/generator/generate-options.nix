@@ -71,7 +71,7 @@ let
           decl:
           let
             declStr = toString decl;
-            rootStr = toString ../../.;
+            rootStr = toString ../..;
           in
           if lib.hasPrefix rootStr declStr then lib.removePrefix (rootStr + "/") declStr else declStr
         ) opt.declarations;

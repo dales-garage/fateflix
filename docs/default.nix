@@ -23,7 +23,7 @@ in
 {
   docs = pkgs.stdenv.mkDerivation {
     name = "nixflix-docs";
-    src = ../.;
+    src = ./..;
 
     nativeBuildInputs = [ pythonEnv ];
 

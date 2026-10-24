@@ -20,8 +20,7 @@ def main():
         parser.error("a global WAN IPv4 address is required")
     manifest = json.loads(
         (
-            Path(__file__).resolve().parent.parent
-            / "modules/_hosts/nixflix/local-services.json"
+            Path(__file__).resolve().parent.parent / "hosts/nixflix/local-services.json"
         ).read_text()
     )
     token = dns_token()

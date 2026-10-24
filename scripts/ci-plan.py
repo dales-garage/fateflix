@@ -68,17 +68,15 @@ def select(names, changed):
             return full_plan(
                 names["all"], "Shared Nix inputs or packages changed; full suite"
             )
-        if path.startswith("modules/_hosts/"):
+        if path.startswith("hosts/"):
             checks |= names["host"]
             production = True
             reasons.add("host configuration")
             continue
-        if path.startswith("modules/"):
+        if path.startswith(("modules/", "capabilities/", "integrations/")):
             # Generated plugin metadata is application-scoped. Keep host
             # validation even if Navidrome is enabled on production later.
-            if path.startswith(
-                "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/"
-            ):
+            if path.startswith("integrations/nixflix/plugins/navidrome/gen/"):
                 checks |= {"navidrome-basic", "unit-tests", "docs-build"}
                 checks |= names["host"]
                 production = True

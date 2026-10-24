@@ -11,7 +11,7 @@ let
   service = cfg.systemd.services.homepage-dashboard;
   cards = lib.concatMap (group: lib.concatLists (lib.attrValues group)) dashboard.services;
   entries = lib.concatMap lib.attrValues cards;
-  manifest = builtins.fromJSON (builtins.readFile ../../modules/_hosts/nixflix/local-services.json);
+  manifest = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
   expected = builtins.removeAttrs manifest.services [
     "homepage"
     "seeme"

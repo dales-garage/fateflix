@@ -1,0 +1,63 @@
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+{
+  config = {
+    hardware.firmware = lib.mkIf (config.fateflix.playback.acceleration == "intel") [
+      pkgs.linux-firmware
+    ];
+    boot.extraModprobeConfig = lib.mkIf (config.fateflix.playback.acceleration == "intel") ''
+      options i915 enable_guc=2
+    '';
+    services.plex.accelerationDevices =
+      if (config.fateflix.playback.acceleration == "intel") then [ "/dev/dri/renderD128" ] else [ ];
+    virtualisation.oci-containers.containers.stash.extraOptions =
+      lib.mkIf (config.fateflix.playback.acceleration == "intel")
+        [
+          "--device=/dev/dri:/dev/dri"
+          "--group-add=${toString config.users.groups.render.gid}"
+          "--group-add=${toString config.users.groups.video.gid}"
+        ];
+    # The preserved Alpine image has FFmpeg but no Intel VA-API driver. Use the
+    # host's pinned FFmpeg and driver closure, without modifying the image.
+    virtualisation.oci-containers.containers.stash.volumes =
+      lib.mkIf (config.fateflix.playback.acceleration == "intel")
+        [
+          "/nix/store:/nix/store:ro"
+          "/run/opengl-driver:/run/opengl-driver:ro"
+        ];
+    virtualisation.oci-containers.containers.stash.environment =
+      lib.mkIf (config.fateflix.playback.acceleration == "intel")
+        {
+          LIBVA_DRIVER_NAME = "iHD";
+          LIBVA_DRIVERS_PATH = "/run/opengl-driver/lib/dri";
+        };
+    systemd.services.podman-stash.preStart = lib.mkBefore ''
+      ${pkgs.python3.withPackages (p: [ p.pyyaml ])}/bin/python3 ${../../scripts/configure-stash-gpu.py} \
+        /var/lib/nixflix-containers/stash/config/config.yml \
+        ${
+          if (config.fateflix.playback.acceleration == "intel") then
+            "${pkgs.ffmpeg}/bin/ffmpeg ${pkgs.ffmpeg}/bin/ffprobe enabled"
+          else
+            "/usr/bin/ffmpeg /usr/bin/ffprobe disabled"
+        }
+    '';
+    environment.etc."nixflix/playback.json".text = builtins.toJSON {
+      enabled = config.fateflix.playback.acceleration == "intel";
+      ffmpeg = "${pkgs.ffmpeg}/bin/ffmpeg";
+      # Store paths form a deployment-sensitive fingerprint without rebooting.
+      fingerprint = [
+        "${config.boot.kernelPackages.kernel}"
+        "${config.hardware.firmware}"
+        "${config.hardware.graphics.package}"
+        "${pkgs.ffmpeg}"
+        config.virtualisation.oci-containers.containers.stash.image
+        (if (config.fateflix.playback.acceleration == "intel") then "gpu" else "software")
+      ]
+      ++ map toString config.hardware.graphics.extraPackages;
+    };
+  };
+}

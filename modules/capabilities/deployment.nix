@@ -1,1 +1,6 @@
-{ den.aspects.deployment.nixos.imports = [ ../_modules/deployment/gitops.nix ]; }
+{ den, ... }: {
+  den.aspects.deployment = {
+    includes = [ den.aspects.playback ];
+    nixos.imports = [ ../../capabilities/deployment/gitops.nix ];
+  };
+}

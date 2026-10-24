@@ -12,10 +12,10 @@ let
     .config;
 in
 assert client.enable;
-assert cfg.fateflix.monitoring.freecore.address == "10.69.0.10";
+assert cfg.fateflix.freecore.address == "10.69.0.10";
 assert
   builtins.readFile cfg.environment.etc."nixflix/freecore-notifiarr.py".source
-  == builtins.readFile ../../scripts/freecore-notifiarr.py;
+  == builtins.readFile ../../capabilities/freecore/scripts/freecore-notifier.py;
 assert !(staging.config.environment.etc ? "nixflix/freecore-notifiarr.py");
 assert builtins.all (check: !(pkgs.lib.hasPrefix "FreeCORE " check.name)) (
   staging.config.nixflix.notifiarr.settings.service or [ ]

@@ -1,1 +1,6 @@
-{ den.aspects.playback.nixos.imports = [ ../_modules/playback ]; }
+{ den, ... }: {
+  den.aspects.playback = {
+    includes = [ den.aspects.media ];
+    nixos.imports = [ ../../capabilities/playback ];
+  };
+}

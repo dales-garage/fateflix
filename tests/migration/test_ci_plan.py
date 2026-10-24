@@ -22,7 +22,7 @@ class SelectionTests(unittest.TestCase):
         return ci.select(self.names, list(paths))
 
     def test_host_change_runs_host_checks_and_production_without_vms(self):
-        for path in ["modules/_hosts/nixflix/network.nix", "scripts/nixflix_remux.py"]:
+        for path in ["hosts/nixflix/network.nix", "scripts/nixflix_remux.py"]:
             with self.subTest(path=path):
                 plan = self.select(path)
                 self.assertTrue(plan["production"])
@@ -33,7 +33,9 @@ class SelectionTests(unittest.TestCase):
         for path in [
             "flake.nix",
             "flake.lock",
-            "modules/_integrations/nixflix/compat/modules/arr-common/default.nix",
+            "integrations/nixflix/compatibility/arr-common/default.nix",
+            "integrations/nixflix/vendor/modules/jellyfin/plugins/options.nix",
+            "capabilities/freecore/nas.nix",
             "modules/capabilities/downloads.nix",
             "lib/secrets/default.nix",
             "pkgs/notifiarr/default.nix",
@@ -44,9 +46,7 @@ class SelectionTests(unittest.TestCase):
                 self.assertTrue(plan["production"])
 
     def test_navidrome_generated_plugin_is_scoped(self):
-        plan = self.select(
-            "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/plugin.nix"
-        )
+        plan = self.select("integrations/nixflix/plugins/navidrome/gen/plugin.nix")
         self.assertEqual(
             set(plan["checks"]),
             self.names["host"]
@@ -56,8 +56,8 @@ class SelectionTests(unittest.TestCase):
 
     def test_grouped_changes_take_the_union(self):
         plan = self.select(
-            "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/plugin.nix",
-            "modules/_modules/media/services.nix",
+            "integrations/nixflix/plugins/navidrome/gen/plugin.nix",
+            "capabilities/media/services.nix",
             "renovate.json",
         )
         self.assertTrue(
@@ -138,7 +138,7 @@ class SelectionTests(unittest.TestCase):
         with patch.object(
             ci,
             "run",
-            side_effect=["abc", "modules/_modules/playback/gpu.nix\0README.md\0"],
+            side_effect=["abc", "capabilities/playback/gpu.nix\0README.md\0"],
         ) as run:
             plan = ci.make_plan("abc")
         self.assertTrue(plan["production"])
@@ -196,7 +196,7 @@ class SelectionTests(unittest.TestCase):
         for path in [
             "README.md",
             "renovate.json",
-            "modules/_hosts/nixflix/default.nix",
+            "hosts/nixflix/default.nix",
             "tests/migration/test_gitops.py",
             ".github/FUNDING.yml",
         ]:

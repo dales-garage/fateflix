@@ -7,5 +7,6 @@
     ];
     nixos.fateflix.host.role = "production";
   };
+  flake.nixosConfigurations.fateflix = inputs.self.nixosConfigurations.nixflix-production;
   flake.nixosConfigurations.nixflix = inputs.self.nixosConfigurations.nixflix-production;
 }

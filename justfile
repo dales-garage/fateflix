@@ -3,7 +3,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 
 check:
     python3 -m unittest discover -s tests/migration -v
-    nix eval .#nixosConfigurations.nixflix.config.system.build.toplevel.drvPath
+    nix eval .#nixosConfigurations.fateflix.config.system.build.toplevel.drvPath
     nix build .#checks.x86_64-linux.four-instance-eval
     nix build .#checks.x86_64-linux.production-eval
     treefmt --fail-on-change

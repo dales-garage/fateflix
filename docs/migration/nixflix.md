@@ -11,7 +11,7 @@ landing page on port 8082 and `homepage.vm.internal` after host/router deploymen
 The [proposed quality policy](quality-policy.md) describes the three codec/size
 tiers; it does not apply profile changes or enable automatic Recyclarr sync.
 
-The service manifest `modules/_hosts/nixflix/local-services.json` controls the router's
+The service manifest `hosts/nixflix/local-services.json` controls the router's
 proxy and DNS configuration. Every media service has a LAN-only address under
 `vm.internal`, using Caddy's built-in CA and standard HTTPS port 443. For example:
 
@@ -121,7 +121,7 @@ DNS. `--zone public` changes only router-local DNS; `public-dns` explicitly
 changes Cloudflare records. A Git push never changes router or VM configuration.
 The router DNS app preserves unrelated overrides and refuses unowned conflicts.
 
-`modules/_modules/secrets/secretspec-router.toml` declares separate `public_tls` and `router_web` profiles,
+`capabilities/secrets/secretspec-router.toml` declares separate `public_tls` and `router_web` profiles,
 without inheriting required application secrets. The Cloudflare token remains in
 `secretspec/nixflix/public_tls/CLOUDFLARE_DNS_API_TOKEN` in pass on `.18`; it needs
 Zone Read and DNS Edit only for `dalebox.pw`. No account ID is needed. Provisioning
@@ -335,7 +335,7 @@ A cloned identity must remain isolated until the final cutover.
 
 ## Secrets
 
-SecretSpec declares required credentials in `modules/_modules/secrets/secretspec.toml`. Following the
+SecretSpec declares required credentials in `capabilities/secrets/secretspec.toml`. Following the
 [pass provider convention](https://secretspec.dev/providers/pass/), entries are
 `secretspec/nixflix/default/NAME`. `scripts/extract-source-secrets.py` runs as root
 on Ubuntu and streams its output directly to `scripts/import-pass.py` on .18.
@@ -502,7 +502,7 @@ other unrelated tunnel routes must remain intact.
 ## Verification after RAM and GPU upgrade
 
 This host is Usenet-only. FlareSolverr, qBittorrent, and torrent download-client
-integrations are explicitly disabled in `modules/_modules/media/services.nix`. Its Arr
+integrations are explicitly disabled in `capabilities/media/services.nix`. Its Arr
 delay-profile declarations also disable torrents. The restored application
 databases retain runtime settings: all seven Arr instances (including native
 Readarr and Whisparr) have `enableTorrent=false` and `preferredProtocol=usenet`.

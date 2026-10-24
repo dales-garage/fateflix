@@ -142,6 +142,7 @@ jobs:
           kvm: false
       - run: nix build --no-write-lock-file --no-link .#lib.nixflixSource
       - run: nix flake check --no-build --no-write-lock-file --show-trace
+      - run: nix eval --no-write-lock-file .#nixosConfigurations.fateflix.config.system.build.toplevel.drvPath
       - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-production.config.system.build.toplevel.drvPath
       - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-staging.config.system.build.toplevel.drvPath
 

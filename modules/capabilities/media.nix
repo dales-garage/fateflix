@@ -1,9 +1,15 @@
-{ inputs, ... }: {
-  den.aspects.media.nixos.imports = [
-    inputs.self.nixosModules.default
-    ../_modules/media/services.nix
-    ../_modules/media/native-media.nix
-    ../_modules/media/homepage.nix
-    ../_modules/media/proxy.nix
-  ];
+{ den, ... }: {
+  den.aspects.media = {
+    includes = [
+      den.aspects.storage
+      den.aspects.secrets
+      den.aspects.download-policy
+    ];
+    nixos.imports = [
+      ../../capabilities/media/services.nix
+      ../../capabilities/media/native-media.nix
+      ../../capabilities/media/homepage.nix
+      ../../capabilities/media/proxy.nix
+    ];
+  };
 }

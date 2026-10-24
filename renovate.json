@@ -101,7 +101,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": [
-        "/^modules/_hosts/nixflix/containers\\.json$/"
+        "/^hosts/nixflix/containers\\.json$/"
       ],
       "matchStrings": [
         "\"(?:mylar3|stash)\"\\s*:\\s*\"(?<depName>[^\"@]+)@(?<currentDigest>sha256:[a-f0-9]{64})\""

@@ -11,14 +11,14 @@ from unittest.mock import patch
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "modules/_modules/secrets"))
+sys.path.insert(0, str(ROOT / "capabilities/secrets"))
 
 
 def module(name):
     spec = importlib.util.spec_from_file_location(
         name,
         ROOT
-        / ("modules/_modules/secrets" if name.startswith("provision-") else "scripts")
+        / ("capabilities/secrets" if name.startswith("provision-") else "scripts")
         / (name + ".py"),
     )
     value = importlib.util.module_from_spec(spec)

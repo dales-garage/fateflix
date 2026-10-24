@@ -13,7 +13,7 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-DIRECTORY = ROOT / "modules/_modules/secrets"
+DIRECTORY = ROOT / "capabilities/secrets"
 sys.path.insert(0, str(DIRECTORY))
 
 

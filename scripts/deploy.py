@@ -52,7 +52,7 @@ def main():
     script = f"""
 set -eu
 sudo -n install -d -m 755 /var/lib/nixflix-deploy
-sudo -n nix build --no-write-lock-file --out-link {result} {shlex.quote(flake + '#nixosConfigurations.nixflix.config.system.build.toplevel')}
+sudo -n nix build --no-write-lock-file --out-link {result} {shlex.quote(flake + '#nixosConfigurations.fateflix.config.system.build.toplevel')}
 """
     if a.action == "test":
         script += f"""
@@ -75,7 +75,7 @@ sudo -n tee /etc/nixos/flake.nix >/dev/null <<'FLAKE'
 }}
 FLAKE
 sudo -n tee /etc/nixos/configuration.nix >/dev/null <<'ENTRY'
-{{ ... }}: throw "Managed by declarative-dale/nixflix. Use nixos-rebuild --flake /etc/nixos#nixflix or the repository deployment commands."
+{{ ... }}: throw "Managed by declarative-dale/nixflix. Use nixos-rebuild --flake /etc/nixos#fateflix or the repository deployment commands."
 ENTRY
 sudo -n nix flake lock /etc/nixos
 """

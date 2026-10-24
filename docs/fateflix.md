@@ -1,55 +1,98 @@
 # FateFlix capability ownership
 
-FateFlix is a modular downstream of `github:kiriwalawren/nixflix`. All discovered
-files under `modules/` are flake-parts modules. import-tree excludes underscore
-paths: NixOS implementations live in `modules/_modules/`, machine configuration
-in `modules/_hosts/`, and upstream adaptation in `modules/_integrations/`.
+FateFlix composes production and staging downstream of pinned NixFlix.
+`modules/` is the only import-tree discovery root, and every discovered file is
+a flake-parts module. Implementations live outside that root: `capabilities/`
+contains owned NixOS modules, `integrations/` adapts dependencies, and `hosts/`
+contains explicitly imported machine configuration.
 
-![FateFlix expanded module tree: dependencies, capability registrations, owned subdirectories and implementation files](fateflix-graph-v2.png)
+![FateFlix capability dependencies and expanded implementation directories](fateflix-graph-v3.png)
 
-The expanded tree follows each capability registration into its owned
-implementation directory and files. The upstream NixFlix branch expands the
-patch and compatibility subdirectories. Directory branches show ownership;
-nested file branches show imports, such as storage's `default.nix` importing
-`capacity.nix` and `staging.nix`. Ellipses mark additional files in a directory.
+The tree follows dependency ownership into subdirectories and files. Solid
+capability dependency edges represent required Den `includes`; the optional
+FreeCORE/Notifiarr connection does not activate monitoring. Ellipses mark
+additional files in a directory.
 
 <details markdown="1">
-<summary>Composition relationships as a text diagram</summary>
+<summary>Capability dependency graph as text</summary>
 
 ```mermaid
-flowchart TD
-  F[flake.nix: one import-tree root] --> C[capabilities: Den registration]
-  F --> P[profiles: media-server]
-  F --> H[hosts: production and staging]
-  F --> I[integrations: upstream imports and overlay]
-  C --> M[_modules: schemas and implementations]
-  P --> C
-  H --> P
-  H --> B[_hosts: machine identities, mounts and restored paths]
+flowchart LR
+  H[Production and staging] --> P[media-server profile]
   H --> D[deployment: production only]
-  I --> U[_integrations: source adapter, patches and compatibility modules]
-  S[secrets: role-aware operator apps] --> R[SecretSpec 0.10.1: provider at runtime]
-  C --> S
-  C --> T[FreeCORE module: probes and standalone bridge]
-  T --> N[NAS-local alert feed and private runtime configuration]
-  R --> V[private credential files: persistent runtime paths]
+  P --> B[fateflix-base: machine configuration]
+  B --> S[storage]
+  P --> DL[downloads]
+  P --> PB[playback]
+  P --> PR[processing]
+  P --> M[monitoring]
+  P --> F[freecore]
+  D --> PB
+  PB --> ME[media]
+  PR --> ME
+  M --> ME
+  ME --> S
+  ME --> SE[secrets]
+  ME --> DP[download-policy: options and restrictions]
+  DL --> S
+  DL --> SE
+  DL --> DP
+  S --> API[nixflix-api: integration-owned upstream declarations]
+  DP --> API
+  F --> API
+  S --> C[fateflix-context: internal role]
+  SE --> C
+  F --> C
+  F -. optional Notifiarr probes .-> M
 ```
 
 </details>
 
-Each capability owns its schema, implementation and Den registration. Both hosts
-include `den.aspects.media-server`; production additionally includes deployment.
-`nixflix` aliases `nixflix-production`. The other output is `nixflix-staging`.
-Both retain hostname `nixflix`, their state version, service identities, database
-paths, image pins and host/media Nixpkgs separation. The lock is unchanged.
+`nixosConfigurations.fateflix` is the preferred production alias. It resolves
+to the same derivation as `nixflix-production` and the retained `nixflix` alias;
+it is not another Den host. `nixflix-staging` remains the staging output.
+Hostnames, state versions, service identities, database locations, image pins,
+SecretSpec namespaces and host/media Nixpkgs separation are unchanged.
+
+## Required dependencies and optional integration
+
+| Aspect | Required aspects |
+| --- | --- |
+| `nixflix-api` | None; integration-owned upstream option declarations |
+| `fateflix-context` | None; internal production/staging role declaration |
+| `storage` | `nixflix-api`, `fateflix-context` |
+| `secrets` | `fateflix-context` |
+| `download-policy` | `nixflix-api` |
+| `media` | `storage`, `secrets`, `download-policy` |
+| `downloads` | `storage`, `secrets`, `download-policy` |
+| `playback`, `processing`, `monitoring` | `media` |
+| `freecore` | `nixflix-api`, `fateflix-context` |
+| `deployment` | `playback` |
+| `fateflix-base` | `storage` |
+
+The downloads capability owns policy declarations separately from activating a
+download client. Media can consume protocol policy without including downloads.
+Storage can consume upstream declarations without activating media. GPU handling
+is internal to playback, including its software mode.
+
+FreeCORE owns `capabilities/freecore/`: `default.nix` declares options,
+`nas.nix` contributes probes only when Notifiarr is enabled, and `notifier.nix`
+exposes the unchanged NAS bridge payload. Its script lives in the owned
+`scripts/` subdirectory. Monitoring does not include FreeCORE, and FreeCORE does
+not include monitoring.
+
+The shared machine configuration represents alternate roles of the existing VM,
+including the same filesystem UUIDs. A separate staging machine must supply its
+own hardware definitions; shared hardware is not evidence of live staging
+acceptance. Restored download-path overrides live in the complete `media-server`
+profile, not the machine base.
 
 ## Configuration
 
 Include an aspect to activate its capability. Options configure its behavior.
-The old centralized `modules/options.nix`, `modules/settings.nix`, and their
-activation switches are removed without aliases. Shared host composition lives
+The old centralized option modules and activation switches have been removed. Shared host composition lives
 in `modules/profiles/media-server.nix`; host-specific choices live in
-`modules/hosts/` and `modules/_hosts/nixflix/`.
+`modules/hosts/` and `hosts/nixflix/`.
 
 These are NixOS options, available in a composed aspect's `nixos` configuration:
 
@@ -65,11 +108,11 @@ These are NixOS options, available in a composed aspect's `nixos` configuration:
 | Downloads | `fateflix.downloads.usenet.allowed` | `true` |
 | Playback | `fateflix.playback.acceleration` | `intel` (`software` also supported) |
 | Media | `fateflix.media.dashboard` | Existing dashboard preferences |
-| Imports | `fateflix.imports.conversion` | Existing CRF, preset, quota and reserve |
-| Imports | `fateflix.imports.remux.reserveBytes` | Existing NAS reserve |
-| FreeCORE | `fateflix.monitoring.freecore` | NAS address, interval and timeout |
+| Processing | `fateflix.processing.conversion` | Existing CRF, preset, quota and reserve |
+| Processing | `fateflix.processing.remux.reserveBytes` | Existing NAS reserve |
+| FreeCORE | `fateflix.freecore` | NAS address, interval and timeout |
 
-The machine explicitly overrides incomplete downloads to
+The shared host profile explicitly overrides incomplete downloads to
 `${downloadsRoot}/intermediate` and completed downloads to `${downloadsRoot}/`.
 These match the restored SABnzbd state. Startup now reconciles these two settings
 to their canonical values. Container-internal paths (including Stash `/data`)
@@ -84,7 +127,7 @@ Torrent policy disables torrent clients, integrations, indexer proxies and
 unapproved indexers. Production also reconciles restored Arr/Prowlarr state
 without deleting records. Staging does not run that reconciliation. Allowing a
 protocol permits selected integrations; it does not enable clients by itself.
-Omit imports, monitoring or FreeCORE from the profile to omit their optional
+Omit processing, monitoring or FreeCORE from the profile to omit their optional
 behavior. The `freecore` aspect owns its dedicated telemetry module, the existing
 SMB/HTTPS checks, and the standalone NAS bridge payload; see
 [FreeCORE telemetry](freecore-alerts.md).
@@ -92,7 +135,7 @@ SMB/HTTPS checks, and the standalone NAS bridge payload; see
 ## Runtime secrets
 
 The secrets capability owns declarations, installers and operator apps in
-`modules/_modules/secrets/`. App names remain `provision`,
+`capabilities/secrets/`. App names remain `provision`,
 `provision-notifications`, and `provision-notifiarr`. They read the installed
 `/etc/nixflix/mode`, refuse unknown roles, and select the namespace before
 invoking a provider. Production-only provisioning rejects staging. Direct
@@ -129,8 +172,11 @@ uses `pass`; provision its value in advance when selecting another provider.
 ## Upstream and updates
 
 `modules/integrations/nixflix.nix` owns upstream imports and adapted source
-construction. Named patches and compatible modules live under
-`modules/_integrations/nixflix/`. Public `nixosModules.default`, `nixflix`, and
+construction. `integrations/nixflix/default.nix` assembles fetched upstream
+source with `patches/`, verbatim `vendor/modules/`, maintained `compatibility/`,
+`plugins/` and `pkgs/` overlays. Vendored files record their original revision,
+paths and digests in `vendor/provenance.json`. See the
+[integration boundary](https://github.com/declarative-dale/nixflix/blob/fateflix/integrations/nixflix/README.md). Public `nixosModules.default`, `nixflix`, and
 `download-policy` exports are preserved. The source-only IFD remains: evaluation
 needs an x86_64 builder to realize the small patched source tree. Prime it with
 `nix build --no-link .#lib.nixflixSource` before a read-only flake check.
@@ -154,10 +200,10 @@ retain several GiB of memory; cap a full evaluation on this 16 GiB host with
 ```sh
 nix build --no-link .#lib.nixflixSource
 nix flake check --no-build --show-trace
-nix eval .#nixosConfigurations.nixflix-production.config.system.build.toplevel.drvPath
+nix eval .#nixosConfigurations.fateflix.config.system.build.toplevel.drvPath
 nix eval .#nixosConfigurations.nixflix-staging.config.system.build.toplevel.drvPath
 nix develop --command python3 -m unittest discover -s tests/migration -p 'test_*.py'
-nix build --no-link .#nixosConfigurations.nixflix-production.config.system.build.toplevel .#nixosConfigurations.nixflix-staging.config.system.build.toplevel
+nix build --no-link .#nixosConfigurations.fateflix.config.system.build.toplevel .#nixosConfigurations.nixflix-staging.config.system.build.toplevel
 python3 scripts/check-secret-canary.py
 ```
 

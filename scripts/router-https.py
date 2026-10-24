@@ -23,9 +23,7 @@ def main():
     parser.add_argument("--control-path")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
-    manifest = json.loads(
-        (root / "modules/_hosts/nixflix/local-services.json").read_text()
-    )
+    manifest = json.loads((root / "hosts/nixflix/local-services.json").read_text())
     script = (
         "router-ingress.php"
         if args.action.startswith("ingress-")

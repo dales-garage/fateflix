@@ -27,7 +27,7 @@ After the reviewed PR is merged, run:
 NAS_ALERT_DIR=/mnt/POOL/monitoring/notifiarr
 install -d -m 700 "$NAS_ALERT_DIR"
 fetch -o "$NAS_ALERT_DIR/freecore-notifiarr.py" \
-  https://raw.githubusercontent.com/declarative-dale/nixflix/main/scripts/freecore-notifiarr.py
+  https://raw.githubusercontent.com/declarative-dale/nixflix/main/capabilities/freecore/scripts/freecore-notifier.py
 chmod 700 "$NAS_ALERT_DIR/freecore-notifiarr.py"
 /usr/local/bin/python3 "$NAS_ALERT_DIR/freecore-notifiarr.py" init
 ```
@@ -115,15 +115,15 @@ The TCP checks report listeners, while the existing NAS probe checks access to
 the mounted share and the bridge carries detailed FreeCORE alerts.
 
 Changes made directly in the NixFlix client UI are replaced on restart; these
-two checks live in `modules/_modules/monitoring/freecore.nix`. The shared
+two checks live in `capabilities/freecore/nas.nix`. The shared
 `media-server` profile includes the `freecore` aspect, registered in
 `modules/capabilities/freecore.nix`. Its machine address is set in
-`modules/_hosts/nixflix/freecore.nix`; polling interval and timeout belong to
-`fateflix.monitoring.freecore`.
+`hosts/nixflix/freecore.nix`; polling interval and timeout belong to
+`fateflix.freecore`.
 
 Production also exposes the unchanged standalone bridge at
 `/etc/nixflix/freecore-notifiarr.py`, ready to copy to the NAS. The canonical
-`scripts/freecore-notifiarr.py` URL above remains valid. The bridge executes only
+`capabilities/freecore/scripts/freecore-notifier.py` URL above remains valid. The bridge executes only
 on FreeCORE and reads its private local configuration at runtime. Staging
 receives neither the bridge payload nor the production Notifiarr probes.
 

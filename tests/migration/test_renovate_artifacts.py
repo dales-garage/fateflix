@@ -39,7 +39,7 @@ class ArtifactTests(unittest.TestCase):
                 ["bash", "pkgs/maintainerr/update.sh", "3.32.0"],
                 [
                     "bash",
-                    "modules/_integrations/nixflix/compat/modules/jellyfin/plugins/update.sh",
+                    "integrations/nixflix/plugins/jellyfin/update.sh",
                     "--manifest-only",
                 ],
             ],
@@ -63,13 +63,13 @@ class ArtifactTests(unittest.TestCase):
             [
                 [
                     "bash",
-                    "modules/_integrations/nixflix/compat/modules/caddy/update.sh",
+                    "integrations/nixflix/compatibility/caddy/update.sh",
                     "a" * 40,
                     "--force",
                 ],
                 [
                     "bash",
-                    "modules/_integrations/nixflix/compat/modules/navidrome/plugins/update.sh",
+                    "integrations/nixflix/plugins/navidrome/update.sh",
                 ],
             ],
         )
@@ -96,12 +96,10 @@ class ArtifactTests(unittest.TestCase):
                     "flake.lock": json.dumps(
                         {"nodes": {"nixpkgs": {"locked": {"rev": "a" * 40}}}}
                     ),
-                    "modules/_hosts/nixflix/containers.json": json.dumps(
-                        baseline["containers"]
-                    ),
+                    "hosts/nixflix/containers.json": json.dumps(baseline["containers"]),
                     "pkgs/notifiarr/default.nix": 'version = "0.9.7";',
                     "pkgs/maintainerr/default.nix": 'version = "3.31.0";',
-                    "modules/_integrations/nixflix/compat/modules/caddy/default.nix": "replace-response@"
+                    "integrations/nixflix/compatibility/caddy/default.nix": "replace-response@"
                     + "a" * 12,
                 }
                 for name, content in files.items():
@@ -238,13 +236,13 @@ class ArtifactTests(unittest.TestCase):
     def test_publisher_does_not_allow_traversal(self):
         self.assertFalse(
             artifacts.output_allowed(
-                "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/../../../../flake.nix"
+                "integrations/nixflix/plugins/navidrome/gen/../../../../flake.nix"
             )
         )
         self.assertFalse(artifacts.output_allowed("scripts/renovate-artifacts.py"))
         self.assertTrue(
             artifacts.output_allowed(
-                "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/lyrics-plugin.nix"
+                "integrations/nixflix/plugins/navidrome/gen/lyrics-plugin.nix"
             )
         )
 

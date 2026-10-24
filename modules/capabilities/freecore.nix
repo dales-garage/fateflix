@@ -1,6 +1,12 @@
-{
-  den.aspects.freecore.nixos.imports = [
-    ../_modules/monitoring/freecore.nix
-    ../_hosts/nixflix/freecore.nix
-  ];
+{ den, ... }: {
+  den.aspects.freecore = {
+    includes = [
+      den.aspects.nixflix-api
+      den.aspects.fateflix-context
+    ];
+    nixos.imports = [
+      ../../capabilities/freecore
+      ../../hosts/nixflix/freecore.nix
+    ];
+  };
 }
