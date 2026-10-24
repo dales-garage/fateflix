@@ -1,4 +1,7 @@
 import hashlib
+import json
+import tempfile
+from unittest.mock import patch
 import importlib.util
 import io
 from pathlib import Path
@@ -93,4 +96,25 @@ class WhisparrUpdate(unittest.TestCase):
                 },
                 lambda _: (_ for _ in ()).throw(OSError("offline")),
             )
-        self.assertIn("sha256-old", source)
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "default.nix"
+            path.write_text(source)
+            release = {
+                **same,
+                "tag_name": "v2.2.1-release.240",
+                "assets": [{"name": "Whisparr.2.2.1-release.240.linux-x64.tar.gz"}],
+            }
+            with patch.object(
+                updater, "__file__", str(Path(folder) / "update.py")
+            ), patch("sys.argv", ["update.py", "2.2.1-release.240"]), patch.object(
+                updater,
+                "fetch",
+                side_effect=[json.dumps(release).encode(), OSError("offline")],
+            ), self.assertRaises(
+                OSError
+            ):
+                updater.main()
+            self.assertEqual(path.read_text(), source)
+            self.assertEqual(
+                sorted(p.name for p in Path(folder).iterdir()), ["default.nix"]
+            )

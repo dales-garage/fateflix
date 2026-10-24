@@ -84,7 +84,7 @@ def main():
         raise ValueError("Release did not match requested version")
     path = Path(__file__).with_name("default.nix")
     before = path.read_text()
-    after = updated_source(before, release)
+    after = updated_source(before, release, fetch)
     if after == before:
         print("Whisparr is already current.")
         return
