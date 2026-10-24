@@ -101,7 +101,7 @@ def probe():
                             "1",
                             "--json",
                             "--mountpoint",
-                            "/data",
+                            cfg.get("storageRoot", "/data"),
                             "-o",
                             "FSTYPE,OPTIONS",
                         ],
@@ -116,7 +116,9 @@ def probe():
                     raise ValueError("NAS mount mode")
                 # Metadata access only. No enumeration, content scans or writes.
                 os.stat(cfg.get("mediaRoot", "/data/media"))
-                value["nas"] = capacity("/data", cfg["nas"], inodes=False)
+                value["nas"] = capacity(
+                    cfg.get("storageRoot", "/data"), cfg["nas"], inodes=False
+                )
                 value["nas"]["accessible"] = True
             except (
                 OSError,
@@ -181,7 +183,7 @@ def recover():
         if held("all"):
             return
         # Mount and app reconciliation are independent. Never wait on SMB here.
-        systemctl("start", "--no-block", "data.mount")
+        systemctl("start", "--no-block", cfg.get("mountUnit", "data.mount"))
         systemctl("start", "--no-block", "nixflix-capacity-probe.service")
         if not nas_ready():
             return

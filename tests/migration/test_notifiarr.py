@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "modules/_support/compat/modules/notifiarr"))
+sys.path.insert(0, str(ROOT / "modules/_integrations/nixflix/compat/modules/notifiarr"))
 from render import resolve
 
 spec = importlib.util.spec_from_file_location(

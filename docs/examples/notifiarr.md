@@ -28,7 +28,7 @@ module binds to loopback by default and does not open the firewall.
 
 ## Personal host
 
-`hosts/nixflix/notifiarr.nix` enables the client only in production. Its UI is
+`modules/_modules/monitoring/notifiarr.nix` enables the client only in production. Its UI is
 available on the LAN at `http://10.69.0.18:5454`; the firewall restricts access to
 the existing server/client LANs. Sign in with the Notifiarr account as described
 in the [upstream login instructions](https://notifiarr.wiki/pages/client/afterInstall/).

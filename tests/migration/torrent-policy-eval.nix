@@ -26,15 +26,16 @@ let
     (host.extendModules {
       modules = [
         {
-          fateflixPolicy.torrents = lib.mkForce true;
+          fateflix.downloads.torrents.allowed = lib.mkForce true;
           nixflix.torrentClients.qbittorrent.enable = true;
         }
       ];
     }).config;
   noClients =
-    (host.extendModules { modules = [ { fateflixPolicy.torrents = lib.mkForce true; } ]; }).config;
+    (host.extendModules { modules = [ { fateflix.downloads.torrents.allowed = lib.mkForce true; } ]; })
+    .config;
   software =
-    (host.extendModules { modules = [ { nixflixHost.gpuPassthrough.enable = lib.mkForce false; } ]; })
+    (host.extendModules { modules = [ { fateflix.playback.acceleration = lib.mkForce "software"; } ]; })
     .config;
 in
 assert !disabled.services.qbittorrent.enable;

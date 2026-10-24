@@ -22,7 +22,7 @@ class SelectionTests(unittest.TestCase):
         return ci.select(self.names, list(paths))
 
     def test_host_change_runs_host_checks_and_production_without_vms(self):
-        for path in ["hosts/nixflix/gpu.nix", "scripts/nixflix_remux.py"]:
+        for path in ["modules/_hosts/nixflix/network.nix", "scripts/nixflix_remux.py"]:
             with self.subTest(path=path):
                 plan = self.select(path)
                 self.assertTrue(plan["production"])
@@ -33,7 +33,8 @@ class SelectionTests(unittest.TestCase):
         for path in [
             "flake.nix",
             "flake.lock",
-            "modules/arr-common/default.nix",
+            "modules/_integrations/nixflix/compat/modules/arr-common/default.nix",
+            "modules/capabilities/downloads.nix",
             "lib/secrets/default.nix",
             "pkgs/notifiarr/default.nix",
         ]:
@@ -44,7 +45,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_navidrome_generated_plugin_is_scoped(self):
         plan = self.select(
-            "modules/_support/compat/modules/navidrome/plugins/gen/plugin.nix"
+            "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/plugin.nix"
         )
         self.assertEqual(
             set(plan["checks"]),
@@ -55,8 +56,8 @@ class SelectionTests(unittest.TestCase):
 
     def test_grouped_changes_take_the_union(self):
         plan = self.select(
-            "modules/_support/compat/modules/navidrome/plugins/gen/plugin.nix",
-            "hosts/nixflix/services.nix",
+            "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/plugin.nix",
+            "modules/_modules/media/services.nix",
             "renovate.json",
         )
         self.assertTrue(
@@ -96,7 +97,7 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(plan["checks"], ["formatting", "navidrome-basic"])
         plan = self.select("tests/lib/mk-reverse-proxy-test.nix")
         self.assertTrue(self.names["vm"] <= set(plan["checks"]))
-        self.assertFalse(plan["production"])
+        self.assertTrue(plan["production"])
 
     def test_unknown_paths_and_test_framework_changes_run_everything(self):
         for path in [
@@ -135,7 +136,9 @@ class SelectionTests(unittest.TestCase):
 
     def test_planning_only_calls_git_and_detects_both_sides_of_renames(self):
         with patch.object(
-            ci, "run", side_effect=["abc", "hosts/nixflix/gpu.nix\0README.md\0"]
+            ci,
+            "run",
+            side_effect=["abc", "modules/_modules/playback/gpu.nix\0README.md\0"],
         ) as run:
             plan = ci.make_plan("abc")
         self.assertTrue(plan["production"])
@@ -193,7 +196,7 @@ class SelectionTests(unittest.TestCase):
         for path in [
             "README.md",
             "renovate.json",
-            "hosts/nixflix/default.nix",
+            "modules/_hosts/nixflix/default.nix",
             "tests/migration/test_gitops.py",
             ".github/FUNDING.yml",
         ]:
@@ -215,6 +218,7 @@ class RequiredCheckTests(unittest.TestCase):
                     "renovate": "false",
                 },
             },
+            "evaluate": {"result": "success"},
             "checks": {"result": "success"},
             "production": {"result": "skipped"},
             "gitops": {"result": "skipped"},
@@ -229,6 +233,13 @@ class RequiredCheckTests(unittest.TestCase):
                 result["checks"]["result"] = outcome
                 with self.assertRaises(ValueError):
                     ci.verify(result)
+
+    def test_full_evaluation_cannot_be_skipped(self):
+        for outcome in ["skipped", "failure", "cancelled", None]:
+            result = self.results()
+            result["evaluate"]["result"] = outcome
+            with self.assertRaises(ValueError):
+                ci.verify(result)
 
     def test_failed_planning_is_never_accepted(self):
         result = self.results()
@@ -286,6 +297,23 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse(
             any(job.get("continue-on-error") for job in self.jobs.values())
         )
+
+    def test_full_evaluation_and_both_host_builds_are_required(self):
+        evaluate = self.jobs["evaluate"]
+        self.assertNotIn("if", evaluate)
+        commands = "\n".join(step.get("run", "") for step in evaluate["steps"])
+        self.assertIn("nix flake check --no-build", commands)
+        self.assertIn("--show-trace", commands)
+        builds = "\n".join(
+            step.get("run", "") for step in self.jobs["production"]["steps"]
+        )
+        for role in ["production", "staging"]:
+            target = (
+                f".#nixosConfigurations.nixflix-{role}.config.system.build.toplevel"
+            )
+            self.assertIn(target + ".drvPath", commands)
+            self.assertIn(target, builds)
+        self.assertIn("check-secret-canary.py", builds)
 
     def test_renovate_is_separate_from_python_tests(self):
         self.assertFalse(

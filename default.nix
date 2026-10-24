@@ -12,7 +12,7 @@ let
       url = "https://github.com/${pin.owner}/${pin.repo}/archive/${pin.rev}.tar.gz";
       sha256 = pin.narHash;
     };
-  source = import ./modules/_support/upstream-source.nix {
+  source = import ./modules/_integrations/nixflix/upstream-source.nix {
     inherit pkgs;
     src = fetchInput "nixflix";
   };

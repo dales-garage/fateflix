@@ -3,7 +3,7 @@ let
   cfg = host.config;
   disabled =
     (host.extendModules {
-      modules = [ { nixflixHost.gpuPassthrough.enable = pkgs.lib.mkForce false; } ];
+      modules = [ { fateflix.playback.acceleration = pkgs.lib.mkForce "software"; } ];
     }).config;
   withoutReadarr =
     (host.extendModules { modules = [ { services.readarr.enable = pkgs.lib.mkForce false; } ]; })
@@ -16,10 +16,10 @@ assert
   !(builtins.elem "readarr"
     (builtins.fromJSON withoutReadarr.environment.etc."nixflix/operations.json".text).services
   );
-assert cfg.nixflixHost.capacity.nas.warning == 1099511627776;
-assert cfg.nixflixHost.capacity.nas.critical == 536870912000;
-assert cfg.nixflixHost.capacity.root.warning == 21474836480;
-assert cfg.nixflixHost.capacity.root.critical == 10737418240;
+assert cfg.fateflix.storage.capacity.nas.warning == 1099511627776;
+assert cfg.fateflix.storage.capacity.nas.critical == 536870912000;
+assert cfg.fateflix.storage.capacity.root.warning == 21474836480;
+assert cfg.fateflix.storage.capacity.root.critical == 10737418240;
 assert cfg.systemd.timers.notifiarr-connections.timerConfig.OnUnitInactiveSec == "5m";
 assert cfg.systemd.services.notifiarr-connections.serviceConfig.TimeoutStartSec == 240;
 assert

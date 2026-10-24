@@ -18,9 +18,9 @@ OUTPUTS = [
     "pkgs/notifiarr/default.nix",
     "pkgs/maintainerr/default.nix",
     "pkgs/maintainerr/missing-hashes.json",
-    "modules/_support/compat/modules/caddy/default.nix",
-    "modules/_support/compat/modules/navidrome/plugins/gen/*-plugin.nix",
-    "modules/_support/compat/modules/jellyfin/plugins/plugins.json",
+    "modules/_integrations/nixflix/compat/modules/caddy/default.nix",
+    "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/*-plugin.nix",
+    "modules/_integrations/nixflix/compat/modules/jellyfin/plugins/plugins.json",
 ]
 
 
@@ -50,7 +50,9 @@ def inputs():
     return {
         "packages": json.loads(Path(VERSIONS).read_text()),
         "nixpkgs": lock["nodes"]["nixpkgs"]["locked"],
-        "containers": json.loads(Path("hosts/nixflix/containers.json").read_text()),
+        "containers": json.loads(
+            Path("modules/_hosts/nixflix/containers.json").read_text()
+        ),
     }
 
 
@@ -114,7 +116,9 @@ def check():
     sha = inputs()["packages"]["caddyserver/replace-response"].split("@")[1]
     if (
         sha[:12]
-        not in Path("modules/_support/compat/modules/caddy/default.nix").read_text()
+        not in Path(
+            "modules/_integrations/nixflix/compat/modules/caddy/default.nix"
+        ).read_text()
     ):
         raise ValueError("Caddy revision is not synchronized")
 
@@ -152,14 +156,17 @@ def commands(before, current, grouped_media=True):
         result.append(
             [
                 "bash",
-                "modules/_support/compat/modules/caddy/update.sh",
+                "modules/_integrations/nixflix/compat/modules/caddy/update.sh",
                 versions["caddyserver/replace-response"].split("@")[1],
                 "--force",
             ]
         )
     if system_changed:
         result.append(
-            ["bash", "modules/_support/compat/modules/navidrome/plugins/update.sh"]
+            [
+                "bash",
+                "modules/_integrations/nixflix/compat/modules/navidrome/plugins/update.sh",
+            ]
         )
     media_changed = before["containers"] != current["containers"] or any(
         before["packages"][name] != versions[name]
@@ -169,7 +176,7 @@ def commands(before, current, grouped_media=True):
         result.append(
             [
                 "bash",
-                "modules/_support/compat/modules/jellyfin/plugins/update.sh",
+                "modules/_integrations/nixflix/compat/modules/jellyfin/plugins/update.sh",
                 "--manifest-only",
             ]
         )
@@ -188,11 +195,11 @@ def generate(number, destination):
     validate_versions(before["packages"], versions)
     lock = read_ref(head, "flake.lock")
     validate_lock(json.loads(Path("flake.lock").read_text()), lock)
-    containers = read_ref(head, "hosts/nixflix/containers.json")
+    containers = read_ref(head, "modules/_hosts/nixflix/containers.json")
     # Containers are fingerprinted only; no PR-provided container is executed.
     Path(VERSIONS).write_text(json.dumps(versions, indent=2) + "\n")
     Path("flake.lock").write_text(json.dumps(lock, indent=2) + "\n")
-    Path("hosts/nixflix/containers.json").write_text(
+    Path("modules/_hosts/nixflix/containers.json").write_text(
         json.dumps(containers, indent=2) + "\n"
     )
     current = inputs()
@@ -238,7 +245,7 @@ def refresh(base):
     before = {
         "packages": read_ref(base, VERSIONS),
         "nixpkgs": read_ref(base, "flake.lock")["nodes"]["nixpkgs"]["locked"],
-        "containers": read_ref(base, "hosts/nixflix/containers.json"),
+        "containers": read_ref(base, "modules/_hosts/nixflix/containers.json"),
     }
     current = inputs()
     validate_versions(before["packages"], current["packages"])

@@ -26,7 +26,7 @@ pause again if space is still insufficient. See the
 The restored configuration is patched before SABnzbd starts so it receives the
 same limits as the declared settings, without replacing providers or queues.
 
-Capacity thresholds in bytes are configurable under `nixflixHost.capacity`:
+Capacity thresholds in bytes are configurable under `fateflix.storage.capacity`:
 
 | Filesystem | Warning below | Critical below |
 | --- | --- | --- |
@@ -43,7 +43,7 @@ accessing NAS metadata; it neither enumerates directories nor reads media.
 An exclusive local lock remains held by a worker blocked in the kernel, so
 later attempts cannot accumulate more NAS workers. Never force-unmount the
 share to clear such a worker. Inspect its process state and NAS/network health.
-Results expire after `nixflixHost.capacity.probeMaxAge` (180 seconds by default),
+Results expire after `fateflix.storage.capacity.probeMaxAge` (180 seconds by default),
 and results from a previous boot are unknown. Failed NAS probes publish unknown;
 a blocked worker's last results eventually expire. Ordinary health checks and
 HTTP endpoints read local state only.

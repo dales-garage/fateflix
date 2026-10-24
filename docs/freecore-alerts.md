@@ -115,8 +115,20 @@ The TCP checks report listeners, while the existing NAS probe checks access to
 the mounted share and the bridge carries detailed FreeCORE alerts.
 
 Changes made directly in the NixFlix client UI are replaced on restart; these
-two checks live in `hosts/nixflix/notifiarr.nix`. If NixFlix and FreeCORE share an
-XCP-ng host, a whole-host outage takes down both the NAS and these local checks.
+two checks live in `modules/_modules/monitoring/freecore.nix`. The shared
+`media-server` profile includes the `freecore` aspect, registered in
+`modules/capabilities/freecore.nix`. Its machine address is set in
+`modules/_hosts/nixflix/freecore.nix`; polling interval and timeout belong to
+`fateflix.monitoring.freecore`.
+
+Production also exposes the unchanged standalone bridge at
+`/etc/nixflix/freecore-notifiarr.py`, ready to copy to the NAS. The canonical
+`scripts/freecore-notifiarr.py` URL above remains valid. The bridge executes only
+on FreeCORE and reads its private local configuration at runtime. Staging
+receives neither the bridge payload nor the production Notifiarr probes.
+
+If NixFlix and FreeCORE share an XCP-ng host, a whole-host outage takes down
+both the NAS and these local checks.
 Detecting that case requires a monitor outside that host.
 
 References: [FreeCORE alerts](https://docs.freecore.org/tutorials/system/creating-alerts/),

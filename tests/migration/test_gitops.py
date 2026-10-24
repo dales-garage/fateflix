@@ -113,7 +113,7 @@ class HealthTests(unittest.TestCase):
 
 class UpdateTests(unittest.TestCase):
     def test_formatting_only_update_is_noop(self):
-        path = "modules/_support/compat/modules/navidrome/plugins/gen/lyrics-plugin.nix"
+        path = "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/lyrics-plugin.nix"
         with (
             patch.object(updates, "changed_files", side_effect=[[path], []]),
             patch.object(updates.Path, "exists", return_value=True),

@@ -20,20 +20,25 @@ UPDATERS = {
         ["pkgs/maintainerr/default.nix", "pkgs/maintainerr/missing-hashes.json"],
     ),
     "caddy": (
-        ["bash", "modules/_support/compat/modules/caddy/update.sh"],
-        ["modules/_support/compat/modules/caddy/default.nix"],
+        ["bash", "modules/_integrations/nixflix/compat/modules/caddy/update.sh"],
+        ["modules/_integrations/nixflix/compat/modules/caddy/default.nix"],
     ),
     "jellyfin-plugins": (
         [
             "bash",
-            "modules/_support/compat/modules/jellyfin/plugins/update.sh",
+            "modules/_integrations/nixflix/compat/modules/jellyfin/plugins/update.sh",
             "--manifest-only",
         ],
-        ["modules/_support/compat/modules/jellyfin/plugins/plugins.json"],
+        ["modules/_integrations/nixflix/compat/modules/jellyfin/plugins/plugins.json"],
     ),
     "navidrome-plugins": (
-        ["bash", "modules/_support/compat/modules/navidrome/plugins/update.sh"],
-        ["modules/_support/compat/modules/navidrome/plugins/gen/*-plugin.nix"],
+        [
+            "bash",
+            "modules/_integrations/nixflix/compat/modules/navidrome/plugins/update.sh",
+        ],
+        [
+            "modules/_integrations/nixflix/compat/modules/navidrome/plugins/gen/*-plugin.nix"
+        ],
     ),
 }
 

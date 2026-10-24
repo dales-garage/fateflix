@@ -24,7 +24,9 @@ def main():
     )
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
-    manifest = json.loads((root / "hosts/nixflix/local-services.json").read_text())
+    manifest = json.loads(
+        (root / "modules/_hosts/nixflix/local-services.json").read_text()
+    )
     manifest["address"] = manifest["routerAddress"]
     if args.zone == "public":
         manifest.update(domain="dalebox.pw")

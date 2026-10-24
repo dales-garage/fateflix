@@ -82,19 +82,23 @@ in
     packages = map toString cfg.hardware.graphics.extraPackages;
     inherit (cfg.boot) extraModprobeConfig;
     firmware = toString cfg.hardware.firmware;
-    gpuPassthrough = cfg.nixflixHost.gpuPassthrough.enable;
+    gpuPassthrough = cfg.fateflix.playback.acceleration == "intel";
   };
-  deployment = {
-    inherit (cfg.services.comin)
-      enable
-      hostname
-      remotes
-      buildTimeout
-      buildAttemptsLimit
-      buildRetryTimer
-      retention
-      ;
-  };
+  deployment =
+    if cfg.services ? comin then
+      {
+        inherit (cfg.services.comin)
+          enable
+          hostname
+          remotes
+          buildTimeout
+          buildAttemptsLimit
+          buildRetryTimer
+          retention
+          ;
+      }
+    else
+      { enable = false; };
   runtime = lib.mapAttrs (_: item: item.text) (
     lib.filterAttrs (name: item: lib.hasPrefix "nixflix/" name && item.text != null) cfg.environment.etc
   );

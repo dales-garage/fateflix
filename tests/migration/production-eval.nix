@@ -1,7 +1,9 @@
 { pkgs, host }:
 let
   cfg = host.config;
-  localServices = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
+  localServices = builtins.fromJSON (
+    builtins.readFile ../../modules/_hosts/nixflix/local-services.json
+  );
   native = [
     "sonarr"
     "sonarr-4k"
@@ -20,7 +22,7 @@ let
     "whisparr"
   ];
 in
-assert cfg.nixflixHost.production.enable;
+assert cfg.fateflix.host.role == "production";
 assert !cfg.services.flaresolverr.enable;
 assert !cfg.services.qbittorrent.enable;
 assert cfg.nixflix.usenetClients.sabnzbd.enable;

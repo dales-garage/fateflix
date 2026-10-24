@@ -25,4 +25,4 @@ staging/
 migration-payloads/
 result-*
 __pycache__/
-modules/_support/compat/modules/jellyfin/plugins/.source-cache/
+modules/_integrations/nixflix/compat/modules/jellyfin/plugins/.source-cache/
