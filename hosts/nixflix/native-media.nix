@@ -1,4 +1,4 @@
-{ config, ... }: {
+{ config, pkgs, ... }: {
   services.bazarr = {
     enable = true;
     group = "media";
@@ -56,6 +56,7 @@
   };
   services.whisparr = {
     enable = true;
+    package = pkgs.callPackage ../../pkgs/whisparr { };
     group = "media";
     dataDir = "/var/lib/whisparr";
   };
