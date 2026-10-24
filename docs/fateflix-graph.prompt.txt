@@ -1,0 +1,55 @@
+Use case: infographic-diagram.
+Asset: a crisp, high-resolution landscape documentation image, approximately 2400 by 1800, titled exactly "FateFlix graph".
+Primary request: a dendritic OUTLINE of an actual Nix repository architecture. A legible branching tree diagram, not a generic sequential flowchart. Show a single FateFlix root on the left, a visible branching trunk, and SIX vertically stacked, color-coded branches extending toward the right. Give each branch generous space. Use very clear monospaced labels for filenames, an elegant sans-serif title and branch headings, flat light ivory background, dark ink text, subtle teal/blue/amber/purple branch accents, clean restrained technical-documentation styling. No photographs, 3D effects, mascots, decorative illustrations or watermarks. All text must be sharp, correctly spelled, large enough to read, and never collide with branches. Lines must visibly connect parent nodes to their children.
+
+Title: "FateFlix graph"
+Subtitle: "Dendritic modules, reusable aspects, composed hosts"
+Root node text: "FateFlix"
+
+The SIX branches and all their leaf text, faithfully rendered:
+1. "Settings" with leaves:
+   "modules/settings.nix" — "Feature switches and storage roots"
+   "modules/options.nix" — "Typed options and defaults"
+
+2. "Flake foundation" parent label "modules/flake/" with leaves:
+   "bootstrap.nix" — "flake-parts + import-tree + Den + flake-file"
+   "inputs.nix" — "Dependency declarations and follows"
+   "outputs.nix" — "Packages, apps and development shell"
+   "checks.nix" — "Evaluation, tests and formatting"
+   A connected small label beneath this branch: "flake-file generates flake.nix"
+   A companion small label: "flake.lock pins dependencies"
+
+3. "Den aspects" parent label "modules/aspects/" with exactly these EIGHT leaves, arranged as two compact columns if helpful while preserving branching connectors:
+   "media.nix"
+   "downloads.nix"
+   "playback.nix"
+   "storage.nix"
+   "imports.nix"
+   "monitoring.nix"
+   "secrets.nix"
+   "deployment.nix"
+   Small annotation: "Registers reusable feature aspects"
+
+4. "Host composition" parent label "modules/hosts/" with two leaves:
+   "production.nix" — "nixflix-production"
+   "staging.nix" — "nixflix-staging"
+   Small annotation: "Both select shared Den aspects"
+   Small annotation: "nixflix aliases production; hostname stays nixflix"
+
+5. "Upstream and packages" with leaves:
+   "modules/upstream/nixflix.nix" — "Locked NixFlix input + named compatibility patches"
+   "modules/overlays/media.nix" — "Downstream package overrides"
+   "pkgs/" — "Maintained downstream packages"
+   Small annotation: "github:kiriwalawren/nixflix"
+
+6. "Excluded support" parent label "modules/_support/" with leaves:
+   "compat/" — "Downstream modules and plugin assets"
+   "patches/" — "Small upstream compatibility patches"
+   "fixtures/" — "Static test manifests"
+   Small annotation: "Helpers and raw modules are excluded from import-tree"
+
+Footer, separate from the tree and not cramped:
+"Discovery: import-tree  |  Outputs: flake-parts  |  Composition: Den"
+"Credentials resolve at runtime. Production and staging retain their existing identities."
+
+This is a hierarchical outline with real filename labels. Do NOT imply that settings is a directory. Do NOT put _support into automatic module discovery. Do NOT invent services, cloud infrastructure, directories or extra framework names. Prioritize precise labels and graceful branching, with generous margins and readable typography over decorative complexity.

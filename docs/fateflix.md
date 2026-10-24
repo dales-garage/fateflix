@@ -5,6 +5,7 @@ FateFlix is a modular downstream of `github:kiriwalawren/nixflix`. Start with
 Credentials remain runtime file references. Provisioning still uses the existing
 SecretSpec profiles and `/var/lib/nixflix-secrets` locations.
 
+![FateFlix graph: settings, flake modules, Den aspects, composed hosts, upstream adapter, and excluded support.](fateflix-graph.png)
 
 Every discovered Nix file under `modules` is a flake-parts module. import-tree
 excludes paths containing an underscore, so raw NixOS modules, patches and plugin
