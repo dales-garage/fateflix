@@ -10,7 +10,8 @@ work to the media VM. Backup automation remains deferred to a separate Xen
 Orchestra project. Nix generations restore system software and configuration;
 they do not restore application databases or reverse database migrations.
 Readarr stays enabled with its existing library pending a separate replacement
-assessment. This batch enables no media deletion or database migrations.
+assessment. The reliability services do not migrate or restore application
+databases; application version upgrades can migrate their own databases.
 
 ## Updating packages safely
 
@@ -59,7 +60,11 @@ systemctl --failed
 ```
 
 Whisparr uses the official stable v2 release through `pkgs/whisparr`, preserving
-its episode/series API and existing import hooks. Renovate tracks its four-part
+its episode/series API and existing import hooks. The tested upgrade advances
+the main database migration version from 17 to 215 (25 applied migrations) and
+retains the tested series, quality profiles and notifications. Preserve the
+consistent pre-upgrade copy; a software-only downgrade is not a data rollback.
+Renovate tracks its four-part
 `2.x.y-release.build` tags in `.github/package-versions.json`; develop/nightly
 and v3 releases are excluded because they need separate workflow validation.
 The trusted base-branch artifact helper downloads the exact release, validates
