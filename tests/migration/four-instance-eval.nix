@@ -7,7 +7,10 @@ let
   cfg = host.config;
   baseline = import (pkgs.path + "/nixos/lib/eval-config.nix") {
     system = pkgs.stdenv.hostPlatform.system;
-    modules = [ nixosModules ];
+    modules = [
+      nixosModules
+      { system.stateVersion = "26.05"; }
+    ];
   };
   names = [
     "sonarr"

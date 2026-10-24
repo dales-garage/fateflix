@@ -12,6 +12,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   sync:
+    timeout-minutes: 10
     if: github.repository == 'declarative-dale/nixflix'
     runs-on: ubuntu-latest
     steps:

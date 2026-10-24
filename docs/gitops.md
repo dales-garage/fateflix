@@ -88,15 +88,59 @@ without enabling them on production. The inherited omnibus updater is not schedu
 Upstream merge conflicts abort without publishing a partial merge. Existing
 upstream/fallback PRs are left untouched. Check policy pins and workflows during
 upstream review. Actions uses `GITHUB_TOKEN`, not a PAT or production credentials;
-token-created commits explicitly dispatch `ci.yml` because they do not recursively
-trigger PR workflows.
+token-created commits explicitly dispatch `ci.yml` to run CI automatically. GitHub
+also creates a separate approval-held `pull_request` run for bot-created PRs.
+Live testing found that this can keep the PR blocked even after dispatched CI
+passes. After reviewing the generated diff, approve that specific workflow run;
+GitHub may run CI again. The explicit dispatch does not replace this approval.
+Fully automatic triggering requires separate GitHub App or PAT credentials, which
+this repository does not provision. See
+[GitHub's workflow-trigger behavior](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow).
 
-CI compares each check's Nix derivation and the production derivation against the
-PR base (or previous main commit). Only affected checks run, including the union
-of changes in a grouped PR. Shared dependency changes select their transitive
-dependents. Missing/broken base evaluation selects the full suite; head evaluation
-errors fail CI. `CI required` permits skips only for checks the plan did not select.
-CI does not deploy or contact the VM.
+CI planning uses Git and repository filenames only. It installs no Nix, fetches
+no flake inputs, evaluates no derivations and creates no comparison worktrees.
+The planner prints its duration and selected checks in the job log and summary.
+
+| Changed files | Validation |
+| --- | --- |
+| Documentation | Formatting, docs build, Python tests |
+| Production host or runtime scripts | Formatting, all host evaluation checks, production build, Python tests |
+| Individual Nix test fixture | Formatting, that fixture, Python tests |
+| Shared VM fixtures | Formatting, VM suite, Python tests |
+| Shared modules, libraries, packages, flake inputs or unknown paths | Full Nix suite, production build, Python tests and Renovate validation |
+| Generated Navidrome plugins | Formatting, Navidrome VM, Nix unit tests, docs build, host evaluation, production build and Python tests |
+| CI infrastructure | Formatting, host evaluation checks, Nix unit tests, production build, Python tests and Renovate validation |
+
+Grouped changes take the union of their scopes. Missing bases and manual full
+runs select everything. Renames are treated as a removal and addition so moving
+a host file into a documentation directory cannot hide its former scope.
+Renovate validation runs only for relevant configuration/infrastructure changes
+or full runs; ordinary Python tests no longer download Node and Renovate.
+
+The catalog comes from VM test filenames and host `*-eval.nix` fixtures. The always-selected
+formatting check also asserts that this catalog exactly matches exported flake
+checks; a new or removed check cannot silently escape CI. Update
+`tests/check-names.nix` and `scripts/ci-plan.py` together for new check categories.
+Nix syntax, evaluation and assertion failures remain failures of the selected
+Nix jobs. `CI required` accepts only planned skips and requires every selected
+matrix, Python, Renovate and production job to succeed, including cancellation.
+
+Planning is limited to three minutes. Non-VM Nix checks share one job and fetched
+inputs; VM checks have separate runners. At most four matrix jobs run at once,
+with one Nix build per runner, two build cores and one evaluation thread.
+KVM is enabled only for VM checks. Network-requiring VM fixtures retain their
+existing sandbox exception, detected from the fixture before scheduling rather
+than by evaluating the derivation twice. Python, Renovate, Nix and production
+jobs have explicit timeouts. CI builds validate the production closure; they do
+not deploy, contact the media VM or run remux jobs.
+
+Nix jobs run on GitHub-hosted Ubuntu runners using
+`DeterminateSystems/determinate-nix-action`, pinned to a release and maintained
+by the existing Renovate CI-tooling group. The action configures KVM for the
+NixOS VM tests. CI needs Nix itself; it does not use Cachix or devenv and requires
+no Cachix organization, cache, or token. SecretSpec remains part of production
+credential provisioning and is not needed to initialize CI. Lightweight Python,
+publishing and Pages deployment jobs do not install Nix.
 
 ## First deployment
 
@@ -126,7 +170,7 @@ create a VM snapshot or establish that an arbitrary directory is a valid backup.
 An operator who explicitly chooses to proceed without a fresh backup can pass
 `--skip-backup`; that choice is recorded in `bootstrap-backup`.
 
-Existing SecretSpec/pass provisioning remains unchanged. Comin fetches the public
+SecretSpec/pass provisioning repairs incomplete generations and permission drift atomically; see [credential recovery](credential-recovery.md). Comin fetches the public
 repository without credentials. No API keys or GitHub write tokens enter Git or
 the Nix store. The old `deploy.py` refuses activation once Comin owns the machine.
 
@@ -139,7 +183,7 @@ sudo cat /var/lib/nixflix-gitops/health.json
 curl --fail http://127.0.0.1:9199/health
 ```
 
-Health uses live systemd, HTTP and authenticated API checks, NAS mount mode,
+Health uses live systemd, HTTP and authenticated API checks, locally cached NAS access/mount mode,
 credential permissions, Seerr webhook configuration, and Notifiarr connections.
 It never writes media or relies on historical ready-marker files. The report is
 root-only. The loopback endpoint returns only healthy/unhealthy, rejects reports
@@ -182,3 +226,6 @@ Keep three bootable Comin generations. During a separately scheduled reboot,
 verify SSH, NAS, services and Comin return automatically. Finally merge a harmless
 configuration change and confirm its SHA is deployed automatically. These live
 acceptance checks require access to the VM and are not implied by passing CI.
+
+Playback, capacity advisories, maintenance holds, retention reports, and the staged
+acceptance procedure are documented in [operations](operations.md).

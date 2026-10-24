@@ -14,8 +14,25 @@ from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
+import sys
+
+# Also works when imported by the migration test loader.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import nixflix_ops as ops
+import nixflix_playback
+import nixflix_retention
 
 STATE = Path("/var/lib/nixflix-gitops")
+ARR = {
+    "sonarr",
+    "sonarr-4k",
+    "radarr",
+    "radarr-4k",
+    "lidarr",
+    "prowlarr",
+    "readarr",
+    "whisparr",
+}
 
 
 def read_json(path):
@@ -77,13 +94,40 @@ def service(name, port):
 
 
 def nas():
-    mounts = json.loads(
-        subprocess.check_output(
-            ["findmnt", "--json", "--mountpoint", "/data", "-o", "FSTYPE,OPTIONS"]
+    assert ops.nas_ready()
+
+
+def warning_categories(warnings):
+    counts = {}
+    for warning in warnings:
+        source = str(warning.get("source", "")).lower()
+        # Never publish messages, URLs, titles or provider names from Arr.
+        category = (
+            "indexer"
+            if "indexer" in source
+            else (
+                "removed-metadata"
+                if any(x in source for x in ("removed", "metadata", "deleted"))
+                else "download-client" if "downloadclient" in source else "other"
+            )
         )
-    )
-    mount = mounts["filesystems"][0]
-    assert mount["fstype"] == "cifs" and "rw" in mount["options"].split(",")
+        counts[category] = counts.get(category, 0) + 1
+    return {
+        "status": "warning" if warnings else "ok",
+        "counts": counts,
+        "total": len(warnings),
+    }
+
+
+def arr_advisory(name, port):
+    try:
+        key = ET.parse(f"/var/lib/{name}/config.xml").findtext("ApiKey")
+        version = "v1" if name in ("lidarr", "prowlarr", "readarr") else "v3"
+        return warning_categories(
+            http(f"http://127.0.0.1:{port}/api/{version}/health", {"X-Api-Key": key})
+        )
+    except Exception as error:
+        return {"status": "unknown", "error_type": type(error).__name__}
 
 
 def credentials():
@@ -93,6 +137,39 @@ def credentials():
     for path in paths:
         stat = path.stat()
         assert stat.st_uid == 0 and not stat.st_mode & 0o077
+
+
+def completed_oneshot(name, wait_seconds=245):
+    # A running oneshot has no exit timestamp yet. Wait read-only for its
+    # bounded execution instead of publishing a false failure on each retry.
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        output = subprocess.check_output(
+            [
+                "systemctl",
+                "show",
+                name,
+                "-p",
+                "ActiveState",
+                "-p",
+                "Result",
+                "-p",
+                "ExecMainExitTimestampMonotonic",
+            ],
+            text=True,
+            timeout=5,
+        )
+        state = dict(line.split("=", 1) for line in output.splitlines() if "=" in line)
+        if state["ActiveState"] not in ("activating", "deactivating"):
+            assert state["Result"] == "success"
+            assert int(state["ExecMainExitTimestampMonotonic"]) > 0
+            return
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError(
+                "Reconciliation did not finish within its execution limit"
+            )
+        time.sleep(min(1, remaining))
 
 
 def notifiarr():
@@ -110,23 +187,7 @@ def notifiarr():
         "tautulli",
     ):
         assert cfg.get(name), name
-    status = subprocess.check_output(
-        ["systemctl", "show", "notifiarr-connections", "-p", "Result", "--value"],
-        text=True,
-    ).strip()
-    assert status == "success"
-    timestamp = subprocess.check_output(
-        [
-            "systemctl",
-            "show",
-            "notifiarr-connections",
-            "-p",
-            "ExecMainExitTimestampMonotonic",
-            "--value",
-        ],
-        text=True,
-    ).strip()
-    assert int(timestamp) > 0
+    completed_oneshot("notifiarr-connections")
 
 
 def seerr():
@@ -203,12 +264,19 @@ def check():
     ]
     with ThreadPoolExecutor(max_workers=6) as executor:
         checks = dict(executor.map(run_check, jobs))
+        advisories = dict(
+            executor.map(
+                lambda item: (item[0], arr_advisory(*item)),
+                [(name, port) for name, port in services.items() if name in ARR],
+            )
+        )
     report = {
         "checked": time.time(),
         "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
         "system": os.path.realpath("/run/current-system"),
         "healthy": all(c["healthy"] for c in checks.values()),
         "checks": checks,
+        "advisories": {"capacity": ops.cached_probe(), "applications": advisories},
     }
     write_json("health.json", report)
     print(json.dumps(report))
@@ -227,6 +295,11 @@ def hook():
     if phase == "deploy" and status == "done":
         event["system"] = os.path.realpath("/run/current-system")
         write_json("deployed.json", event)
+        subprocess.run(
+            ["systemctl", "start", "--no-block", "nixflix-playback.service"],
+            check=False,
+            timeout=10,
+        )
 
 
 def check_until_ready(wait_seconds):
@@ -251,6 +324,28 @@ def healthy(report, build, deploy, now, boot_id, system):
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path.startswith("/advisory/"):
+            name = self.path.removeprefix("/advisory/")
+            try:
+                if name in ("capacity-warning", "capacity-critical"):
+                    ok = ops.capacity_advisory(name.removeprefix("capacity-"))
+                elif name in ARR:
+                    report = read_json(STATE / "health.json")
+                    ok = (
+                        ops.fresh(report, 900)
+                        and report.get("system")
+                        == os.path.realpath("/run/current-system")
+                        and report["advisories"]["applications"][name]["status"] == "ok"
+                    )
+                else:
+                    self.send_error(404)
+                    return
+            except (OSError, ValueError, KeyError):
+                ok = False
+            self.send_response(200 if ok else 503)
+            self.end_headers()
+            self.wfile.write(b"clear\n" if ok else b"warning-or-unknown\n")
+            return
         if self.path != "/health":
             self.send_error(404)
             return
@@ -283,7 +378,17 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["check", "hook", "serve"])
+    parser.add_argument(
+        "action",
+        choices=["check", "hook", "serve", "hold", "release", "playback", "retention"],
+    )
+    parser.add_argument(
+        "service",
+        nargs="?",
+        default="all",
+        help="Configured systemd service name, or all",
+    )
+    parser.add_argument("--if-changed", action="store_true")
     parser.add_argument(
         "--wait", type=int, default=0, help="Seconds to allow services to become ready"
     )
@@ -293,10 +398,23 @@ def main():
         hook()
     elif args.action == "check":
         return check_until_ready(args.wait)
+    elif args.action in ("hold", "release"):
+        ops.maintenance(args.action, args.service)
+    elif args.action == "playback":
+        return nixflix_playback.playback(args.if_changed)
+    elif args.action == "retention":
+        with ops.lock("retention", blocking=False):
+            nixflix_retention.retention(http)
     else:
         HTTPServer(("127.0.0.1", 9199), Handler).serve_forever()
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception as error:
+        # Metadata APIs may use credential-bearing query strings.
+        sys.exit(
+            "nixflix-health failed (" + type(error).__name__ + "); values suppressed."
+        )

@@ -11,6 +11,7 @@ import shutil
 import sys
 import tempfile
 import fcntl
+import stat
 
 KEYS = {
     "SMB_CREDENTIALS": "smb",
@@ -52,11 +53,11 @@ def install(values, root):
     with (root / ".lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         current = root / "current"
-        if current.is_symlink() and all(
-            (current / name).read_text() == values[key] for key, name in KEYS.items()
-        ):
+        if valid_generation(current, root, values):
             return
+        previous = os.readlink(current) if current.is_symlink() else None
         generation = Path(tempfile.mkdtemp(prefix="generation-", dir=root))
+        link = root / ".next"
         try:
             for key, name in KEYS.items():
                 path = generation / name
@@ -65,7 +66,11 @@ def install(values, root):
                     f.write(values[key])
                     f.flush()
                     os.fsync(f.fileno())
-            link = root / ".next"
+            fd = os.open(generation, os.O_DIRECTORY)
+            try:
+                os.fsync(fd)
+            finally:
+                os.close(fd)
             link.unlink(missing_ok=True)
             link.symlink_to(generation.name)
             os.replace(link, current)
@@ -75,9 +80,50 @@ def install(values, root):
             finally:
                 os.close(fd)
         except BaseException:
+            # A durability failure after publication must restore the old pointer.
+            if current.is_symlink() and current.resolve() == generation:
+                if previous is None:
+                    current.unlink()
+                else:
+                    link.unlink(missing_ok=True)
+                    link.symlink_to(previous)
+                    os.replace(link, current)
             if not current.is_symlink() or current.resolve() != generation:
                 shutil.rmtree(generation)
+            link.unlink(missing_ok=True)
             raise
+
+
+def valid_generation(current, root, values):
+    """Permission drift and incomplete generations require atomic replacement."""
+    try:
+        target = current.resolve(strict=True)
+        if not current.is_symlink() or target.parent != root.resolve():
+            return False
+        info = target.lstat()
+        if (
+            not stat.S_ISDIR(info.st_mode)
+            or info.st_uid != os.geteuid()
+            or info.st_gid != os.getegid()
+            or stat.S_IMODE(info.st_mode) != 0o700
+        ):
+            return False
+        if set(p.name for p in target.iterdir()) != set(KEYS.values()):
+            return False
+        for key, name in KEYS.items():
+            path = target / name
+            info = path.lstat()
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.geteuid()
+                or info.st_gid != os.getegid()
+                or stat.S_IMODE(info.st_mode) != 0o600
+                or path.read_text() != values[key]
+            ):
+                return False
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 def main():

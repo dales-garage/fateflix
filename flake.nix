@@ -130,8 +130,20 @@
           };
         in
         {
-          formatting = treefmt.config.build.check self;
+          formatting =
+            assert lib.assertMsg (builtins.attrNames self.checks.${system} == import ./tests/check-names.nix)
+              "CI check catalog does not match flake checks; update tests/check-names.nix and scripts/ci-plan.py together";
+            treefmt.config.build.check self;
           gitops-eval = import ./tests/migration/gitops-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-production;
+            staging = self.nixosConfigurations.nixflix-staging;
+          };
+          operations-eval = import ./tests/migration/operations-eval.nix {
+            inherit pkgs;
+            host = self.nixosConfigurations.nixflix-production;
+          };
+          remux-eval = import ./tests/migration/remux-eval.nix {
             inherit pkgs;
             host = self.nixosConfigurations.nixflix-production;
             staging = self.nixosConfigurations.nixflix-staging;

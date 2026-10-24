@@ -19,6 +19,17 @@ spec.loader.exec_module(connections)
 
 
 class NotifiarrTest(unittest.TestCase):
+    def test_extended_outage_does_not_exhaust_future_timer_attempts(self):
+        from unittest.mock import Mock
+
+        job = Mock(side_effect=TimeoutError("private-url"))
+        with patch.object(connections.time, "sleep"), patch("builtins.print"):
+            for _ in range(4):
+                self.assertEqual(connections.reconcile(("sonarr", job)), "sonarr")
+            job.side_effect = None
+            self.assertIsNone(connections.reconcile(("sonarr", job)))
+        self.assertEqual(job.call_count, 13)
+
     def test_runtime_secrets_and_missing_key(self):
         with tempfile.TemporaryDirectory() as directory:
             xml = Path(directory) / "config.xml"

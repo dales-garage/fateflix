@@ -37,6 +37,7 @@ let
       modules = [
         nixosModules
         {
+          system.stateVersion = "26.05";
           nixflix = {
             enable = true;
             caddy = {

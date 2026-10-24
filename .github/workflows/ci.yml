@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       full:
-        description: Run every check instead of comparing against main
+        description: Run every Nix check and the production build
         type: boolean
         default: false
   push:
@@ -19,31 +19,35 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PYTHONUNBUFFERED: '1'
+  # Bound evaluation/build memory on standard hosted runners.
+  NIX_CONFIG: |
+    eval-cores = 1
+    max-jobs = 1
+    cores = 2
+
 jobs:
   prepare:
-    name: Select affected checks
+    name: Plan validation
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     outputs:
-      checks: ${{ steps.checks.outputs.checks }}
-      has_checks: ${{ steps.checks.outputs.has_checks }}
-      production: ${{ steps.checks.outputs.production }}
-      gitops: ${{ steps.checks.outputs.gitops }}
+      checks: ${{ steps.plan.outputs.checks }}
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has_checks: ${{ steps.plan.outputs.has_checks }}
+      production: ${{ steps.plan.outputs.production }}
+      gitops: ${{ steps.plan.outputs.gitops }}
+      renovate: ${{ steps.plan.outputs.renovate }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
-
       - name: Require synchronized update artifacts
         run: python3 scripts/renovate-artifacts.py check
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-
-      - name: Plan checks from changed derivations
-        id: checks
+      - name: Select validation from changed paths
+        id: plan
         env:
           CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           CI_EVENT: ${{ github.event_name }}
@@ -52,66 +56,17 @@ jobs:
           if [ "$CI_FULL" = true ]; then
             python3 scripts/ci-plan.py plan --full
           elif [ "$CI_EVENT" = workflow_dispatch ]; then
-            base=$(git merge-base HEAD origin/main)
-            python3 scripts/ci-plan.py plan --base "$base"
+            python3 scripts/ci-plan.py plan --base origin/main
           else
             python3 scripts/ci-plan.py plan --base "$CI_BASE_SHA"
           fi
 
-  checks:
-    name: ${{ matrix.check }}
-    needs: prepare
-    if: needs.prepare.outputs.has_checks == 'true'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        check: ${{ fromJSON(needs.prepare.outputs.checks) }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-
-      # Enable KVM for VM tests
-      - name: Enable KVM group perms
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Run Check 📋
-        run: |
-          if nix eval --json ".#checks.x86_64-linux.${{ matrix.check }}.passthru.meta.requiresNetwork" 2>/dev/null | grep -q "true"; then
-            echo "Test requires network access, disabling sandbox"
-            nix build --no-write-lock-file -L --quiet .#checks.x86_64-linux.${{ matrix.check }} --option sandbox false
-          else
-            nix build --no-write-lock-file -L --quiet .#checks.x86_64-linux.${{ matrix.check }}
-          fi
-
-  production:
-    name: Production system
-    needs: prepare
-    if: needs.prepare.outputs.production == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - name: Free runner space for the production closure
-        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
-      - uses: cachix/install-nix-action@v31
-      - run: nix build --no-write-lock-file --no-link -L .#nixosConfigurations.nixflix-production.config.system.build.toplevel
-
   gitops:
-    name: GitOps tooling
+    name: Python tests
     needs: prepare
     if: needs.prepare.outputs.gitops == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
         with:
@@ -119,18 +74,84 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.15'
-      - run: python -m pip install PyYAML
+      - run: python -m pip install --disable-pip-version-check PyYAML
       - run: python -m unittest discover -s tests/migration -p 'test_*.py'
+
+  renovate:
+    name: Renovate configuration
+    needs: prepare
+    if: needs.prepare.outputs.renovate == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
       - run: npx --yes --package renovate renovate-config-validator --strict renovate.json
 
+  checks:
+    name: ${{ matrix.name }}
+    needs: prepare
+    if: needs.prepare.outputs.has_checks == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Free runner space for VM tests
+        if: matrix.vm
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+      - uses: DeterminateSystems/determinate-nix-action@v3.23.3
+        with:
+          kvm: ${{ matrix.vm }}
+      - name: Build and run selected check
+        env:
+          CHECK_NAMES: ${{ join(matrix.checks, ' ') }}
+          REQUIRES_NETWORK: ${{ matrix.network }}
+        run: |
+          options=()
+          read -r -a checks <<< "$CHECK_NAMES"
+          targets=()
+          for check in "${checks[@]}"; do
+            targets+=(".#checks.x86_64-linux.$check")
+          done
+          test "${#targets[@]}" -gt 0
+          if [ "$REQUIRES_NETWORK" = true ]; then
+            options+=(--option sandbox false)
+          fi
+          nix build --no-write-lock-file --no-link --keep-going -L "${targets[@]}" "${options[@]}"
+
+  production:
+    name: Production system
+    needs: prepare
+    if: needs.prepare.outputs.production == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Free runner space for the production closure
+        run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
+      - uses: DeterminateSystems/determinate-nix-action@v3.23.3
+        with:
+          kvm: false
+      - run: nix build --no-write-lock-file --no-link -L .#nixosConfigurations.nixflix-production.config.system.build.toplevel
+
   required:
     name: CI required
     if: always()
-    needs: [prepare, checks, production, gitops]
+    needs: [prepare, checks, production, gitops, renovate]
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v7
         with:

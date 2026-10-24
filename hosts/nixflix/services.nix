@@ -99,6 +99,9 @@ in
         nzb_key = secret "sabnzbd";
         host = bindAddress;
         port = 8080;
+        download_free = "500G";
+        complete_free = "500G";
+        fulldisk_autoresume = 0;
       };
     };
     recyclarr = {
@@ -193,6 +196,9 @@ in
       c = ConfigObj('/var/lib/sabnzbd/sabnzbd.ini')
       c['misc']['host'] = '${bindAddress}'
       c['misc']['port'] = '8080'
+      c['misc']['download_free'] = '500G'
+      c['misc']['complete_free'] = '500G'
+      c['misc']['fulldisk_autoresume'] = '0'
       allowed = c['misc'].get('host_whitelist', [])
       if isinstance(allowed, str):
           allowed = [value.strip() for value in allowed.split(',') if value.strip()]

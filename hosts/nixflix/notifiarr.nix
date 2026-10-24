@@ -140,7 +140,26 @@ in
                 "mylar3"
                 "stash"
                 "homepage"
-              ];
+              ]
+            ++
+              map
+                (service: {
+                  name = "FreeCORE ${service.name}";
+                  type = "tcp";
+                  check = "10.69.0.10:${toString service.port}";
+                  interval = "1m";
+                  timeout = "5s";
+                })
+                [
+                  {
+                    name = "SMB";
+                    port = 445;
+                  }
+                  {
+                    name = "Web";
+                    port = 443;
+                  }
+                ];
         };
       };
     }
@@ -189,14 +208,19 @@ in
           StateDirectoryMode = "0700";
           UMask = "0077";
           ExecStart = "${python}/bin/python3 ${../../scripts/configure-notifiarr.py} ${manifest}";
-          Restart = "on-failure";
-          RestartSec = "30s";
+          TimeoutStartSec = 240;
+          TimeoutStopSec = 5;
           ProtectSystem = "strict";
           ProtectHome = true;
           PrivateTmp = true;
         };
-        unitConfig.StartLimitBurst = 3;
-        unitConfig.StartLimitIntervalSec = 300;
+      };
+      systemd.timers.notifiarr-connections = {
+        wantedBy = [ "timers.target" ];
+        timerConfig = {
+          OnBootSec = "3m";
+          OnUnitInactiveSec = "5m";
+        };
       };
     })
   ];
