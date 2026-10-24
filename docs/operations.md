@@ -58,11 +58,22 @@ sudo nixflix-health check
 systemctl --failed
 ```
 
-The October refresh leaves Whisparr on its packaged v2 release and Readarr on its
-existing retired release. Whisparr's separate newer release still embeds .NET 6
-and needs an isolated database and import-API compatibility check before rollout;
-a package refresh must preserve the conversion/relinking workflow. Stash already
-runs the latest stable 0.31.1 image and is not downgraded.
+Whisparr uses the official stable v2 release through `pkgs/whisparr`, preserving
+its episode/series API and existing import hooks. Renovate tracks its four-part
+`2.x.y-release.build` tags in `.github/package-versions.json`; develop/nightly
+and v3 releases are excluded because they need separate workflow validation.
+The trusted base-branch artifact helper downloads the exact release, validates
+its published digest and executable architecture, updates the fixed hash and
+requires synchronized artifacts before CI. Readarr remains on its existing
+retired package. Stash already runs the stable 0.31.1 image and is not downgraded.
+
+Hosted Renovate's weekly lock maintenance covers all branch-tracking flake
+inputs, including host and media Nixpkgs. The artifact fingerprint includes every
+locked input, so an update cannot accidentally bypass synchronization just
+because the generic `nixpkgs` input stayed unchanged. Dependency changes with
+no generated output still refresh that fingerprint. Existing Caddy/Navidrome
+hash refreshes follow their generic Nixpkgs input; Jellyfin's ABI-aware manifest
+refresh retains its scheduled helper. No updater runs on the playback VM.
 
 ## Storage and advisories
 
