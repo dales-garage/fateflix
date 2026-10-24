@@ -1,55 +1,76 @@
 Use case: infographic-diagram.
-Asset: a crisp, high-resolution landscape documentation image, approximately 2400 by 1800, titled exactly "FateFlix graph".
-Primary request: a dendritic OUTLINE of an actual Nix repository architecture. A legible branching tree diagram, not a generic sequential flowchart. Show a single FateFlix root on the left, a visible branching trunk, and SIX vertically stacked, color-coded branches extending toward the right. Give each branch generous space. Use very clear monospaced labels for filenames, an elegant sans-serif title and branch headings, flat light ivory background, dark ink text, subtle teal/blue/amber/purple branch accents, clean restrained technical-documentation styling. No photographs, 3D effects, mascots, decorative illustrations or watermarks. All text must be sharp, correctly spelled, large enough to read, and never collide with branches. Lines must visibly connect parent nodes to their children.
+Asset type: high-resolution documentation image, landscape 4:3, approximately 3200 x 2400.
+Primary request: redraw an UPDATED FateFlix dendritic architecture graph in the visual style of Image 1. Image 1 is a STYLE/COMPOSITION REFERENCE ONLY; its old filenames and architecture are obsolete. Replace the entire content with the verified architecture below.
 
-Title: "FateFlix graph"
-Subtitle: "Dendritic modules, reusable aspects, composed hosts"
-Root node text: "FateFlix"
+Style: crisp branching technical outline, one root at the left with a visible trunk and SIX spacious color-coded branches extending right; light ivory background, navy ink, restrained teal/blue/amber/purple accents, clean rounded rectangular nodes, thin connected tree lines. Elegant large sans-serif title/headings, precise readable monospace file labels. Generous margins and whitespace. This must be an actual hierarchical dendritic OUTLINE, not a sequential process flowchart. Every sibling leaf connects to its common parent, not to another sibling. No photos, 3D, mascots, decorative illustrations or watermark.
 
-The SIX branches and all their leaf text, faithfully rendered:
-1. "Settings" with leaves:
-   "modules/settings.nix" — "Feature switches and storage roots"
-   "modules/options.nix" — "Typed options and defaults"
+Title exactly: "FateFlix graph"
+Subtitle exactly: "Capability ownership, shared profiles, isolated hosts"
+Root node: "FateFlix"
 
-2. "Flake foundation" parent label "modules/flake/" with leaves:
-   "bootstrap.nix" — "flake-parts + import-tree + Den + flake-file"
-   "inputs.nix" — "Dependency declarations and follows"
-   "outputs.nix" — "Packages, apps and development shell"
-   "checks.nix" — "Evaluation, tests and formatting"
-   A connected small label beneath this branch: "flake-file generates flake.nix"
-   A companion small label: "flake.lock pins dependencies"
+Six main branches, top to bottom:
 
-3. "Den aspects" parent label "modules/aspects/" with exactly these EIGHT leaves, arranged as two compact columns if helpful while preserving branching connectors:
-   "media.nix"
-   "downloads.nix"
-   "playback.nix"
-   "storage.nix"
-   "imports.nix"
-   "monitoring.nix"
-   "secrets.nix"
-   "deployment.nix"
-   Small annotation: "Registers reusable feature aspects"
+1. "Flake foundation" / parent directory "modules/flake/"
+Four sibling leaves:
+"bootstrap.nix" — "flake-parts + import-tree + Den + flake-file"
+"inputs.nix" — "Dependency declarations and follows"
+"outputs.nix" — "Packages, apps and development shell"
+"checks.nix" — "Evaluation, tests and formatting"
+Small connected annotation: "flake-file generates flake.nix"
+Small connected annotation: "flake.lock pins dependencies"
 
-4. "Host composition" parent label "modules/hosts/" with two leaves:
-   "production.nix" — "nixflix-production"
-   "staging.nix" — "nixflix-staging"
-   Small annotation: "Both select shared Den aspects"
-   Small annotation: "nixflix aliases production; hostname stays nixflix"
+2. "Capability owners" / parent directory "modules/capabilities/"
+Exactly NINE sibling filename leaves, laid out as a readable compact three-column tree if useful:
+"storage.nix", "secrets.nix", "media.nix",
+"downloads.nix", "playback.nix", "imports.nix",
+"monitoring.nix", "freecore.nix", "deployment.nix"
+Annotation: "Aspect inclusion activates; options configure"
+Annotation: "Schemas and implementations: modules/_modules/"
+Make freecore.nix clearly present. All nine are siblings, not dependencies of each other.
 
-5. "Upstream and packages" with leaves:
-   "modules/upstream/nixflix.nix" — "Locked NixFlix input + named compatibility patches"
-   "modules/overlays/media.nix" — "Downstream package overrides"
-   "pkgs/" — "Maintained downstream packages"
-   Small annotation: "github:kiriwalawren/nixflix"
+3. "Shared composition"
+Three leaves, each with a full exact path:
+"modules/profiles/media-server.nix" — "Shared Den profile"
+"modules/hosts/production.nix" — "Shared profile + deployment"
+"modules/hosts/staging.nix" — "Shared profile; isolated role and secrets"
+Annotation: "Both hosts consume media-server"
+Annotation: "nixflix aliases nixflix-production"
 
-6. "Excluded support" parent label "modules/_support/" with leaves:
-   "compat/" — "Downstream modules and plugin assets"
-   "patches/" — "Small upstream compatibility patches"
-   "fixtures/" — "Static test manifests"
-   Small annotation: "Helpers and raw modules are excluded from import-tree"
+4. "NixOS implementations" / parent directory "modules/_modules/"
+Three grouped, connected leaves:
+"storage/ · secrets/ · media/"
+"downloads/ · playback/ · imports/"
+"monitoring/freecore.nix · deployment/"
+Annotation: "Capability-owned schemas and service implementation"
+Small badge: "Excluded from discovery"
+The monitoring directory contains the explicit FreeCORE telemetry module. These raw NixOS modules are imported explicitly and are NEVER auto-discovered.
 
-Footer, separate from the tree and not cramped:
-"Discovery: import-tree  |  Outputs: flake-parts  |  Composition: Den"
-"Credentials resolve at runtime. Production and staging retain their existing identities."
+5. "Machine configuration" / parent directory "modules/_hosts/nixflix/"
+Three grouped leaves:
+"default.nix · hardware-configuration.nix"
+"storage.nix · network.nix"
+"freecore.nix · containers.json · local-services.json"
+Annotation: "Identities, mounts and restored application paths"
+Small badge: "Excluded from discovery"
 
-This is a hierarchical outline with real filename labels. Do NOT imply that settings is a directory. Do NOT put _support into automatic module discovery. Do NOT invent services, cloud infrastructure, directories or extra framework names. Prioritize precise labels and graceful branching, with generous margins and readable typography over decorative complexity.
+6. "Integrations and support"
+Two primary discovered-module leaves:
+"modules/integrations/nixflix.nix" — "Upstream NixFlix imports + source-only IFD"
+"modules/integrations/media-packages.nix" — "Overlay + pkgs/"
+A clearly separated dashed subtree for EXCLUDED source/support:
+"modules/_integrations/nixflix/" — "upstream-source.nix · patches/ · compat/"
+"modules/_support/" — "fixtures/ · host-contract.nix"
+Annotation: "Locked upstream: github:kiriwalawren/nixflix"
+Dashed styling must distinguish excluded raw source/patches from discovered flake-parts modules.
+
+Two small but clearly readable footer callouts, separated from the tree:
+"SecretSpec 0.10.1 — SECRETSPEC_PROVIDER (default: pass)"
+"Production project: nixflix   |   Staging project: nixflix-staging"
+"Credentials resolve at runtime; staging never inherits production profiles."
+"FreeCORE — production availability probes + NAS-local alert bridge"
+
+Final footer:
+"One import-tree root: modules/   |   Every discovered file is flake-parts"
+"Underscore directories are excluded from discovery."
+
+Constraints: exact spelling, clear readable filenames, coherent clean branching, no overlapping labels. Do not reproduce obsolete modules/settings.nix, modules/options.nix, modules/aspects/, modules/upstream/ or modules/overlays/. Do not imply raw NixOS implementations or compatibility patches are discovered. Do not add any new frameworks, output names, cloud infrastructure or services. Prioritize legibility and correct hierarchy over decoration.

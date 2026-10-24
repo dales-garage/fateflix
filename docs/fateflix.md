@@ -5,6 +5,11 @@ files under `modules/` are flake-parts modules. import-tree excludes underscore
 paths: NixOS implementations live in `modules/_modules/`, machine configuration
 in `modules/_hosts/`, and upstream adaptation in `modules/_integrations/`.
 
+![FateFlix dendritic architecture: capability owners, shared profiles, isolated hosts and explicit FreeCORE telemetry](fateflix-graph.png)
+
+<details markdown="1">
+<summary>Composition relationships as a text diagram</summary>
+
 ```mermaid
 flowchart TD
   F[flake.nix: one import-tree root] --> C[capabilities: Den registration]
@@ -23,6 +28,8 @@ flowchart TD
   T --> N[NAS-local alert feed and private runtime configuration]
   R --> V[private credential files: persistent runtime paths]
 ```
+
+</details>
 
 Each capability owns its schema, implementation and Den registration. Both hosts
 include `den.aspects.media-server`; production additionally includes deployment.
