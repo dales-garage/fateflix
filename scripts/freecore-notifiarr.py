@@ -9,7 +9,6 @@ import json
 import os
 from pathlib import Path
 import re
-import shutil
 import socket
 import stat
 import subprocess
@@ -194,6 +193,25 @@ def drain(cfg, state, path, sender=None):
         atomic_json(path, state)
 
 
+def query(method, timeout, lock_fd):
+    # FreeCORE midclt prints Python scalars (True/None), not JSON. Query through
+    # its native local client in a bounded child and serialize explicitly.
+    output = subprocess.check_output(
+        [
+            sys.executable,
+            "-c",
+            "import json, sys; from middlewared.client import Client; "
+            "client = Client(); "
+            "print(json.dumps(client.call(sys.argv[1])))",
+            method,
+        ],
+        timeout=timeout,
+        stderr=subprocess.DEVNULL,
+        pass_fds=(lock_fd,),
+    )
+    return json.loads(output)
+
+
 def run(cfg, state_path, lock_fd):
     state = (
         private_json(state_path)
@@ -208,21 +226,11 @@ def run(cfg, state_path, lock_fd):
         raise ValueError("invalid state; preserve it for review")
     # Keep the lock in a blocked child so cron cannot accumulate workers.
     try:
-        ready = subprocess.check_output(
-            [shutil.which("midclt") or "/usr/local/bin/midclt", "call", "system.ready"],
-            timeout=5,
-            stderr=subprocess.DEVNULL,
-            pass_fds=(lock_fd,),
-        )
-        if json.loads(ready) is not True:
+        ready = query("system.ready", 5, lock_fd)
+        if ready is not True:
             raise ValueError("middleware not ready; preserve current alerts")
-        output = subprocess.check_output(
-            [shutil.which("midclt") or "/usr/local/bin/midclt", "call", "alert.list"],
-            timeout=15,
-            stderr=subprocess.DEVNULL,
-            pass_fds=(lock_fd,),
-        )
-        state = reconcile(state, json.loads(output), cfg.get("minimum", "WARNING"))
+        alerts = query("alert.list", 15, lock_fd)
+        state = reconcile(state, alerts, cfg.get("minimum", "WARNING"))
         atomic_json(state_path, state)
     except Exception:
         # Previously queued notifications may still be delivered during a feed outage.

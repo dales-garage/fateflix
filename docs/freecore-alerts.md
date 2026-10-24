@@ -2,7 +2,7 @@
 
 This adds FreeCORE's native warning/error feed to the existing Notifiarr account.
 It needs no NAS API credential: a scheduled task on FreeCORE reads the local
-middleware API. The NixFlix change adds independent TCP checks for NAS SMB and
+middleware API through its native Python client in a bounded child process. The NixFlix change adds independent TCP checks for NAS SMB and
 HTTPS. The existing Discord channel and bot configuration remain in use.
 
 ## 1. Copy the Passthrough webhook and channel ID

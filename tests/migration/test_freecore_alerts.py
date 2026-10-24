@@ -3,6 +3,7 @@
 from copy import deepcopy
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -126,6 +127,22 @@ class Alerts(unittest.TestCase):
             ):
                 bridge.run({}, path, 0)
             self.assertEqual(len(bridge.private_json(path)["pending"]), 1)
+
+    def test_native_client_serializes_python_scalars_in_a_real_child(self):
+        with tempfile.TemporaryDirectory() as folder:
+            package = Path(folder) / "middlewared"
+            package.mkdir()
+            (package / "__init__.py").touch()
+            (package / "client.py").write_text(
+                "class Client:\n"
+                "    def call(self, method):\n"
+                "        return True if method == 'system.ready' else []\n"
+            )
+            with patch.dict(os.environ, {"PYTHONPATH": folder}), bridge.lock(
+                Path(folder)
+            ) as fd:
+                self.assertIs(bridge.query("system.ready", 5, fd), True)
+                self.assertEqual(bridge.query("alert.list", 5, fd), [])
 
     def test_http_200_error_is_not_acknowledged(self):
         response = MagicMock()
