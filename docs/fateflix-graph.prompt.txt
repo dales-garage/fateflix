@@ -1,76 +1,134 @@
 Use case: infographic-diagram.
-Asset type: high-resolution documentation image, landscape 4:3, approximately 3200 x 2400.
-Primary request: redraw an UPDATED FateFlix dendritic architecture graph in the visual style of Image 1. Image 1 is a STYLE/COMPOSITION REFERENCE ONLY; its old filenames and architecture are obsolete. Replace the entire content with the verified architecture below.
+Asset type: detailed technical architecture poster, high-resolution landscape 3840 x 2880, zoomable documentation.
+Primary request: Create a NEW expanded dependency-and-directory graph for FateFlix. The previous overview omitted directory ownership. This image MUST visibly show nested subdirectories and their files UNDER the capability or external dependency that imports them. Do not make a flat list of sibling filenames. No previous image is a reference: redesign the composition completely.
 
-Style: crisp branching technical outline, one root at the left with a visible trunk and SIX spacious color-coded branches extending right; light ivory background, navy ink, restrained teal/blue/amber/purple accents, clean rounded rectangular nodes, thin connected tree lines. Elegant large sans-serif title/headings, precise readable monospace file labels. Generous margins and whitespace. This must be an actual hierarchical dendritic OUTLINE, not a sequential process flowchart. Every sibling leaf connects to its common parent, not to another sibling. No photos, 3D, mascots, decorative illustrations or watermark.
+Title exactly: "FateFlix — expanded module tree"
+Subtitle: "Dependency → registration → owned directory → implementation files"
+Style: clean technical diagram on white, navy text, precise monospaced filenames, restrained blue/teal/purple/orange branches. Thin connected tree lines and small folder-shaped directory nodes. Generous spacing. Make each card a REAL nested tree with visible connectors and indented children. All text readable when zoomed. Use three horizontal bands, not the old left-root six-branch layout.
 
-Title exactly: "FateFlix graph"
-Subtitle exactly: "Capability ownership, shared profiles, isolated hosts"
-Root node: "FateFlix"
+BAND 1 — Dependencies and host composition, across the top:
+A dependency tree:
+"flake.nix"
+  → "flake-parts + import-tree" → "modules/ (only discovery root)"
+  → "flake-file" → "modules/flake/" → "bootstrap.nix", "inputs.nix", "outputs.nix", "checks.nix"
+A composition tree:
+"Den"
+  → "modules/hosts/production.nix" → "media-server + deployment"
+  → "modules/hosts/staging.nix" → "media-server"
+A shared profile node:
+"modules/profiles/media-server.nix"
+  → "fateflix-base" → "modules/_hosts/nixflix/"
+    → "default.nix", "hardware-configuration.nix", "storage.nix", "network.nix"
+    → "administrator.pub", "containers.json", "local-services.json"
+  → "storage · secrets · media · downloads · playback · imports · monitoring · freecore"
+Note: "Deployment is included only by production."
+Note: "nixflix aliases nixflix-production."
 
-Six main branches, top to bottom:
+BAND 2 — Capability ownership (the largest part, a spacious 3-column × 3-row grid of NINE nested tree cards). Heading: "modules/capabilities/ — each registration owns the branches below".
+Every card MUST have at least THREE VISIBLE LEVELS: registration filename → implementation directory → individual files. File entries are siblings unless specifically shown nested. Keep the full directory label visible in each card.
 
-1. "Flake foundation" / parent directory "modules/flake/"
-Four sibling leaves:
-"bootstrap.nix" — "flake-parts + import-tree + Den + flake-file"
-"inputs.nix" — "Dependency declarations and follows"
-"outputs.nix" — "Packages, apps and development shell"
-"checks.nix" — "Evaluation, tests and formatting"
-Small connected annotation: "flake-file generates flake.nix"
-Small connected annotation: "flake.lock pins dependencies"
+CARD 1 "storage.nix"
+  → "modules/_modules/storage/"
+    → "default.nix"
+      → "capacity.nix"
+      → "staging.nix"
+This indentation means default.nix imports the other two.
 
-2. "Capability owners" / parent directory "modules/capabilities/"
-Exactly NINE sibling filename leaves, laid out as a readable compact three-column tree if useful:
-"storage.nix", "secrets.nix", "media.nix",
-"downloads.nix", "playback.nix", "imports.nix",
-"monitoring.nix", "freecore.nix", "deployment.nix"
-Annotation: "Aspect inclusion activates; options configure"
-Annotation: "Schemas and implementations: modules/_modules/"
-Make freecore.nix clearly present. All nine are siblings, not dependencies of each other.
+CARD 2 "secrets.nix"
+  → "modules/_modules/secrets/"
+    → "default.nix"
+    → "apps.nix"
+    → "provision.py · role.py"
+    → "provision-secrets.py"
+    → "provision-notifications.py"
+    → "provision-notifiarr.py"
+    → "import-pass.py · router_credentials.py"
+    → "secretspec.toml"
+    → "secretspec-staging.toml"
+    → "secretspec-notifiarr.toml"
+    → "secretspec-router.toml"
+Small annotation: "Runtime: SecretSpec 0.10.1; provider default pass"
 
-3. "Shared composition"
-Three leaves, each with a full exact path:
-"modules/profiles/media-server.nix" — "Shared Den profile"
-"modules/hosts/production.nix" — "Shared profile + deployment"
-"modules/hosts/staging.nix" — "Shared profile; isolated role and secrets"
-Annotation: "Both hosts consume media-server"
-Annotation: "nixflix aliases nixflix-production"
+CARD 3 "media.nix"
+  → "nixosModules.default" → "adapted upstream NixFlix"
+  → "modules/_modules/media/"
+    → "services.nix"
+    → "native-media.nix"
+    → "homepage.nix"
+    → "proxy.nix"
 
-4. "NixOS implementations" / parent directory "modules/_modules/"
-Three grouped, connected leaves:
-"storage/ · secrets/ · media/"
-"downloads/ · playback/ · imports/"
-"monitoring/freecore.nix · deployment/"
-Annotation: "Capability-owned schemas and service implementation"
-Small badge: "Excluded from discovery"
-The monitoring directory contains the explicit FreeCORE telemetry module. These raw NixOS modules are imported explicitly and are NEVER auto-discovered.
+CARD 4 "downloads.nix"
+  → "modules/_modules/downloads/"
+    → "default.nix"
+      → "policy.nix"
+      → "sabnzbd.nix"
 
-5. "Machine configuration" / parent directory "modules/_hosts/nixflix/"
-Three grouped leaves:
-"default.nix · hardware-configuration.nix"
-"storage.nix · network.nix"
-"freecore.nix · containers.json · local-services.json"
-Annotation: "Identities, mounts and restored application paths"
-Small badge: "Excluded from discovery"
+CARD 5 "playback.nix"
+  → "modules/_modules/playback/"
+    → "default.nix"
+      → "gpu.nix"
+Small annotation: "intel | software"
 
-6. "Integrations and support"
-Two primary discovered-module leaves:
-"modules/integrations/nixflix.nix" — "Upstream NixFlix imports + source-only IFD"
-"modules/integrations/media-packages.nix" — "Overlay + pkgs/"
-A clearly separated dashed subtree for EXCLUDED source/support:
-"modules/_integrations/nixflix/" — "upstream-source.nix · patches/ · compat/"
-"modules/_support/" — "fixtures/ · host-contract.nix"
-Annotation: "Locked upstream: github:kiriwalawren/nixflix"
-Dashed styling must distinguish excluded raw source/patches from discovered flake-parts modules.
+CARD 6 "imports.nix"
+  → "modules/_modules/imports/"
+    → "imports.nix"
+    → "remux.nix"
 
-Two small but clearly readable footer callouts, separated from the tree:
-"SecretSpec 0.10.1 — SECRETSPEC_PROVIDER (default: pass)"
-"Production project: nixflix   |   Staging project: nixflix-staging"
-"Credentials resolve at runtime; staging never inherits production profiles."
-"FreeCORE — production availability probes + NAS-local alert bridge"
+CARD 7 "monitoring.nix"
+  → "modules/_modules/monitoring/"
+    → "notifiarr.nix"
+      → "notifications.nix"
 
-Final footer:
-"One import-tree root: modules/   |   Every discovered file is flake-parts"
-"Underscore directories are excluded from discovery."
+CARD 8 "freecore.nix"
+  → "modules/_modules/monitoring/"
+    → "freecore.nix"
+  → "modules/_hosts/nixflix/"
+    → "freecore.nix"
+  → "scripts/"
+    → "freecore-notifiarr.py"
+Small annotation: "Production NAS probes + NAS-local bridge payload"
 
-Constraints: exact spelling, clear readable filenames, coherent clean branching, no overlapping labels. Do not reproduce obsolete modules/settings.nix, modules/options.nix, modules/aspects/, modules/upstream/ or modules/overlays/. Do not imply raw NixOS implementations or compatibility patches are discovered. Do not add any new frameworks, output names, cloud infrastructure or services. Prioritize legibility and correct hierarchy over decoration.
+CARD 9 "deployment.nix" with a small orange badge "PRODUCTION ONLY"
+  → "modules/_modules/deployment/"
+    → "gitops.nix"
+      → "Comin"
+Note: "Staging never includes this aspect."
+
+BAND 3 — Upstream dependency and its nested adaptation directories (a wide expanded tree along the bottom):
+Heading: "Upstream NixFlix dependency and source adaptation"
+"github:kiriwalawren/nixflix"
+  → "modules/integrations/nixflix.nix"
+    → "modules/_integrations/nixflix/"
+      → "upstream-source.nix"
+      → "patches/"
+        → "arr-runtime-credentials.patch"
+        → "four-instance-integrations.patch"
+        → "notification-reconciliation.patch"
+      → "compat/modules/"
+        → "caddy/" → "default.nix · update.sh"
+        → "homepage.nix"
+        → "jellyfin/plugins/" → "default.nix · options.nix · resolvePlugins.nix · …"
+        → "navidrome/plugins/"
+          → "gen/ (five plugin definitions)"
+          → "lib/navidrome-plugins.nix"
+          → "default.nix · pluginsService.nix · …"
+        → "notifiarr/" → "default.nix · render.py"
+        → "recyclarr/" → "radarr-4k.nix · sonarr-4k.nix"
+        → "radarr-4k.nix · sonarr-4k.nix"
+Separate connected package branch:
+"modules/integrations/media-packages.nix"
+  → "pkgs/overlay.nix"
+    → "pkgs/maintainerr/"
+    → "pkgs/notifiarr/"
+Small dependency labels:
+"nixpkgs-host → host systems + source-only IFD"
+"nixpkgs → media packages + overlay"
+"vpn-confinement → nixosModules.default"
+
+Footer legend:
+"Solid branches: inclusion, explicit imports, or ownership. Directory boxes expand into their files."
+"Underscore directories are excluded from import-tree discovery; raw NixOS modules are imported explicitly."
+"… indicates additional files inside that directory."
+"Secrets: production project nixflix; isolated staging project nixflix-staging; values resolve at runtime."
+
+Constraints: Exact filename spelling. Visibly nested directory hierarchies, not flat boxes with unrelated path names. No obsolete modules/aspects, modules/upstream, modules/options.nix or modules/settings.nix. Keep FreeCORE separate from monitoring ownership even though they share a physical directory. Do not imply deployment is in media-server. No photos, mascots, logos, gradients, or watermark. Readability and accurate parent-child relationships matter most.

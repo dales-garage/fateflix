@@ -5,7 +5,13 @@ files under `modules/` are flake-parts modules. import-tree excludes underscore
 paths: NixOS implementations live in `modules/_modules/`, machine configuration
 in `modules/_hosts/`, and upstream adaptation in `modules/_integrations/`.
 
-![FateFlix dendritic architecture: capability owners, shared profiles, isolated hosts and explicit FreeCORE telemetry](fateflix-graph.png)
+![FateFlix expanded module tree: dependencies, capability registrations, owned subdirectories and implementation files](fateflix-graph.png)
+
+The expanded tree follows each capability registration into its owned
+implementation directory and files. The upstream NixFlix branch expands the
+patch and compatibility subdirectories. Directory branches show ownership;
+nested file branches show imports, such as storage's `default.nix` importing
+`capacity.nix` and `staging.nix`. Ellipses mark additional files in a directory.
 
 <details markdown="1">
 <summary>Composition relationships as a text diagram</summary>
