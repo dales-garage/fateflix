@@ -25,4 +25,18 @@ assert pkgs.lib.hasPrefix "+" unit.serviceConfig.ExecStartPre;
 assert cfg.systemd.services.seerr.preStart == "";
 assert cfg.networking.firewall.allowedTCPPorts == [ 22 ];
 assert !(builtins.elem 5454 cfg.networking.firewall.allowedTCPPorts);
+assert builtins.all (
+  check:
+  check.type == "tcp"
+  && check.interval == "1m"
+  && check.timeout == "5s"
+  && builtins.elem check.check [
+    "10.69.0.10:443"
+    "10.69.0.10:445"
+  ]
+) (builtins.filter (check: pkgs.lib.hasPrefix "FreeCORE " check.name) client.settings.service);
+assert
+  builtins.length (
+    builtins.filter (check: pkgs.lib.hasPrefix "FreeCORE " check.name) client.settings.service
+  ) == 2;
 pkgs.runCommand "notifiarr-eval" { } "touch $out"

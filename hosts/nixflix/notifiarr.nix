@@ -140,7 +140,26 @@ in
                 "mylar3"
                 "stash"
                 "homepage"
-              ];
+              ]
+            ++
+              map
+                (service: {
+                  name = "FreeCORE ${service.name}";
+                  type = "tcp";
+                  check = "10.69.0.10:${toString service.port}";
+                  interval = "1m";
+                  timeout = "5s";
+                })
+                [
+                  {
+                    name = "SMB";
+                    port = 445;
+                  }
+                  {
+                    name = "Web";
+                    port = 443;
+                  }
+                ];
         };
       };
     }
