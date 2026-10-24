@@ -15,7 +15,7 @@
     serviceConfig = {
       User = "bazarr-4k";
       Group = "media";
-      ExecStart = "${pkgs.bazarr}/bin/bazarr --config /var/lib/bazarr-4k --port 6777 --no-update True";
+      ExecStart = "${config.services.bazarr.package}/bin/bazarr --config /var/lib/bazarr-4k --port 6777 --no-update True";
       Restart = "on-failure";
       KillSignal = "SIGINT";
       SuccessExitStatus = "0 156";
@@ -56,6 +56,7 @@
   };
   services.whisparr = {
     enable = true;
+    package = pkgs.callPackage ../../pkgs/whisparr { };
     group = "media";
     dataDir = "/var/lib/whisparr";
   };

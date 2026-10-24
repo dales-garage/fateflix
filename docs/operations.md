@@ -12,7 +12,75 @@ work to the media VM. Backup automation remains deferred to a separate Xen
 Orchestra project. Nix generations restore system software and configuration;
 they do not restore application databases or reverse database migrations.
 Readarr stays enabled with its existing library pending a separate replacement
-assessment. This batch enables no media deletion or database migrations.
+assessment. The reliability services do not migrate or restore application
+databases; application version upgrades can migrate their own databases.
+
+## Updating packages safely
+
+The operating-system modules track NixOS 26.05 (`nixpkgs-host`). The locked
+`nixpkgs-media` input supplies newer native Plex, SABnzbd, Bazarr, Tautulli,
+Audiobookshelf and Seerr packages, plus the 6.18 LTS kernel. Both Bazarr
+instances use the same selected package. Seerr 3.5.1 is temporarily sourced
+explicitly until Nixpkgs catches up; its dependency lock is unchanged, and its
+Node runtime comes from the fresh package set. Later packaged Seerr releases
+automatically replace this override. Hardware settings, FFmpeg, containers,
+service users and media paths retain their existing configuration.
+
+Update from current `main`, rather than rebuilding an old migration bookmark.
+In the colocated Jujutsu checkout, preserve pending work with a recovery bookmark
+before starting an empty change on `main@origin`:
+
+```sh
+jj bookmark create recovery/before-update -r @
+jj git fetch --remote origin
+jj new main@origin
+nix flake update
+nix build --no-link .#nixosConfigurations.nixflix-production.config.system.build.toplevel
+```
+
+Review the lock diff and submit it through the existing PR/CI/Comin workflow.
+Do not update the deliberately pinned TRaSH/Recyclarr policy revisions as part
+of a package refresh. `system.stateVersion` describes persistent state defaults;
+it stays at 26.05. Kernel installation takes effect on the next planned boot;
+activation alone does not replace the running kernel.
+
+Before switching application versions, take consistent SQLite backups and copy
+other application state to a private local recovery directory. Nix generations
+do not restore those databases. A failed activation can still have started a
+newer application, so inspect its logs and database compatibility before any
+software downgrade. The Comin profile and the ordinary system profile can have
+different histories: verify the intended generation's Stash image, operations
+files and service definitions before activating it. Never select an old image
+against a newer Stash database. Preserve the failed generation and working-tree
+changes for diagnosis. After recovery, build from current main and use the
+explicit production target for any authorized manual switch:
+
+```sh
+sudo nixos-rebuild switch --flake .#nixflix-production
+sudo nixflix-health check
+systemctl --failed
+```
+
+Whisparr uses the official stable v2 release through `pkgs/whisparr`, preserving
+its episode/series API and existing import hooks. The tested upgrade advances
+the main database migration version from 17 to 215 (25 applied migrations) and
+retains the tested series, quality profiles and notifications. Preserve the
+consistent pre-upgrade copy; a software-only downgrade is not a data rollback.
+Renovate tracks its four-part
+`2.x.y-release.build` tags in `.github/package-versions.json`; develop/nightly
+and v3 releases are excluded because they need separate workflow validation.
+The trusted base-branch artifact helper downloads the exact release, validates
+its published digest and executable architecture, updates the fixed hash and
+requires synchronized artifacts before CI. Readarr remains on its existing
+retired package. Stash already runs the stable 0.31.1 image and is not downgraded.
+
+Hosted Renovate's weekly lock maintenance covers all branch-tracking flake
+inputs, including host and media Nixpkgs. The artifact fingerprint includes every
+locked input, so an update cannot accidentally bypass synchronization just
+because the generic `nixpkgs` input stayed unchanged. Dependency changes with
+no generated output still refresh that fingerprint. Existing Caddy/Navidrome
+hash refreshes follow their generic Nixpkgs input; Jellyfin's ABI-aware manifest
+refresh retains its scheduled helper. No updater runs on the playback VM.
 
 ## Storage and advisories
 

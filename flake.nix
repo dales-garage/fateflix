@@ -16,6 +16,8 @@
       flake = false;
     };
     nixpkgs-host.url = "github:NixOS/nixpkgs/nixos-26.05";
+    # Fresh application packages and kernel fixes without changing NixOS modules.
+    nixpkgs-media.url = "github:NixOS/nixpkgs/master";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
