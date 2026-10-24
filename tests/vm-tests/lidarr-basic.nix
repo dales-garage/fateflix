@@ -2,6 +2,7 @@
   system ? builtins.currentSystem,
   pkgs ? import <nixpkgs> { inherit system; },
   nixosModules,
+  nixflixSource,
 }:
 let
   pkgsUnfree = import pkgs.path {
@@ -9,7 +10,7 @@ let
     config.allowUnfree = true;
   };
 
-  inherit (import ../../modules/lidarr/metadataAlbumTypes.nix)
+  inherit (import "${nixflixSource}/modules/lidarr/metadataAlbumTypes.nix")
     primaryAlbumTypeDefs
     secondaryAlbumTypeDefs
     releaseStatusDefs

@@ -6,6 +6,7 @@ let
   ]);
   app = name: runtimeInputs: text: {
     type = "app";
+    meta.description = "NixFlix ${builtins.replaceStrings [ "-" ] [ " " ] name} operation";
     program = pkgs.lib.getExe (pkgs.writeShellApplication { inherit name runtimeInputs text; });
   };
   script =

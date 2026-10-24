@@ -40,11 +40,11 @@
   };
   systemd.services.audiobookshelf.serviceConfig = {
     BindReadOnlyPaths = [
-      "/data/media/audiobooks:/audiobooks"
-      "/data/media/ebooks:/ebooks"
+      "${config.nixflix.mediaDir}/audiobooks:/audiobooks"
+      "${config.nixflix.mediaDir}/ebooks:/ebooks"
     ];
     BindPaths = [
-      "/data/media/podcasts:/podcasts"
+      "${config.nixflix.mediaDir}/podcasts:/podcasts"
       "/var/lib/audiobookshelf/metadata:/metadata"
       "/var/lib/audiobookshelf/config:/config"
     ];

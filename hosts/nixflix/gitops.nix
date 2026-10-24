@@ -6,6 +6,13 @@
   ...
 }:
 let
+  localServices = builtins.fromJSON (builtins.readFile ./local-services.json);
+  healthManifest = localServices // {
+    services = lib.filterAttrs (
+      name: _: name != "sabnzbd" || config.nixflix.usenetClients.sabnzbd.enable
+    ) localServices.services;
+    monitoring.notifiarr = config.nixflix.notifiarr.enable;
+  };
   python = pkgs.python3.withPackages (p: [ p.pyyaml ]);
   # Keep CI/remux tooling out of the health closure. Python needs these four
   # sibling modules, not every script in the repository.
@@ -105,7 +112,7 @@ in
       };
     };
     environment.systemPackages = [ health ];
-    environment.etc."nixflix/gitops-services.json".source = ./local-services.json;
+    environment.etc."nixflix/gitops-services.json".text = builtins.toJSON healthManifest;
     environment.etc."nixos/README.gitops".text = ''
       Managed by Comin from declarative-dale/nixflix main.
       Production output: nixosConfigurations.nixflix-production.

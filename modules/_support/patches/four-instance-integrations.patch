@@ -1,0 +1,235 @@
+diff --git a/modules/default.nix b/modules/default.nix
+index 98e1f80..2d72f47 100644
+--- a/modules/default.nix
++++ b/modules/default.nix
+@@ -15,19 +15,23 @@ in
+     ./downloadarr
+     ./flaresolverr.nix
+     ./globals.nix
++    ./homepage.nix
+     ./jellyfin
+     ./lidarr
+     ./maintainerr
+     ./navidrome
+     ./notif
++    ./notifiarr
+     ./options.nix
+     ./postgres.nix
+     ./prowlarr
++    ./radarr-4k.nix
+     ./radarr.nix
+     ./recyclarr
+     ./seerr
+     ./slskd
+     ./sonarr-anime.nix
++    ./sonarr-4k.nix
+     ./sonarr.nix
+     ./torrentClients
+     ./usenetClients
+diff --git a/modules/downloadarr/options.nix b/modules/downloadarr/options.nix
+index 1d88c36..f8209a4 100644
+--- a/modules/downloadarr/options.nix
++++ b/modules/downloadarr/options.nix
+@@ -24,6 +24,18 @@ let
+           description = "The categories to use for the Sonarr Anime instance";
+         };
+ 
++        sonarr-4k = mkOption {
++          type = types.str;
++          default = "sonarr-4k";
++          description = "Download category for sonarr-4k";
++        };
++
++        radarr-4k = mkOption {
++          type = types.str;
++          default = "radarr-4k";
++          description = "Download category for radarr-4k";
++        };
++
+         lidarr = mkOption {
+           type = types.str;
+           default = "lidarr";
+diff --git a/modules/downloadarr/service.nix b/modules/downloadarr/service.nix
+index b32be05..f9108d4 100644
+--- a/modules/downloadarr/service.nix
++++ b/modules/downloadarr/service.nix
+@@ -26,6 +26,8 @@ let
+     serviceName:
+     {
+       radarr = "movieCategory";
++      radarr-4k = "movieCategory";
++      sonarr-4k = "tvCategory";
+       sonarr = "tvCategory";
+       sonarr-anime = "tvCategory";
+       lidarr = "musicCategory";
+@@ -35,6 +37,8 @@ let
+ 
+   arrServices = [
+     "radarr"
++    "radarr-4k"
++    "sonarr-4k"
+     "sonarr"
+     "sonarr-anime"
+     "lidarr"
+diff --git a/modules/options.nix b/modules/options.nix
+index ccc6943..75f6a6e 100644
+--- a/modules/options.nix
++++ b/modules/options.nix
+@@ -13,9 +13,11 @@ in
+     ./lidarr
+     ./postgres.nix
+     ./prowlarr
++    ./radarr-4k.nix
+     ./radarr.nix
+     ./recyclarr
+     ./sonarr-anime.nix
++    ./sonarr-4k.nix
+     ./sonarr.nix
+     ./torrentClients
+     ./usenetClients
+diff --git a/modules/prowlarr/applications.nix b/modules/prowlarr/applications.nix
+index ba8ee99..28c7f15 100644
+--- a/modules/prowlarr/applications.nix
++++ b/modules/prowlarr/applications.nix
+@@ -59,6 +59,8 @@ in
+           "prowlarr-config.service"
+         ]
+         ++ lib.optional config.nixflix.radarr.enable "radarr-config.service"
++        ++ lib.optional config.nixflix.radarr-4k.enable "radarr-4k-config.service"
++        ++ lib.optional config.nixflix.sonarr-4k.enable "sonarr-4k-config.service"
+         ++ lib.optional config.nixflix.sonarr.enable "sonarr-config.service"
+         ++ lib.optional config.nixflix.sonarr-anime.enable "sonarr-anime-config.service"
+         ++ lib.optional config.nixflix.lidarr.enable "lidarr-config.service";
+@@ -66,6 +68,8 @@ in
+           "prowlarr-config.service"
+         ]
+         ++ lib.optional config.nixflix.radarr.enable "radarr-config.service"
++        ++ lib.optional config.nixflix.radarr-4k.enable "radarr-4k-config.service"
++        ++ lib.optional config.nixflix.sonarr-4k.enable "sonarr-4k-config.service"
+         ++ lib.optional config.nixflix.sonarr.enable "sonarr-config.service"
+         ++ lib.optional config.nixflix.sonarr-anime.enable "sonarr-anime-config.service"
+         ++ lib.optional config.nixflix.lidarr.enable "lidarr-config.service";
+diff --git a/modules/prowlarr/default.nix b/modules/prowlarr/default.nix
+index 8e68430..c276e20 100644
+--- a/modules/prowlarr/default.nix
++++ b/modules/prowlarr/default.nix
+@@ -6,6 +6,8 @@ let
+   arrServices =
+     optional nixflix.lidarr.enable "lidarr"
+     ++ optional nixflix.radarr.enable "radarr"
++    ++ optional nixflix.radarr-4k.enable "radarr-4k"
++    ++ optional nixflix.sonarr-4k.enable "sonarr-4k"
+     ++ optional nixflix.sonarr.enable "sonarr"
+     ++ optional nixflix.sonarr-anime.enable "sonarr-anime";
+ 
+diff --git a/modules/recyclarr/default.nix b/modules/recyclarr/default.nix
+index 755a4dc..c81247e 100644
+--- a/modules/recyclarr/default.nix
++++ b/modules/recyclarr/default.nix
+@@ -22,6 +22,8 @@ in
+   imports = [
+     ./cleanup-profiles.nix
+     ./config-option.nix
++    ./radarr-4k.nix
++    ./sonarr-4k.nix
+     ./radarr.nix
+     ./sonarr-anime.nix
+     ./sonarr.nix
+@@ -117,12 +119,16 @@ in
+           ++ optional (cfg.radarrQuality == "1080p") "[SQP] SQP-1 (1080p)"
+           ++ optional (cfg.sonarrQuality == "4K") "WEB-2160p (Alternative)"
+           ++ optional (cfg.sonarrQuality == "1080p") "WEB-1080p (Alternative)"
++          ++ optional config.nixflix.radarr-4k.enable "[SQP] SQP-1 (2160p)"
++          ++ optional config.nixflix.sonarr-4k.enable "WEB-2160p (Alternative)"
+           ++ optional config.nixflix.sonarr-anime.enable "[Anime] Remux-1080p";
+         defaultText = literalExpression ''
+           optional (cfg.radarrQuality == "4K") "[SQP] SQP-1 (2160p)"
+           ++ optional (cfg.radarrQuality == "1080p") "[SQP] SQP-1 (1080p)"
+           ++ optional (cfg.sonarrQuality == "4K") "WEB-2160p (Alternative)"
+           ++ optional (cfg.sonarrQuality == "1080p") "WEB-1080p (Alternative)"
++          ++ optional config.nixflix.radarr-4k.enable "[SQP] SQP-1 (2160p)"
++          ++ optional config.nixflix.sonarr-4k.enable "WEB-2160p (Alternative)"
+           ++ optional config.nixflix.sonarr-anime.enable "[Anime] Remux-1080p";
+         '';
+         example = [ "My Custom Profile" ];
+@@ -212,6 +218,14 @@ in
+           "radarr.service"
+           "radarr-config.service"
+         ]
++        ++ optionals config.nixflix.radarr-4k.enable [
++          "radarr-4k.service"
++          "radarr-4k-config.service"
++        ]
++        ++ optionals config.nixflix.sonarr-4k.enable [
++          "sonarr-4k.service"
++          "sonarr-4k-config.service"
++        ]
+         ++ optionals config.nixflix.sonarr.enable [
+           "sonarr.service"
+           "sonarr-config.service"
+@@ -225,6 +239,14 @@ in
+             "radarr.service"
+             "radarr-config.service"
+           ]
++          ++ optionals config.nixflix.radarr-4k.enable [
++            "radarr-4k.service"
++            "radarr-4k-config.service"
++          ]
++          ++ optionals config.nixflix.sonarr-4k.enable [
++            "sonarr-4k.service"
++            "sonarr-4k-config.service"
++          ]
+           ++ optionals config.nixflix.sonarr.enable [
+             "sonarr.service"
+             "sonarr-config.service"
+diff --git a/modules/torrentClients/qbittorrent.nix b/modules/torrentClients/qbittorrent.nix
+index e0a1a4d..9eb77a0 100644
+--- a/modules/torrentClients/qbittorrent.nix
++++ b/modules/torrentClients/qbittorrent.nix
+@@ -62,6 +62,8 @@ in
+               radarr = getCategory "radarr";
+               sonarr = getCategory "sonarr";
+               sonarr-anime = getCategory "sonarr-anime";
++              sonarr-4k = getCategory "sonarr-4k";
++              radarr-4k = getCategory "radarr-4k";
+               lidarr = getCategory "lidarr";
+               prowlarr = getCategory "prowlarr";
+             };
+diff --git a/modules/usenetClients/sabnzbd/settingsType.nix b/modules/usenetClients/sabnzbd/settingsType.nix
+index 572af3e..9a61865 100644
+--- a/modules/usenetClients/sabnzbd/settingsType.nix
++++ b/modules/usenetClients/sabnzbd/settingsType.nix
+@@ -705,6 +705,20 @@ types.submodule {
+           pp = 3;
+           script = "None";
+         }
++        ++ lib.optional (config.nixflix.radarr-4k.enable or false) {
++          name = "radarr-4k";
++          dir = "radarr-4k";
++          priority = 0;
++          pp = 3;
++          script = "None";
++        }
++        ++ lib.optional (config.nixflix.sonarr-4k.enable or false) {
++          name = "sonarr-4k";
++          dir = "sonarr-4k";
++          priority = 0;
++          pp = 3;
++          script = "None";
++        }
+         ++ lib.optional (config.nixflix.lidarr.enable or false) {
+           name = "lidarr";
+           dir = "lidarr";
+@@ -737,6 +751,12 @@ types.submodule {
+         ++ lib.optional (config.nixflix.sonarr-anime.enable or false) {
+           name = "sonarr-anime"; dir = "sonarr-anime"; priority = 0; pp = 3; script = "None";
+         }
++        ++ lib.optional (config.nixflix.radarr-4k.enable or false) {
++          name = "radarr-4k"; dir = "radarr-4k"; priority = 0; pp = 3; script = "None";
++        }
++        ++ lib.optional (config.nixflix.sonarr-4k.enable or false) {
++          name = "sonarr-4k"; dir = "sonarr-4k"; priority = 0; pp = 3; script = "None";
++        }
+         ++ lib.optional (config.nixflix.lidarr.enable or false) {
+           name = "lidarr"; dir = "lidarr"; priority = 0; pp = 3; script = "None";
+         }

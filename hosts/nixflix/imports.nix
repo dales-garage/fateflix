@@ -72,7 +72,7 @@ in
       state = "/var/lib/nixflix-imports";
       inbox = "/var/lib/nixflix-imports-inbox";
       stashRoot = "/data";
-      mediaRoot = "/data/media/porn";
+      mediaRoot = "${config.nixflix.mediaDir}/porn";
       mount = "/data";
       requireMount = true;
       inherit (cfg) crf preset reserveBytes;
@@ -83,6 +83,7 @@ in
     systemd.tmpfiles.rules = [ "d /var/lib/nixflix-imports-inbox 0770 root media - -" ];
     systemd.services.nixflix-whisparr-policy = {
       description = "Prefer efficient Whisparr codecs and configure durable Stash intake";
+      wants = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
       after = [
         "whisparr.service"
@@ -145,7 +146,7 @@ in
         IOSchedulingClass = "idle";
         MemoryMax = "3G";
         MemorySwapMax = 0;
-        ReadWritePaths = [ "/data/media/porn" ];
+        ReadWritePaths = [ "${config.nixflix.mediaDir}/porn" ];
       };
     };
     systemd.timers.nixflix-import-worker = {

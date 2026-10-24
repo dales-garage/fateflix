@@ -82,7 +82,6 @@ in
   config = lib.mkMerge [
     {
       nixflix.notifiarr = {
-        enable = config.nixflixHost.production.enable;
         apiKeyFile = "/var/lib/nixflix-secrets/notifiarr-api-key";
         listenAddress = "0.0.0.0";
         settings = {
@@ -96,16 +95,14 @@ in
           lidarr = map app (lib.filter (name: name == "lidarr") arrNames);
           prowlarr = map app (lib.filter (name: name == "prowlarr") arrNames);
           readarr = map app (lib.filter (name: name == "readarr") arrNames);
-          sabnzbd = [
-            {
-              name = "SABnzbd";
-              interval = "5m";
-              url = "http://127.0.0.1:8080";
-              api_key = {
-                _secret = "/var/lib/nixflix-secrets/current/sabnzbd";
-              };
-            }
-          ];
+          sabnzbd = lib.optional config.nixflix.usenetClients.sabnzbd.enable {
+            name = "SABnzbd";
+            interval = "5m";
+            url = "http://127.0.0.1:8080";
+            api_key = {
+              _secret = "/var/lib/nixflix-secrets/current/sabnzbd";
+            };
+          };
           plex = {
             name = "Plex";
             interval = "5m";
@@ -201,7 +198,7 @@ in
             "plex"
           ]
         );
-        environment.PYTHONPATH = "${../../modules/notifiarr}";
+        environment.PYTHONPATH = "${../../modules/_support/compat/modules/notifiarr}";
         serviceConfig = {
           Type = "oneshot";
           StateDirectory = "notifiarr-connections";

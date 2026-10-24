@@ -115,7 +115,7 @@ def probe():
                 ].split(","):
                     raise ValueError("NAS mount mode")
                 # Metadata access only. No enumeration, content scans or writes.
-                os.stat("/data/media")
+                os.stat(cfg.get("mediaRoot", "/data/media"))
                 value["nas"] = capacity("/data", cfg["nas"], inodes=False)
                 value["nas"]["accessible"] = True
             except (

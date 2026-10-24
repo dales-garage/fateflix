@@ -11,6 +11,7 @@ let
 in
 builtins.sort builtins.lessThan (
   [
+    "check-flake-file"
     "formatting"
     "docs-build"
     "unit-tests"

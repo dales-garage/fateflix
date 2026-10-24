@@ -1,6 +1,9 @@
 { config, lib, ... }:
 let
   local = builtins.fromJSON (builtins.readFile ./local-services.json);
+  ports = lib.filterAttrs (
+    name: _: name != "sabnzbd" || config.nixflix.usenetClients.sabnzbd.enable
+  ) local.services;
   routes = lib.concatLists (
     lib.mapAttrsToList (
       name: port:
@@ -20,7 +23,7 @@ let
             local.publicNames.${name} or name
           }.dalebox.pw"
         )
-    ) local.services
+    ) ports
   );
 in
 {

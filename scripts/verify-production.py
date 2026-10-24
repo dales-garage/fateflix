@@ -71,6 +71,8 @@ def main():
         if code not in (200, 401, 403):
             raise RuntimeError(name + " has unexpected HTTP status " + str(code))
         report["services"][name] = {"active": True, "http": code}
+    operations = json.loads(Path("/etc/nixflix/operations.json").read_text())
+    downloads_root = Path(operations.get("downloadsRoot", "/data/usenet"))
     for name in ("sonarr", "sonarr-4k", "radarr", "radarr-4k", "lidarr"):
         subprocess.run(
             [
@@ -81,7 +83,7 @@ def main():
                 sys.executable,
                 "-c",
                 "import os,tempfile; fd,p=tempfile.mkstemp(prefix='.nixflix-write-probe-',dir="
-                + repr("/data/usenet/" + name)
+                + repr(str(downloads_root / name))
                 + "); os.close(fd); os.unlink(p)",
             ],
             check=True,

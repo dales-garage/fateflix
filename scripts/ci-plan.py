@@ -36,7 +36,9 @@ def catalog(root):
     return {
         "vm": vm,
         "host": host,
-        "all": vm | host | {"formatting", "docs-build", "unit-tests"},
+        "all": vm
+        | host
+        | {"formatting", "check-flake-file", "docs-build", "unit-tests"},
     }
 
 
@@ -67,7 +69,9 @@ def select(names, changed):
         if path.startswith("modules/"):
             # Generated plugin metadata is application-scoped. Keep host
             # validation even if Navidrome is enabled on production later.
-            if path.startswith("modules/navidrome/plugins/gen/"):
+            if path.startswith(
+                "modules/_support/compat/modules/navidrome/plugins/gen/"
+            ):
                 checks |= {"navidrome-basic", "unit-tests", "docs-build"}
                 checks |= names["host"]
                 production = True

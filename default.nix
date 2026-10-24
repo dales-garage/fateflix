@@ -3,16 +3,23 @@
 }:
 let
   lock = builtins.fromJSON (builtins.readFile ./flake.lock);
-  vpn-confinement-src = fetchTarball {
-    url = "https://github.com/Maroka-chan/VPN-Confinement/archive/${lock.nodes.vpn-confinement.locked.rev}.tar.gz";
-    sha256 = lock.nodes.vpn-confinement.locked.narHash;
+  fetchInput =
+    name:
+    let
+      pin = lock.nodes.${name}.locked;
+    in
+    fetchTarball {
+      url = "https://github.com/${pin.owner}/${pin.repo}/archive/${pin.rev}.tar.gz";
+      sha256 = pin.narHash;
+    };
+  source = import ./modules/_support/upstream-source.nix {
+    inherit pkgs;
+    src = fetchInput "nixflix";
   };
-  nixflixModule = {
-    imports = [
-      ./modules
-      "${vpn-confinement-src}/modules/vpn-netns.nix"
-    ];
-  };
+  nixflixModule.imports = [
+    "${source}/modules"
+    "${fetchInput "vpn-confinement"}/modules/vpn-netns.nix"
+  ];
 in
 {
   nixosModules.default = nixflixModule;

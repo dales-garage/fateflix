@@ -1,3 +1,4 @@
+> **FateFlix**: [modular configuration and upstream updates](docs/fateflix.md).
 > Personal VM operations: [Comin GitOps and updates](docs/gitops.md).
 
 <h1 align="center">

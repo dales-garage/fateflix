@@ -26,7 +26,8 @@ let
     config.delayProfiles = lib.mkForce [
       {
         id = 1;
-        enableTorrent = false;
+        enableTorrent = config.fateflixPolicy.torrents;
+        enableUsenet = config.fateflixPolicy.usenet;
         order = 2147483647;
       }
     ];
@@ -70,12 +71,8 @@ in
 {
   nixflix = {
     enable = true;
-    mediaDir = "/data/media";
-    downloadsDir = "/data/usenet";
     serviceDependencies = [ "nixflix-nas-ready.service" ];
     # This host uses Usenet only, including after future upstream merges.
-    flaresolverr.enable = lib.mkForce false;
-    torrentClients.qbittorrent.enable = lib.mkForce false;
     sonarr = arr "sonarr" 8990;
     sonarr-4k = arr "sonarr-4k" 8989;
     radarr = arr "radarr" 7879;
@@ -93,7 +90,6 @@ in
     };
     usenetClients.sabnzbd = {
       enable = true;
-      downloadsDir = "/data/usenet";
       settings.misc = {
         api_key = secret "sabnzbd";
         nzb_key = secret "sabnzbd";
@@ -117,10 +113,6 @@ in
     # Leave source download client state intact until explicitly reconciled.
     downloadarr = {
       enable = false;
-      qbittorrent.enable = lib.mkForce false;
-      rtorrent.enable = lib.mkForce false;
-      deluge.enable = lib.mkForce false;
-      transmission.enable = lib.mkForce false;
     };
   };
   environment.etc."nixflix/recyclarr-settings.yml".source =
@@ -171,7 +163,7 @@ in
     "video"
     "render"
   ];
-  systemd.services.plex.serviceConfig.BindReadOnlyPaths = [ "/data/media:/media" ];
+  systemd.services.plex.serviceConfig.BindReadOnlyPaths = [ "${config.nixflix.mediaDir}:/media" ];
   services.seerr = {
     enable = true;
     port = 5055;
@@ -186,38 +178,42 @@ in
     Group = "media";
   };
   # Preserve copied providers, paths and queues while managing access and categories.
-  systemd.services.sabnzbd.serviceConfig.ExecStartPre = lib.mkForce (
-    "+"
-    + pkgs.writeShellScript "sabnzbd-migration-prestart" ''
-      set -eu
-      test -f /var/lib/sabnzbd/sabnzbd.ini
-      ${pkgs.python3.withPackages (p: [ p.configobj ])}/bin/python3 - <<'PY'
-      from configobj import ConfigObj
-      c = ConfigObj('/var/lib/sabnzbd/sabnzbd.ini')
-      c['misc']['host'] = '${bindAddress}'
-      c['misc']['port'] = '8080'
-      c['misc']['download_free'] = '500G'
-      c['misc']['complete_free'] = '500G'
-      c['misc']['fulldisk_autoresume'] = '0'
-      allowed = c['misc'].get('host_whitelist', [])
-      if isinstance(allowed, str):
-          allowed = [value.strip() for value in allowed.split(',') if value.strip()]
-      allowed = [hostname for hostname in allowed if hostname != 'sabnzbd.dalebox.pw']
-      for hostname in ('sabnzbd', 'sabnzbd.${localServices.domain}'):
-          if hostname not in allowed:
-              allowed.append(hostname)
-      c['misc']['host_whitelist'] = allowed
-      c['misc']['api_key'] = open('/var/lib/nixflix-secrets/current/sabnzbd').read().strip()
-      if 'categories' not in c:
-          c['categories'] = {}
-      for name in ('sonarr', 'sonarr-4k', 'radarr', 'radarr-4k', 'lidarr'):
-          c['categories'][name] = dict(name=name, dir=name, priority='0', pp='3', script='None')
-      c.write()
-      PY
-      chown sabnzbd:media /var/lib/sabnzbd/sabnzbd.ini
-      chmod 600 /var/lib/sabnzbd/sabnzbd.ini
-    ''
-  );
+  systemd.services.sabnzbd.serviceConfig.ExecStartPre =
+    lib.mkIf config.nixflix.usenetClients.sabnzbd.enable
+      (
+        lib.mkForce (
+          "+"
+          + pkgs.writeShellScript "sabnzbd-migration-prestart" ''
+            set -eu
+            test -f /var/lib/sabnzbd/sabnzbd.ini
+            ${pkgs.python3.withPackages (p: [ p.configobj ])}/bin/python3 - <<'PY'
+            from configobj import ConfigObj
+            c = ConfigObj('/var/lib/sabnzbd/sabnzbd.ini')
+            c['misc']['host'] = '${bindAddress}'
+            c['misc']['port'] = '8080'
+            c['misc']['download_free'] = '500G'
+            c['misc']['complete_free'] = '500G'
+            c['misc']['fulldisk_autoresume'] = '0'
+            allowed = c['misc'].get('host_whitelist', [])
+            if isinstance(allowed, str):
+                allowed = [value.strip() for value in allowed.split(',') if value.strip()]
+            allowed = [hostname for hostname in allowed if hostname != 'sabnzbd.dalebox.pw']
+            for hostname in ('sabnzbd', 'sabnzbd.${localServices.domain}'):
+                if hostname not in allowed:
+                    allowed.append(hostname)
+            c['misc']['host_whitelist'] = allowed
+            c['misc']['api_key'] = open('/var/lib/nixflix-secrets/current/sabnzbd').read().strip()
+            if 'categories' not in c:
+                c['categories'] = {}
+            for name in ('sonarr', 'sonarr-4k', 'radarr', 'radarr-4k', 'lidarr'):
+                c['categories'][name] = dict(name=name, dir=name, priority='0', pp='3', script='None')
+            c.write()
+            PY
+            chown sabnzbd:media /var/lib/sabnzbd/sabnzbd.ini
+            chmod 600 /var/lib/sabnzbd/sabnzbd.ini
+          ''
+        )
+      );
   virtualisation.podman.enable = true;
   virtualisation.oci-containers = {
     backend = "podman";
@@ -247,7 +243,7 @@ in
                 "/var/lib/nixflix-containers/stash/generated:/generated"
                 "/var/lib/nixflix-containers/stash/metadata:/metadata"
                 "/var/lib/nixflix-containers/stash/cache:/cache"
-                "/data/media/porn:/data:ro"
+                "${config.nixflix.mediaDir}/porn:/data:ro"
               ]
             else
               [
@@ -256,9 +252,9 @@ in
               ]
               ++ lib.optionals (name == "audiobookshelf") [
                 "/var/lib/nixflix-containers/audiobookshelf-metadata:/metadata"
-                "/data/media/audiobooks:/audiobooks:ro"
-                "/data/media/ebooks:/ebooks:ro"
-                ("/data/media/podcasts:/podcasts" + lib.optionalString (!production) ":ro")
+                "${config.nixflix.mediaDir}/audiobooks:/audiobooks:ro"
+                "${config.nixflix.mediaDir}/ebooks:/ebooks:ro"
+                ("${config.nixflix.mediaDir}/podcasts:/podcasts" + lib.optionalString (!production) ":ro")
               ];
           extraOptions = [
             (if production then "--network=host" else "--network=ns:/run/netns/nixflix-staging")

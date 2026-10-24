@@ -130,9 +130,10 @@ def arr_advisory(name, port):
         return {"status": "unknown", "error_type": type(error).__name__}
 
 
-def credentials():
+def credentials(notifiarr_enabled=True):
     paths = list(Path("/var/lib/nixflix-secrets/current").iterdir())
-    paths.append(Path("/var/lib/nixflix-secrets/notifiarr-api-key"))
+    if notifiarr_enabled:
+        paths.append(Path("/var/lib/nixflix-secrets/notifiarr-api-key"))
     assert len(paths) > 1
     for path in paths:
         stat = path.stat()
@@ -182,7 +183,6 @@ def notifiarr():
         "lidarr",
         "prowlarr",
         "readarr",
-        "sabnzbd",
         "plex",
         "tautulli",
     ):
@@ -246,7 +246,9 @@ def run_check(item):
 
 
 def check():
-    services = read_json("/etc/nixflix/gitops-services.json")["services"]
+    manifest = read_json("/etc/nixflix/gitops-services.json")
+    services = manifest["services"]
+    notifiarr_enabled = manifest.get("monitoring", {}).get("notifiarr", True)
     jobs = [
         (name, lambda n=name, p=port: service(n, p))
         for name, port in services.items()
@@ -254,14 +256,15 @@ def check():
     ]
     jobs += [
         ("nas", nas),
-        ("credentials", credentials),
+        ("credentials", lambda: credentials(notifiarr_enabled)),
         ("networking", networking),
-        ("notifiarr", notifiarr),
-        ("seerr-webhook", seerr),
         ("plex-api", plex),
-        ("sabnzbd-api", sabnzbd),
         ("comin", lambda: active("comin")),
     ]
+    if notifiarr_enabled:
+        jobs += [("notifiarr", notifiarr), ("seerr-webhook", seerr)]
+    if "sabnzbd" in services:
+        jobs.append(("sabnzbd-api", sabnzbd))
     with ThreadPoolExecutor(max_workers=6) as executor:
         checks = dict(executor.map(run_check, jobs))
         advisories = dict(

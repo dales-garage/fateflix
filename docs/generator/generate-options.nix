@@ -1,6 +1,9 @@
-{ pkgs, lib }:
+{
+  pkgs,
+  lib,
+  nixflixModule,
+}:
 let
-  nixflixModule = import ../../modules;
 
   baseNixOS = _: {
     options = {
@@ -53,10 +56,7 @@ let
       { _module.args = { inherit pkgs; }; }
       baseNixOS
       nixflixModule
-      {
-        nixpkgs.system = "x86_64-linux";
-        nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
-      }
+      { nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux"; }
     ];
   };
 

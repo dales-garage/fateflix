@@ -314,6 +314,29 @@ class Advisory(unittest.TestCase):
                 value["advisories"]["applications"]["sonarr"]["status"], "warning"
             )
 
+    def test_disabled_features_have_no_health_expectations(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            health, "STATE", Path(directory)
+        ), patch.object(
+            health,
+            "read_json",
+            return_value={
+                "services": {"plex": 32400},
+                "monitoring": {"notifiarr": False},
+            },
+        ), patch.object(
+            health, "run_check", side_effect=lambda item: (item[0], {"healthy": True})
+        ), patch.object(
+            ops, "cached_probe", return_value={}
+        ), patch(
+            "builtins.print"
+        ):
+            self.assertEqual(health.check(), 0)
+            checks = json.loads((Path(directory) / "health.json").read_text())["checks"]
+            self.assertFalse(
+                {"notifiarr", "seerr-webhook", "sabnzbd-api"} & set(checks)
+            )
+
 
 class GPU(unittest.TestCase):
     def test_enable_disable_enable_preserves_other_values_and_owner(self):

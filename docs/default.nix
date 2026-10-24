@@ -1,7 +1,12 @@
-{ pkgs, inputs, ... }:
+{
+  pkgs,
+  inputs,
+  nixflixModule,
+  ...
+}:
 let
   docsGenerator = import ./generator {
-    inherit pkgs;
+    inherit pkgs nixflixModule;
     inherit (pkgs) lib;
   };
 

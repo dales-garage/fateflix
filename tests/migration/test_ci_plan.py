@@ -43,7 +43,9 @@ class SelectionTests(unittest.TestCase):
                 self.assertTrue(plan["production"])
 
     def test_navidrome_generated_plugin_is_scoped(self):
-        plan = self.select("modules/navidrome/plugins/gen/plugin.nix")
+        plan = self.select(
+            "modules/_support/compat/modules/navidrome/plugins/gen/plugin.nix"
+        )
         self.assertEqual(
             set(plan["checks"]),
             self.names["host"]
@@ -53,7 +55,7 @@ class SelectionTests(unittest.TestCase):
 
     def test_grouped_changes_take_the_union(self):
         plan = self.select(
-            "modules/navidrome/plugins/gen/plugin.nix",
+            "modules/_support/compat/modules/navidrome/plugins/gen/plugin.nix",
             "hosts/nixflix/services.nix",
             "renovate.json",
         )
@@ -152,7 +154,14 @@ class SelectionTests(unittest.TestCase):
             (root / "tests/migration/new-eval.nix").write_text("{}")
             self.assertEqual(
                 ci.catalog(root)["all"],
-                {"formatting", "docs-build", "unit-tests", "new-vm", "new-eval"},
+                {
+                    "formatting",
+                    "check-flake-file",
+                    "docs-build",
+                    "unit-tests",
+                    "new-vm",
+                    "new-eval",
+                },
             )
 
     def test_matrix_network_and_kvm_flags_are_computed_without_nix(self):

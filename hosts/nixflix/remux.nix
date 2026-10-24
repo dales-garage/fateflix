@@ -26,7 +26,7 @@ in
     environment.etc."nixflix/remux.json".text = builtins.toJSON {
       url = "http://127.0.0.1:9999";
       stashRoot = "/data";
-      mediaRoot = "/data/media/porn";
+      mediaRoot = "${config.nixflix.mediaDir}/porn";
       mount = "/data";
       requireMount = true;
       inherit (cfg) reserveBytes;
@@ -62,7 +62,7 @@ in
         PrivateTmp = true;
         ProtectHome = true;
         ProtectSystem = "strict";
-        ReadWritePaths = [ "/data/media/porn" ];
+        ReadWritePaths = [ "${config.nixflix.mediaDir}/porn" ];
       };
     };
   };

@@ -18,9 +18,9 @@ OUTPUTS = [
     "pkgs/notifiarr/default.nix",
     "pkgs/maintainerr/default.nix",
     "pkgs/maintainerr/missing-hashes.json",
-    "modules/caddy/default.nix",
-    "modules/navidrome/plugins/gen/*-plugin.nix",
-    "modules/jellyfin/plugins/plugins.json",
+    "modules/_support/compat/modules/caddy/default.nix",
+    "modules/_support/compat/modules/navidrome/plugins/gen/*-plugin.nix",
+    "modules/_support/compat/modules/jellyfin/plugins/plugins.json",
 ]
 
 
@@ -112,7 +112,10 @@ def check():
         if version != inputs()["packages"][name]:
             raise ValueError("Package version is not synchronized: " + name)
     sha = inputs()["packages"]["caddyserver/replace-response"].split("@")[1]
-    if sha[:12] not in Path("modules/caddy/default.nix").read_text():
+    if (
+        sha[:12]
+        not in Path("modules/_support/compat/modules/caddy/default.nix").read_text()
+    ):
         raise ValueError("Caddy revision is not synchronized")
 
 
@@ -149,19 +152,27 @@ def commands(before, current, grouped_media=True):
         result.append(
             [
                 "bash",
-                "modules/caddy/update.sh",
+                "modules/_support/compat/modules/caddy/update.sh",
                 versions["caddyserver/replace-response"].split("@")[1],
                 "--force",
             ]
         )
     if system_changed:
-        result.append(["bash", "modules/navidrome/plugins/update.sh"])
+        result.append(
+            ["bash", "modules/_support/compat/modules/navidrome/plugins/update.sh"]
+        )
     media_changed = before["containers"] != current["containers"] or any(
         before["packages"][name] != versions[name]
         for name in ("Notifiarr/notifiarr", "Maintainerr/Maintainerr")
     )
     if grouped_media and media_changed:
-        result.append(["bash", "modules/jellyfin/plugins/update.sh", "--manifest-only"])
+        result.append(
+            [
+                "bash",
+                "modules/_support/compat/modules/jellyfin/plugins/update.sh",
+                "--manifest-only",
+            ]
+        )
     return result
 
 
@@ -290,7 +301,7 @@ def publish(payload_path):
         "Refresh generated Nix update artifacts",
     )
     run("git", "push", "origin", f'HEAD:refs/heads/{pr["head"]["ref"]}')
-    # GITHUB_TOKEN pushes do not start pull_request CI automatically.
+    # GITHUB_TOKEN PR runs wait for approval; dispatch validated artifacts explicitly.
     run("gh", "workflow", "run", "ci.yml", "--repo", REPO, "--ref", pr["head"]["ref"])
 
 

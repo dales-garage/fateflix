@@ -10,8 +10,8 @@ let
     "radarr-4k"
     "prowlarr"
     "lidarr"
-    "sabnzbd"
-  ];
+  ]
+  ++ lib.optional config.nixflix.usenetClients.sabnzbd.enable "sabnzbd";
   variable = name: lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] name);
   origin = name: "http://127.0.0.1:${toString local.services.${name}}";
   card = name: label: description: {
@@ -124,7 +124,11 @@ in
         {
           "Downloads & Subtitles" = [
             (card "prowlarr" "Prowlarr" "Search indexers")
-            (card "sabnzbd" "SABnzbd" "Download queue")
+          ]
+          ++ lib.optional config.nixflix.usenetClients.sabnzbd.enable (
+            card "sabnzbd" "SABnzbd" "Download queue"
+          )
+          ++ [
             (card "bazarr" "Bazarr" "HD subtitles")
             (card "bazarr-4k" "Bazarr 4K" "UHD subtitles")
           ];

@@ -31,6 +31,10 @@ let
         "audiobookshelf"
         "readarr"
         "whisparr"
+        "qbittorrent"
+        "rtorrent"
+        "deluge"
+        "transmission"
       ];
   containers = map (n: "podman-${n}") (
     builtins.attrNames config.virtualisation.oci-containers.containers
@@ -151,7 +155,7 @@ in
     serviceConfig = {
       Slice = "nixflix-staging.slice";
       ReadWritePaths = lib.mkIf (name == "sabnzbd") (
-        lib.mkForce ([ "/var/lib/sabnzbd" ] ++ lib.optional production "/data/usenet")
+        lib.mkForce ([ "/var/lib/sabnzbd" ] ++ lib.optional production config.nixflix.downloadsDir)
       );
     }
     // lib.optionalAttrs (lib.elem name native && !production) {
@@ -190,6 +194,8 @@ in
   environment.etc."nixflix/operations.json".text = builtins.toJSON {
     services = native ++ containers;
     nasMode = if production then "rw" else "ro";
+    mediaRoot = config.nixflix.mediaDir;
+    downloadsRoot = config.nixflix.downloadsDir;
     inherit (config.nixflixHost.capacity) nas root probeMaxAge;
   };
   systemd.timers.recyclarr.wantedBy = lib.mkForce [ ];
