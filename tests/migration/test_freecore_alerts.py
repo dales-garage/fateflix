@@ -134,15 +134,19 @@ class Alerts(unittest.TestCase):
             package.mkdir()
             (package / "__init__.py").touch()
             (package / "client.py").write_text(
+                "import datetime\n"
                 "class Client:\n"
                 "    def call(self, method):\n"
-                "        return True if method == 'system.ready' else []\n"
+                "        return True if method == 'system.ready' else [{'datetime': datetime.datetime(2026,10,23)}]\n"
             )
             with patch.dict(os.environ, {"PYTHONPATH": folder}), bridge.lock(
                 Path(folder)
             ) as fd:
                 self.assertIs(bridge.query("system.ready", 5, fd), True)
-                self.assertEqual(bridge.query("alert.list", 5, fd), [])
+                self.assertEqual(
+                    bridge.query("alert.list", 5, fd),
+                    [{"datetime": "2026-10-23 00:00:00"}],
+                )
 
     def test_http_200_error_is_not_acknowledged(self):
         response = MagicMock()

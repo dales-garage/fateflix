@@ -195,14 +195,16 @@ def drain(cfg, state, path, sender=None):
 
 def query(method, timeout, lock_fd):
     # FreeCORE midclt prints Python scalars (True/None), not JSON. Query through
-    # its native local client in a bounded child and serialize explicitly.
+    # its native local client in a bounded child and serialize explicitly. Native
+    # alert records also contain datetime objects; their unused timestamp fields
+    # must be serializable without changing readiness or alert classification.
     output = subprocess.check_output(
         [
             sys.executable,
             "-c",
             "import json, sys; from middlewared.client import Client; "
             "client = Client(); "
-            "print(json.dumps(client.call(sys.argv[1])))",
+            "print(json.dumps(client.call(sys.argv[1]), default=str))",
             method,
         ],
         timeout=timeout,
