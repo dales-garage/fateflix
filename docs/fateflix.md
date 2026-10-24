@@ -5,7 +5,7 @@ files under `modules/` are flake-parts modules. import-tree excludes underscore
 paths: NixOS implementations live in `modules/_modules/`, machine configuration
 in `modules/_hosts/`, and upstream adaptation in `modules/_integrations/`.
 
-![FateFlix expanded module tree: dependencies, capability registrations, owned subdirectories and implementation files](fateflix-graph.png)
+![FateFlix expanded module tree: dependencies, capability registrations, owned subdirectories and implementation files](fateflix-graph-v2.png)
 
 The expanded tree follows each capability registration into its owned
 implementation directory and files. The upstream NixFlix branch expands the

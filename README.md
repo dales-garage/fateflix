@@ -1,6 +1,8 @@
 > **FateFlix**: [modular configuration and upstream updates](docs/fateflix.md).
 > Personal VM operations: [Comin GitOps and updates](docs/gitops.md).
 
+![FateFlix v2 expanded module tree](https://raw.githubusercontent.com/declarative-dale/nixflix/refs/heads/fateflix/docs/fateflix-graph-v2.png)
+
 <h1 align="center">
   <img src="https://raw.githubusercontent.com/kiriwalawren/nixflix/refs/heads/main/docs/assets/logo.svg" width="250px"/>
   <div>Nixflix</div>
