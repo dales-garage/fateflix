@@ -152,6 +152,13 @@ as a failure. It reads state, result and completion timestamp together. Complete
 failures, timeouts and a reconciliation that has never completed remain unhealthy.
 The existing report stays available while the check waits, subject to its normal
 freshness, boot and generation checks. Health checks never start reconciliation.
+Notification setup retries transient cold-start failures for up to 90 seconds per
+connection, within a shared 120-second retry window. This accommodates native apps
+that report systemd startup before their HTTP APIs are ready. Permanent HTTP
+authentication/configuration errors fail promptly; successful connection markers
+and unrelated providers remain preserved. The 240-second service limit and
+five-minute retry timer still bound prolonged outages. Bazarr uses the current
+Python 3.13 package set because its upstream 1.6.2 release does not support 3.14.
 The health service has an eight-minute overall limit to accommodate the readiness
 retry window, this completion wait, and the remaining bounded API checks.
 

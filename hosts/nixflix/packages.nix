@@ -16,7 +16,9 @@ in
   boot.kernelPackages = media.linuxPackages_6_18;
   services = {
     sabnzbd.package = media.sabnzbd;
-    bazarr.package = media.bazarr;
+    # Bazarr 1.6.2 explicitly supports Python through 3.13, while this package
+    # set defaults to 3.14. Track current patches of the supported interpreter.
+    bazarr.package = media.bazarr.override { python3Packages = media.python313Packages; };
     tautulli.package = media.tautulli;
     audiobookshelf.package = media.audiobookshelf;
     plex.package = media.plex;
