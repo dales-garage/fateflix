@@ -50,6 +50,7 @@ assert builtins.all (name: !(cfg.systemd.services ? ${name})) [
   "notifiarr"
   "podman-apprise"
   "notifiarr-connections"
+  "notifiarr-plex-webhooks"
 ];
 assert builtins.all (name: !(cfg.environment.etc ? ${name})) [
   "nixflix/gitops-services.json"

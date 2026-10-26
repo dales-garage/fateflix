@@ -1,4 +1,6 @@
+import contextlib
 import copy
+import io
 import importlib.util
 import json
 from pathlib import Path
@@ -19,16 +21,119 @@ spec.loader.exec_module(connections)
 
 
 class NotifiarrTest(unittest.TestCase):
+    def test_local_reconciliation_does_not_resolve_or_call_plex_cloud(self):
+        raw = {
+            "apiKey": "private",
+            "arr": [],
+            "seerr": {},
+            "bazarr": [],
+            "plex": {"token": {"_secret": "/unavailable/cloud/token"}},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "connections.json"
+            manifest.write_text(json.dumps(raw))
+            with patch.object(
+                sys, "argv", ["configure-notifiarr.py", str(manifest), "--local-only"]
+            ), patch.object(connections, "connect_seerr") as local, patch.object(
+                connections, "connect_plex"
+            ) as cloud, contextlib.redirect_stdout(
+                io.StringIO()
+            ):
+                connections.main()
+            local.assert_called_once_with({}, "private")
+            cloud.assert_not_called()
+
+    def test_cloud_failure_remains_a_failure_without_touching_local_connections(self):
+        raw = {
+            "plex": {"token": "private-canary"},
+            "plexWebhook": "http://127.0.0.1:5454/plex",
+            "arr": [{"api_key": {"_secret": "/unavailable/local/key"}}],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "connections.json"
+            manifest.write_text(json.dumps(raw))
+            with patch.object(
+                sys,
+                "argv",
+                ["configure-notifiarr.py", str(manifest), "--plex-webhooks-only"],
+            ), patch.object(
+                connections, "connect_plex", side_effect=ValueError("private-canary")
+            ) as cloud, patch.object(
+                connections, "connect_arr"
+            ) as local:
+                with self.assertRaises(SystemExit) as error:
+                    connections.main()
+            cloud.assert_called_once()
+            local.assert_not_called()
+            self.assertIn("plex-webhooks", str(error.exception))
+            self.assertNotIn("private-canary", str(error.exception))
+
     def test_extended_outage_does_not_exhaust_future_timer_attempts(self):
         from unittest.mock import Mock
 
+        clock = [0.0]
+
+        def sleep(seconds):
+            clock[0] += seconds
+
         job = Mock(side_effect=TimeoutError("private-url"))
-        with patch.object(connections.time, "sleep"), patch("builtins.print"):
+        with patch.object(
+            connections.time, "monotonic", side_effect=lambda: clock[0]
+        ), patch.object(connections.time, "sleep", side_effect=sleep), patch(
+            "builtins.print"
+        ):
             for _ in range(4):
+                started = clock[0]
                 self.assertEqual(connections.reconcile(("sonarr", job)), "sonarr")
+                self.assertLessEqual(clock[0] - started, 90)
             job.side_effect = None
             self.assertIsNone(connections.reconcile(("sonarr", job)))
-        self.assertEqual(job.call_count, 13)
+        self.assertGreater(job.call_count, 12)
+
+    def test_slow_cold_start_recovers_within_the_same_invocation(self):
+        clock = [0.0]
+
+        def job():
+            if clock[0] < 65:
+                raise connections.urllib.error.URLError("private-url")
+
+        def sleep(seconds):
+            clock[0] += seconds
+
+        with patch.object(
+            connections.time, "monotonic", side_effect=lambda: clock[0]
+        ), patch.object(connections.time, "sleep", side_effect=sleep), patch(
+            "builtins.print"
+        ):
+            self.assertIsNone(connections.reconcile(("bazarr", job)))
+        self.assertGreaterEqual(clock[0], 65)
+        self.assertLessEqual(clock[0], 90)
+
+    def test_permanent_http_errors_do_not_retry_and_transient_errors_do(self):
+        from unittest.mock import Mock
+
+        error = connections.urllib.error.HTTPError
+        permanent = Mock(side_effect=error("private-url", 401, "private", {}, None))
+        with patch.object(connections.time, "sleep") as sleep:
+            self.assertEqual(connections.reconcile(("sonarr", permanent)), "sonarr")
+            sleep.assert_not_called()
+        self.assertEqual(permanent.call_count, 1)
+        transient = Mock(
+            side_effect=[error("private-url", 503, "private", {}, None), None]
+        )
+        with patch.object(connections.time, "sleep"), patch("builtins.print"):
+            self.assertIsNone(connections.reconcile(("sonarr", transient)))
+        self.assertEqual(transient.call_count, 2)
+
+    def test_queued_jobs_obey_the_shared_retry_deadline(self):
+        from unittest.mock import Mock
+
+        job = Mock()
+        with patch.object(connections.time, "monotonic", return_value=121):
+            self.assertEqual(
+                connections.reconcile(("bazarr", job), deadline=120), "bazarr"
+            )
+        job.assert_not_called()
 
     def test_runtime_secrets_and_missing_key(self):
         with tempfile.TemporaryDirectory() as directory:

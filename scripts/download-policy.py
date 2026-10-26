@@ -4,8 +4,28 @@
 import argparse
 import json
 from pathlib import Path
+import time
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
+
+
+def wait_for_api(call, deadline):
+    """Probe readiness before modifying restored application records."""
+    deadline = min(deadline, time.monotonic() + 90)
+    while time.monotonic() < deadline:
+        try:
+            call("GET", "system/status")
+            return
+        except HTTPError as error:
+            if error.code not in (408, 425, 429) and not 500 <= error.code < 600:
+                raise
+        except (ConnectionError, TimeoutError, URLError):
+            pass
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(3, remaining))
+    raise TimeoutError("Application readiness deadline exceeded")
 
 
 def reconcile(call, *, prowlarr=False, torrents=False, usenet=True):
@@ -53,6 +73,7 @@ def main():
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text())
     failures = []
+    deadline = time.monotonic() + 120
     for app in manifest["apps"]:
         name = app["name"]
         if Path(f"/var/lib/nixflix-gitops/holds/{name}").exists():
@@ -74,6 +95,7 @@ def main():
                 with urlopen(request, timeout=10) as response:
                     return json.load(response)
 
+            wait_for_api(call, deadline)
             reconcile(
                 call,
                 prowlarr=name == "prowlarr",

@@ -77,6 +77,21 @@ let
     }
   );
   python = pkgs.python3.withPackages (p: [ p.pyyaml ]);
+  connectionService = mode: {
+    environment.PYTHONPATH = "${../../integrations/nixflix/compatibility/notifiarr}";
+    serviceConfig = {
+      Type = "oneshot";
+      StateDirectory = "notifiarr-connections";
+      StateDirectoryMode = "0700";
+      UMask = "0077";
+      ExecStart = "${python}/bin/python3 ${../../scripts/configure-notifiarr.py} ${manifest} ${mode}";
+      TimeoutStartSec = 240;
+      TimeoutStopSec = 5;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+      PrivateTmp = true;
+    };
+  };
 in
 {
   imports = [ ./notifications.nix ];
@@ -181,18 +196,20 @@ in
               "plex"
             ]
           );
-          environment.PYTHONPATH = "${../../integrations/nixflix/compatibility/notifiarr}";
-          serviceConfig = {
-            Type = "oneshot";
-            StateDirectory = "notifiarr-connections";
-            StateDirectoryMode = "0700";
-            UMask = "0077";
-            ExecStart = "${python}/bin/python3 ${../../scripts/configure-notifiarr.py} ${manifest}";
-            TimeoutStartSec = 240;
-            TimeoutStopSec = 5;
-            ProtectSystem = "strict";
-            ProtectHome = true;
-            PrivateTmp = true;
+        }
+        // connectionService "--local-only";
+        systemd.services.notifiarr-plex-webhooks = {
+          description = "Reconcile Plex account webhooks independently of local media readiness";
+          wantedBy = [ "multi-user.target" ];
+          wants = [ "network-online.target" ];
+          after = [ "network-online.target" ];
+        }
+        // connectionService "--plex-webhooks-only";
+        systemd.timers.notifiarr-plex-webhooks = {
+          wantedBy = [ "timers.target" ];
+          timerConfig = {
+            OnBootSec = "3m";
+            OnUnitInactiveSec = "5m";
           };
         };
         systemd.timers.notifiarr-connections = {

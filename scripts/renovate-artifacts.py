@@ -16,6 +16,7 @@ STATE = ".github/update-artifacts.json"
 OUTPUTS = [
     STATE,
     "pkgs/notifiarr/default.nix",
+    "pkgs/whisparr/default.nix",
     "pkgs/maintainerr/default.nix",
     "pkgs/maintainerr/missing-hashes.json",
     "integrations/nixflix/compatibility/caddy/default.nix",
@@ -51,6 +52,11 @@ def inputs():
         "packages": json.loads(Path(VERSIONS).read_text()),
         "nixpkgs": lock["nodes"]["nixpkgs"]["locked"],
         "containers": json.loads(Path("hosts/nixflix/containers.json").read_text()),
+        "flakeInputs": {
+            name: node["locked"]
+            for name, node in lock["nodes"].items()
+            if "locked" in node
+        },
     }
 
 
@@ -65,6 +71,14 @@ def validate_versions(old, new):
         if name == "caddyserver/replace-response":
             if not re.fullmatch(r"master@[a-f0-9]{40}", value):
                 raise ValueError("Invalid Caddy revision")
+        elif name == "Whisparr/Whisparr":
+            pattern = r"2\.\d+\.\d+-release\.\d+"
+            if not re.fullmatch(pattern, value):
+                raise ValueError("Expected a stable Whisparr v2 release")
+            if tuple(map(int, re.findall(r"\d+", value))) < tuple(
+                map(int, re.findall(r"\d+", old[name]))
+            ):
+                raise ValueError("Refusing to downgrade " + name)
         else:
             if not re.fullmatch(r"\d+\.\d+\.\d+", value):
                 raise ValueError("Expected a stable release version")
@@ -106,6 +120,7 @@ def check():
         )
     for name, path in [
         ("Notifiarr/notifiarr", "pkgs/notifiarr/default.nix"),
+        ("Whisparr/Whisparr", "pkgs/whisparr/default.nix"),
         ("Maintainerr/Maintainerr", "pkgs/maintainerr/default.nix"),
     ]:
         version = re.search(r'version = "([^"]+)";', Path(path).read_text())[1]
@@ -139,6 +154,7 @@ def commands(before, current, grouped_media=True):
     result = []
     for name, command in [
         ("Notifiarr/notifiarr", ["python3", "pkgs/notifiarr/update.py"]),
+        ("Whisparr/Whisparr", ["python3", "pkgs/whisparr/update.py"]),
         ("Maintainerr/Maintainerr", ["bash", "pkgs/maintainerr/update.sh"]),
     ]:
         if before["packages"][name] != versions[name]:
@@ -166,7 +182,11 @@ def commands(before, current, grouped_media=True):
         )
     media_changed = before["containers"] != current["containers"] or any(
         before["packages"][name] != versions[name]
-        for name in ("Notifiarr/notifiarr", "Maintainerr/Maintainerr")
+        for name in (
+            "Notifiarr/notifiarr",
+            "Maintainerr/Maintainerr",
+            "Whisparr/Whisparr",
+        )
     )
     if grouped_media and media_changed:
         result.append(
@@ -242,6 +262,11 @@ def refresh(base):
         "packages": read_ref(base, VERSIONS),
         "nixpkgs": read_ref(base, "flake.lock")["nodes"]["nixpkgs"]["locked"],
         "containers": read_ref(base, "hosts/nixflix/containers.json"),
+        "flakeInputs": {
+            name: node["locked"]
+            for name, node in read_ref(base, "flake.lock")["nodes"].items()
+            if "locked" in node
+        },
     }
     current = inputs()
     validate_versions(before["packages"], current["packages"])

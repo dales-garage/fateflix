@@ -183,6 +183,7 @@ def notifiarr():
         "lidarr",
         "prowlarr",
         "readarr",
+        "sabnzbd",
         "plex",
         "tautulli",
     ):

@@ -11,6 +11,7 @@ import sys
 import tempfile
 
 UPDATERS = {
+    "whisparr": (["python3", "pkgs/whisparr/update.py"], ["pkgs/whisparr/default.nix"]),
     "notifiarr": (
         ["python3", "pkgs/notifiarr/update.py"],
         ["pkgs/notifiarr/default.nix"],

@@ -21,6 +21,7 @@ class ArtifactTests(unittest.TestCase):
             "packages": {
                 "Notifiarr/notifiarr": "0.9.7",
                 "Maintainerr/Maintainerr": "3.31.0",
+                "Whisparr/Whisparr": "2.2.0-release.231",
                 "caddyserver/replace-response": "master@" + "a" * 40,
             },
             "nixpkgs": {"rev": "old"},
@@ -54,6 +55,49 @@ class ArtifactTests(unittest.TestCase):
                 ["python3", "pkgs/notifiarr/update.py", "1.0.0"],
             ],
         )
+
+    def test_whisparr_release_updates_use_exact_version(self):
+        old, new = self.baseline(), self.baseline()
+        new["packages"]["Whisparr/Whisparr"] = "2.2.1-release.240"
+        self.assertEqual(
+            artifacts.commands(old, new, grouped_media=False),
+            [["python3", "pkgs/whisparr/update.py", "2.2.1-release.240"]],
+        )
+        for invalid in [
+            "2.2.0-release.230",
+            "2.2.1-develop.400",
+            "3.0.0-release.1",
+            "2.2.1-release.240;echo nope",
+        ]:
+            with self.subTest(version=invalid), self.assertRaises(ValueError):
+                artifacts.validate_versions(
+                    old["packages"], {**old["packages"], "Whisparr/Whisparr": invalid}
+                )
+        artifacts.validate_versions(old["packages"], new["packages"])
+
+    def test_every_flake_input_is_fingerprinted(self):
+        import contextlib
+
+        with tempfile.TemporaryDirectory() as folder, contextlib.chdir(folder):
+            Path(".github").mkdir()
+            Path("hosts/nixflix").mkdir(parents=True)
+            Path(artifacts.VERSIONS).write_text("{}")
+            Path("hosts/nixflix/containers.json").write_text("{}")
+            lock = {
+                "nodes": {
+                    name: {"locked": {"rev": "a" * 40}}
+                    for name in ["nixpkgs", "nixpkgs-host", "nixpkgs-media", "comin"]
+                }
+            }
+            Path("flake.lock").write_text(json.dumps(lock))
+            before = artifacts.fingerprint(artifacts.inputs())
+            for name in lock["nodes"]:
+                changed = json.loads(json.dumps(lock))
+                changed["nodes"][name]["locked"]["rev"] = "b" * 40
+                Path("flake.lock").write_text(json.dumps(changed))
+                self.assertNotEqual(
+                    before, artifacts.fingerprint(artifacts.inputs()), name
+                )
 
     def test_nixpkgs_refresh_regenerates_caddy_hash_even_with_same_plugin_commit(self):
         old, new = self.baseline(), self.baseline()
@@ -98,6 +142,7 @@ class ArtifactTests(unittest.TestCase):
                     ),
                     "hosts/nixflix/containers.json": json.dumps(baseline["containers"]),
                     "pkgs/notifiarr/default.nix": 'version = "0.9.7";',
+                    "pkgs/whisparr/default.nix": 'version = "2.2.0-release.231";',
                     "pkgs/maintainerr/default.nix": 'version = "3.31.0";',
                     "integrations/nixflix/compatibility/caddy/default.nix": "replace-response@"
                     + "a" * 12,

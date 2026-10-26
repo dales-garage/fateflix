@@ -2,6 +2,7 @@ import copy
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location(
@@ -12,6 +13,38 @@ spec.loader.exec_module(policy)
 
 
 class DownloadPolicyTests(unittest.TestCase):
+    def test_readiness_waits_for_a_cold_api_without_writing(self):
+        clock = [0.0]
+
+        def call(method, resource):
+            self.assertEqual((method, resource), ("GET", "system/status"))
+            if clock[0] < 30:
+                raise policy.URLError("private")
+
+        def sleep(seconds):
+            clock[0] += seconds
+
+        with patch.object(
+            policy.time, "monotonic", side_effect=lambda: clock[0]
+        ), patch.object(policy.time, "sleep", side_effect=sleep):
+            policy.wait_for_api(call, 120)
+        self.assertEqual(clock[0], 30)
+
+    def test_readiness_fails_authentication_immediately(self):
+        call = Mock(side_effect=policy.HTTPError("private", 401, "private", {}, None))
+        with patch.object(policy.time, "sleep") as sleep:
+            with self.assertRaises(policy.HTTPError):
+                policy.wait_for_api(call, policy.time.monotonic() + 120)
+        call.assert_called_once_with("GET", "system/status")
+        sleep.assert_not_called()
+
+    def test_queued_readiness_checks_cannot_extend_shared_deadline(self):
+        call = Mock()
+        with patch.object(policy.time, "monotonic", return_value=121):
+            with self.assertRaises(TimeoutError):
+                policy.wait_for_api(call, 120)
+        call.assert_not_called()
+
     def run_policy(self, state, **kwargs):
         writes = []
 

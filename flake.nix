@@ -30,6 +30,7 @@
     };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-host.url = "github:NixOS/nixpkgs/nixos-26.05";
+    nixpkgs-media.url = "github:NixOS/nixpkgs/master";
     recyclarr-templates = {
       url = "github:recyclarr/config-templates/9faf65ff745d74ab906fd73cadaa25f08eb9d981";
       flake = false;

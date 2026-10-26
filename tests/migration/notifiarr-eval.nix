@@ -27,6 +27,13 @@ assert builtins.length client.settings.radarr == 2;
 assert builtins.length client.settings.readarr == 1;
 assert withoutReadarr.nixflix.notifiarr.settings.readarr == [ ];
 assert client.settings.plex.token._secret == "/var/lib/plex/Plex Media Server/Preferences.xml";
+assert pkgs.lib.hasSuffix " --local-only"
+  cfg.systemd.services.notifiarr-connections.serviceConfig.ExecStart;
+assert pkgs.lib.hasSuffix " --plex-webhooks-only"
+  cfg.systemd.services.notifiarr-plex-webhooks.serviceConfig.ExecStart;
+assert cfg.systemd.timers.notifiarr-plex-webhooks.timerConfig.OnUnitInactiveSec == "5m";
+assert !(builtins.elem "plex.service" cfg.systemd.services.notifiarr-plex-webhooks.wants);
+assert !(staging.config.systemd.services ? notifiarr-plex-webhooks);
 assert unit.serviceConfig.DynamicUser;
 assert unit.serviceConfig.RuntimeDirectoryMode == "0700";
 assert pkgs.lib.hasPrefix "+" unit.serviceConfig.ExecStartPre;

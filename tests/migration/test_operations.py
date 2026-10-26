@@ -152,6 +152,76 @@ class Capacity(unittest.TestCase):
                         self.assertEqual(ops.nas_ready(), ok)
                 stat.assert_not_called()
 
+    def test_probe_keeps_last_nas_sample_visible_while_refreshing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            cfg = {
+                "probeMaxAge": 180,
+                "root": {},
+                "nas": {},
+                "nasMode": "rw",
+                "mediaRoot": str(root / "media"),
+            }
+            (root / "media").mkdir()
+            (root / "config").write_text(json.dumps(cfg))
+            (root / "boot").write_text("boot")
+            previous = {
+                "checked": 100,
+                "boot_id": "boot",
+                "root": {"status": "ok"},
+                "nas": {"status": "ok", "accessible": True},
+            }
+            (root / "capacity.json").write_text(json.dumps(previous))
+
+            def mounted(*args, **kwargs):
+                during = ops.cached_probe()
+                self.assertTrue(ops.nas_ready())
+                self.assertEqual(during["nas"]["checked"], 100)
+                self.assertEqual(during["root"]["available_bytes"], 999)
+                return json.dumps(
+                    {"filesystems": [{"fstype": "cifs", "options": "rw"}]}
+                )
+
+            with patch.object(ops, "STATE", root), patch.object(
+                ops, "CONFIG", root / "config"
+            ), patch.object(ops, "BOOT", root / "boot"), patch.object(
+                ops.time, "time", return_value=160
+            ), patch.object(
+                ops, "capacity", return_value={"status": "ok", "available_bytes": 999}
+            ), patch.object(
+                ops.subprocess, "check_output", side_effect=mounted
+            ):
+                ops.probe()
+            self.assertEqual(
+                json.loads((root / "capacity.json").read_text())["nas"]["checked"], 160
+            )
+
+    def test_carried_nas_sample_expires_independently_of_new_root_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config").write_text('{"probeMaxAge":180}')
+            (root / "boot").write_text("boot")
+            value = {
+                "checked": 160,
+                "boot_id": "boot",
+                "root": {"status": "ok"},
+                "nas": {"checked": 100, "status": "ok", "accessible": True},
+            }
+            (root / "capacity.json").write_text(json.dumps(value))
+            with patch.object(ops, "STATE", root), patch.object(
+                ops, "CONFIG", root / "config"
+            ), patch.object(ops, "BOOT", root / "boot"), patch.object(
+                ops.os, "statvfs"
+            ) as stat:
+                for now, expected in [(279, True), (280, False), (300, False)]:
+                    with patch.object(ops.time, "time", return_value=now):
+                        self.assertEqual(ops.nas_ready(), expected)
+                        self.assertEqual(ops.cached_probe()["root"]["status"], "ok")
+                (root / "boot").write_text("new-boot")
+                with patch.object(ops.time, "time", return_value=170):
+                    self.assertFalse(ops.nas_ready())
+                stat.assert_not_called()
+
     def test_blocked_worker_cannot_spawn_another_probe(self):
         with tempfile.TemporaryDirectory() as d, patch.object(
             ops, "STATE", Path(d)

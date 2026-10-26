@@ -169,6 +169,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-media": {
+      "locked": {
+        "lastModified": 1792800457,
+        "narHash": "sha256-uLSbeQLxVJp3FERaol6f54nNa2zu7OPqkauFhcP8F8Y=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "3fc2de01d668e50cf73661faca61a518f3be8bcb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "master",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "recyclarr-templates": {
       "flake": false,
       "locked": {
@@ -197,6 +213,7 @@
         "nixflix": "nixflix",
         "nixpkgs": "nixpkgs",
         "nixpkgs-host": "nixpkgs-host",
+        "nixpkgs-media": "nixpkgs-media",
         "recyclarr-templates": "recyclarr-templates",
         "trash-guides": "trash-guides",
         "treefmt-nix": "treefmt-nix",

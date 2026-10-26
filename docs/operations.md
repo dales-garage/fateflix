@@ -272,3 +272,34 @@ the previous generation selected and prints no credential values. An already
 incomplete old generation is retained for inspection rather than edited in place.
 
 For a finite batch of AV1 MKVs, see the [verified MP4 remux queue](remux.md).
+
+## Independent probe refresh and Plex cloud reconciliation
+
+Capacity refreshes retain a still-valid NAS sample while publishing the new local
+root result. The NAS sample keeps its own measurement timestamp, so a blocked
+refresh cannot extend the 180-second freshness limit. A completed failed probe
+still immediately publishes inaccessible/unknown status. Samples from another
+boot are never reused. This avoids a one-second false NAS failure during a
+successful refresh without hiding a real failure or performing SMB reads in the
+health endpoint.
+
+`notifiarr-connections.service` reconciles local applications with
+`--local-only`. `notifiarr-plex-webhooks.service` independently reconciles Plex
+account webhooks with `--plex-webhooks-only`. Both retry on their five-minute
+timers; the latter preserves a visible failed unit/journal when Plex's cloud is
+unavailable, while local readiness remains based on local application checks.
+Neither command resolves credentials for the other command's work. The cloud
+unit cannot start Plex or other application services.
+
+Inspect the cloud job separately with
+`sudo systemctl status notifiarr-plex-webhooks.service` and
+`sudo journalctl -u notifiarr-plex-webhooks.service --since '-30 minutes'`.
+Permanent authentication/configuration errors still fail promptly. Transient
+HTTP/network and application cold-start errors use the bounded 90-second job
+and 120-second shared retry windows already validated in production.
+
+Media package selections live in `capabilities/media/packages.nix` and use the
+same locked `nixpkgs-media` revision as production. Bazarr retains its supported
+Python 3.13 interpreter for both instances. Whisparr's verified package version,
+all existing image pins and the current kernel selection are preserved during
+the refactored rollout; merging the architecture must not downgrade applications.

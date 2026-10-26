@@ -13,6 +13,7 @@
       url = "github:recyclarr/config-templates/9faf65ff745d74ab906fd73cadaa25f08eb9d981";
       flake = false;
     };
+    nixpkgs-media.url = "github:NixOS/nixpkgs/master";
     nixpkgs-host.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     treefmt-nix = {

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reconcile notification connections, preserving unrelated providers and backups."""
 
+import argparse
 import copy
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
@@ -9,6 +10,7 @@ import os
 from pathlib import Path
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -213,37 +215,69 @@ def connect_plex(app, webhook):
         pass
 
 
-def reconcile(item):
+def reconcile(item, deadline=None):
     name, job = item
-    for attempt in range(3):
+    deadline = min(
+        time.monotonic() + 90, deadline if deadline is not None else float("inf")
+    )
+    while time.monotonic() < deadline:
         try:
             job()
             print(name + ": configured", flush=True)
             return None
-        except (ConnectionError, TimeoutError, urllib.error.URLError):
-            if attempt == 2:
+        except urllib.error.HTTPError as error:
+            if error.code not in (408, 425, 429) and not 500 <= error.code < 600:
                 return name
-            time.sleep(3)
+        except (ConnectionError, TimeoutError, urllib.error.URLError):
+            pass
         except Exception:
             return name
+        remaining = deadline - time.monotonic()
+        if remaining > 0:
+            time.sleep(min(3, remaining))
+    return name
 
 
 def main():
     os.umask(0o077)
-    cfg = resolve(json.loads(Path(sys.argv[1]).read_text()))
-    jobs = [
-        (app["name"], lambda app=app: connect_arr(app, cfg["apiKey"]))
-        for app in cfg["arr"]
-    ]
-    jobs += [("seerr", lambda: connect_seerr(cfg["seerr"], cfg["apiKey"]))]
-    jobs += [
-        (app["name"], lambda app=app: connect_bazarr(app, cfg["apiKey"]))
-        for app in cfg["bazarr"]
-    ]
-    jobs += [("plex-webhooks", lambda: connect_plex(cfg["plex"], cfg["plexWebhook"]))]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("manifest", type=Path)
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--local-only", action="store_true")
+    selection.add_argument("--plex-webhooks-only", action="store_true")
+    args = parser.parse_args()
+    raw = json.loads(args.manifest.read_text())
+    if args.plex_webhooks_only:
+        raw = {key: raw[key] for key in ("plex", "plexWebhook")}
+    elif args.local_only:
+        raw = {key: raw[key] for key in ("apiKey", "arr", "seerr", "bazarr")}
+    cfg = resolve(raw)
+    jobs = []
+    if not args.plex_webhooks_only:
+        jobs += [
+            (app["name"], lambda app=app: connect_arr(app, cfg["apiKey"]))
+            for app in cfg["arr"]
+        ]
+        jobs += [("seerr", lambda: connect_seerr(cfg["seerr"], cfg["apiKey"]))]
+        jobs += [
+            (app["name"], lambda app=app: connect_bazarr(app, cfg["apiKey"]))
+            for app in cfg["bazarr"]
+        ]
+    if not args.local_only:
+        jobs += [
+            ("plex-webhooks", lambda: connect_plex(cfg["plex"], cfg["plexWebhook"]))
+        ]
 
+    # All workers share this retry deadline, including jobs queued behind the
+    # first six. An in-flight connection can make at most three 30s requests;
+    # the 240s unit limit remains the final bound for the entire invocation.
+    deadline = time.monotonic() + 120
     with ThreadPoolExecutor(max_workers=6) as executor:
-        failed = [name for name in executor.map(reconcile, jobs) if name]
+        failed = [
+            name
+            for name in executor.map(lambda item: reconcile(item, deadline), jobs)
+            if name
+        ]
     if failed:
         sys.exit(
             "Notifiarr connections failed (details suppressed to protect credentials): "

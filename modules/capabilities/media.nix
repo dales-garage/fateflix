@@ -6,6 +6,7 @@
       den.aspects.download-policy
     ];
     nixos.imports = [
+      ../../capabilities/media/packages.nix
       ../../capabilities/media/services.nix
       ../../capabilities/media/native-media.nix
       ../../capabilities/media/homepage.nix
