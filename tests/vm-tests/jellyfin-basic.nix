@@ -4,6 +4,7 @@
   nixosModules,
 }:
 let
+  fixtures = import ../fixture-paths.nix;
   jellyfinPlugins = import ../../lib/jellyfin-plugins.nix { inherit (pkgs) lib; };
 
   manifestHash =
@@ -14,7 +15,7 @@ let
       toHashFormat = "sri";
     };
 
-  lapseManifest = builtins.path { path = ../../modules/_support/fixtures/lapse-manifest.json; };
+  lapseManifest = fixtures."lapse-manifest.json";
 in
 pkgs.testers.runNixOSTest {
   name = "jellyfin-users";

@@ -4,6 +4,7 @@
   nixosModules,
 }:
 let
+  fixtures = import ../fixture-paths.nix;
   inherit (pkgs) lib;
   jellyfinPlugins = import ../../lib/jellyfin-plugins.nix { inherit lib; };
   secrets = import ../../lib/secrets { inherit lib; };
@@ -347,9 +348,7 @@ in
 
   jellyfin-plugin-repo-service-generation =
     let
-      manifest = builtins.path {
-        path = ../../modules/_support/fixtures/jellyfin-plugin-repo-service-generation.json;
-      };
+      manifest = fixtures."jellyfin-plugin-repo-service-generation.json";
       config = evalConfig [
         {
           nixflix = {
@@ -397,9 +396,7 @@ in
 
   jellyfin-plugin-repo-relaxed-version-check =
     let
-      manifest = builtins.path {
-        path = ../../modules/_support/fixtures/jellyfin-plugin-relaxed-version-check.json;
-      };
+      manifest = fixtures."jellyfin-plugin-relaxed-version-check.json";
       config = evalConfig [
         {
           nixflix = {
@@ -442,8 +439,8 @@ in
 
   jellyfin-plugin-repo-ambiguity-assertion =
     let
-      manifestA = builtins.path { path = ../../modules/_support/fixtures/jellyfin-plugin-repo-a.json; };
-      manifestB = builtins.path { path = ../../modules/_support/fixtures/jellyfin-plugin-repo-b.json; };
+      manifestA = fixtures."jellyfin-plugin-repo-a.json";
+      manifestB = fixtures."jellyfin-plugin-repo-b.json";
       result = builtins.tryEval (
         let
           config = evalConfig [

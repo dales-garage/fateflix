@@ -199,6 +199,7 @@ retain several GiB of memory; cap a full evaluation on this 16 GiB host with
 
 ```sh
 nix build --no-link .#lib.nixflixSource
+nix eval --impure --json --file tests/fixture-paths.nix
 nix flake check --no-build --show-trace
 nix eval .#nixosConfigurations.fateflix.config.system.build.toplevel.drvPath
 nix eval .#nixosConfigurations.nixflix-staging.config.system.build.toplevel.drvPath
