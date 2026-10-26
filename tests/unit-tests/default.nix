@@ -347,7 +347,9 @@ in
 
   jellyfin-plugin-repo-service-generation =
     let
-      manifest = ../../modules/_support/fixtures/jellyfin-plugin-repo-service-generation.json;
+      manifest = builtins.path {
+        path = ../../modules/_support/fixtures/jellyfin-plugin-repo-service-generation.json;
+      };
       config = evalConfig [
         {
           nixflix = {
@@ -395,7 +397,9 @@ in
 
   jellyfin-plugin-repo-relaxed-version-check =
     let
-      manifest = ../../modules/_support/fixtures/jellyfin-plugin-relaxed-version-check.json;
+      manifest = builtins.path {
+        path = ../../modules/_support/fixtures/jellyfin-plugin-relaxed-version-check.json;
+      };
       config = evalConfig [
         {
           nixflix = {
@@ -438,8 +442,8 @@ in
 
   jellyfin-plugin-repo-ambiguity-assertion =
     let
-      manifestA = ../../modules/_support/fixtures/jellyfin-plugin-repo-a.json;
-      manifestB = ../../modules/_support/fixtures/jellyfin-plugin-repo-b.json;
+      manifestA = builtins.path { path = ../../modules/_support/fixtures/jellyfin-plugin-repo-a.json; };
+      manifestB = builtins.path { path = ../../modules/_support/fixtures/jellyfin-plugin-repo-b.json; };
       result = builtins.tryEval (
         let
           config = evalConfig [

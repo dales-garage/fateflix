@@ -14,7 +14,7 @@ let
       toHashFormat = "sri";
     };
 
-  lapseManifest = ../../modules/_support/fixtures/lapse-manifest.json;
+  lapseManifest = builtins.path { path = ../../modules/_support/fixtures/lapse-manifest.json; };
 in
 pkgs.testers.runNixOSTest {
   name = "jellyfin-users";

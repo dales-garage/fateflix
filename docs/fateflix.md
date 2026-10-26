@@ -195,7 +195,7 @@ VM tests use KVM-capable CI runners.
 Run manual evaluation and builds on the NixFlix VM in a temporary checkout.
 Run the commands sequentially. Full evaluation and documentation builds can
 retain several GiB of memory; cap a full evaluation on this 16 GiB host with
-`systemd-run --user --scope -p MemoryMax=9G -p CPUQuota=200% nix flake check --no-build --show-trace`.
+`systemd-run --user --scope -p MemoryMax=9G -p CPUQuota=200% env GC_FREE_SPACE_DIVISOR=16 GC_INITIAL_HEAP_SIZE=104857600 nix flake check --no-build --show-trace`.
 
 ```sh
 nix build --no-link .#lib.nixflixSource

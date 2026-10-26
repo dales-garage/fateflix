@@ -21,6 +21,8 @@ concurrency:
 
 env:
   PYTHONUNBUFFERED: '1'
+  GC_FREE_SPACE_DIVISOR: '16'
+  GC_INITIAL_HEAP_SIZE: '104857600'
   # Bound evaluation/build memory on standard hosted runners.
   NIX_CONFIG: |
     eval-cores = 1
