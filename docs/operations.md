@@ -289,7 +289,9 @@ account webhooks with `--plex-webhooks-only`. Both retry on their five-minute
 timers; the latter preserves a visible failed unit/journal when Plex's cloud is
 unavailable, while local readiness remains based on local application checks.
 Neither command resolves credentials for the other command's work. The cloud
-unit cannot start Plex or other application services.
+unit cannot start Plex or other application services. Its first scheduled run
+is five minutes after its timer starts; it is not a boot/activation dependency,
+so a Plex cloud failure cannot fail the configuration switch itself.
 
 Inspect the cloud job separately with
 `sudo systemctl status notifiarr-plex-webhooks.service` and

@@ -32,6 +32,8 @@ assert pkgs.lib.hasSuffix " --local-only"
 assert pkgs.lib.hasSuffix " --plex-webhooks-only"
   cfg.systemd.services.notifiarr-plex-webhooks.serviceConfig.ExecStart;
 assert cfg.systemd.timers.notifiarr-plex-webhooks.timerConfig.OnUnitInactiveSec == "5m";
+assert cfg.systemd.timers.notifiarr-plex-webhooks.timerConfig.OnActiveSec == "5m";
+assert cfg.systemd.services.notifiarr-plex-webhooks.wantedBy == [ ];
 assert !(builtins.elem "plex.service" cfg.systemd.services.notifiarr-plex-webhooks.wants);
 assert !(staging.config.systemd.services ? notifiarr-plex-webhooks);
 assert unit.serviceConfig.DynamicUser;

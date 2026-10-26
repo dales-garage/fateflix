@@ -200,7 +200,6 @@ in
         // connectionService "--local-only";
         systemd.services.notifiarr-plex-webhooks = {
           description = "Reconcile Plex account webhooks independently of local media readiness";
-          wantedBy = [ "multi-user.target" ];
           wants = [ "network-online.target" ];
           after = [ "network-online.target" ];
         }
@@ -208,7 +207,8 @@ in
         systemd.timers.notifiarr-plex-webhooks = {
           wantedBy = [ "timers.target" ];
           timerConfig = {
-            OnBootSec = "3m";
+            # Keep cloud availability out of boot and activation transactions.
+            OnActiveSec = "5m";
             OnUnitInactiveSec = "5m";
           };
         };
