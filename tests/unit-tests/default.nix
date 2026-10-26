@@ -19,7 +19,9 @@ let
   # Helper to evaluate a NixOS configuration without building
   evalConfig =
     modules:
-    import "${pkgs.path}/nixos/lib/eval-config.nix" {
+    # Keep a path value so lazy-tree evaluation can read the source directly
+    # without copying all of Nixpkgs into a read-only flake-check store.
+    import (pkgs.path + "/nixos/lib/eval-config.nix") {
       inherit system;
       modules = [
         nixosModules
