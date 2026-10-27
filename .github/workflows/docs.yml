@@ -39,7 +39,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install Nix
-        uses: DeterminateSystems/determinate-nix-action@v3.24.0
+        uses: DeterminateSystems/determinate-nix-action@v3.24.1
         with:
           kvm: false
 
