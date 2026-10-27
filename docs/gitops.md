@@ -63,7 +63,14 @@ An input fingerprint in `.github/update-artifacts.json` prevents CI from buildin
 or accepting a version-only change before its hashes are generated. An initial
 Renovate commit can briefly show this pending-artifact failure; the helper commits
 the artifacts and explicitly dispatches CI on the completed branch. A failed
-helper leaves the PR blocked. Input repository/channel changes require manual
+helper leaves the PR blocked. For `Update artifacts pending`, inspect the
+generator log in the `Update artifacts` workflow first. Caddy resolves exact
+commits through Go's module proxy, avoiding unauthenticated GitHub API quota.
+Navidrome reads both `share/*.ndp` and `share/plugins/*.ndp` package layouts and
+preserves the previous generated files if any plugin fails regeneration.
+The NixFlix adapter also supplies the matching Jellyfin helper alongside the
+retained plugin modules, preserving their public source-spec options.
+Input repository/channel changes require manual
 artifact preparation rather than executing arbitrary PR-provided flakes. For a
 manual update, edit the version manifest/lock first, then run
 `python3 scripts/renovate-artifacts.py refresh --base origin/main`, review the

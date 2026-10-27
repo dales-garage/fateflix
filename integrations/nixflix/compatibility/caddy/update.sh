@@ -16,22 +16,21 @@ esac
 
 echo "=== Updating Caddy replace-response plugin ==="
 
-# Renovate supplies an exact commit; manual invocation can still discover latest.
-if [[ -n "${1:-}" ]]; then
-  [[ "$1" =~ ^[a-f0-9]{40}$ ]] || { echo "Expected a full commit SHA" >&2; exit 1; }
-  RESPONSE=$(curl -fsSL "https://api.github.com/repos/caddyserver/replace-response/commits/$1")
-  NEW_SHA=$(echo "$RESPONSE" | jq -er '.sha')
-  [[ "$NEW_SHA" == "$1" ]] || { echo "Commit mismatch" >&2; exit 1; }
-  COMMIT_DATE=$(echo "$RESPONSE" | jq -er '.commit.committer.date')
-else
-  RESPONSE=$(curl -fsSL "https://api.github.com/repos/caddyserver/replace-response/commits?per_page=1")
-  NEW_SHA=$(echo "$RESPONSE" | jq -er '.[0].sha')
-  COMMIT_DATE=$(echo "$RESPONSE" | jq -er '.[0].commit.committer.date')
+# Resolve the reviewed commit without consuming unauthenticated GitHub API quota.
+# Go supplies its canonical version and verifies the commit timestamp itself.
+NEW_SHA="${1:-}"
+if [[ -z "$NEW_SHA" ]]; then
+  NEW_SHA=$(git ls-remote https://github.com/caddyserver/replace-response.git refs/heads/master | cut -f1)
 fi
-
-# Build Go pseudo-version: v0.0.0-YYYYMMDDHHMMSS-<first 12 chars of SHA>
-TIMESTAMP=$(date -u -d "$COMMIT_DATE" '+%Y%m%d%H%M%S')
-NEW_VERSION="v0.0.0-${TIMESTAMP}-${NEW_SHA:0:12}"
+[[ "$NEW_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo "Expected a full commit SHA" >&2; exit 1; }
+RESPONSE=$(curl -fsSL --retry 3 --max-time 60 "https://proxy.golang.org/github.com/caddyserver/replace-response/@v/${NEW_SHA}.info")
+NEW_VERSION=$(echo "$RESPONSE" | jq -er --arg sha "$NEW_SHA" '
+  select(.Origin.Hash == $sha and .Origin.VCS == "git"
+    and .Origin.URL == "https://github.com/caddyserver/replace-response") | .Version
+')
+[[ "$NEW_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]] || {
+  echo "Invalid Go module version" >&2; exit 1;
+}
 
 CURRENT_VERSION=$(grep -o 'replace-response@[^"]*' "$TARGET_FILE" | head -1 | cut -d'@' -f2)
 
