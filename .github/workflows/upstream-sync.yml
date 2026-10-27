@@ -20,7 +20,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - uses: DeterminateSystems/determinate-nix-action@v3.24.0
+      - uses: DeterminateSystems/determinate-nix-action@v3.24.1
         with:
           kvm: false
       - name: Create upstream dependency PR and dispatch CI
