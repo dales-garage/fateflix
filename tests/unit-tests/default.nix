@@ -1178,4 +1178,51 @@ in
       fi
       echo 'PASS: nested-secret-in-list-jq-filter' > $out
     '';
+
+  navidrome-empty-plugin-runtime =
+    let
+      enabled =
+        {
+          modern ? true,
+          plugins ? [ ],
+          override ? { },
+        }:
+        (lib.evalModules {
+          modules = [
+            ../../integrations/nixflix/plugins/navidrome/runtime.nix
+            {
+                  config._module.args.pkgs.pkgsCross.wasi32.navidromePlugins = { };
+              options = {
+                nixflix.enable = lib.mkOption {
+                  default = true;
+                  type = lib.types.bool;
+                };
+                nixflix.navidrome.enable = lib.mkOption {
+                  default = true;
+                  type = lib.types.bool;
+                };
+                services.navidrome = {
+                  settings.Plugins.Enabled = lib.mkOption {
+                    default = true;
+                    type = lib.types.bool;
+                  };
+                }
+                // lib.optionalAttrs modern {
+                  withPlugins = lib.mkOption {
+                    type = lib.types.functionTo (lib.types.listOf lib.types.package);
+                    default = _: plugins;
+                  };
+                };
+              };
+            }
+            override
+          ];
+        }).config.services.navidrome.settings.Plugins.Enabled;
+    in
+    assertTest "navidrome-empty-plugin-runtime" (
+      !(enabled { })
+      && enabled { modern = false; }
+      && enabled { plugins = [ pkgs.hello ]; }
+      && enabled { override.services.navidrome.settings.Plugins.Enabled = true; }
+    );
 }

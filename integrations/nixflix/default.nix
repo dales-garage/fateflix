@@ -29,6 +29,8 @@ pkgs.applyPatches {
     mkdir -p modules/jellyfin/plugins modules/navidrome/plugins
     cp -R ${clean ./plugins/jellyfin}/. modules/jellyfin/plugins/
     cp -R ${clean ./plugins/navidrome}/. modules/navidrome/plugins/
+    substituteInPlace modules/navidrome/plugins/default.nix \
+      --replace-fail './fromGenerated.nix' './fromGenerated.nix ./runtime.nix'
     cp -R ${clean ../../pkgs}/. pkgs/
     chmod -R u+w .
   '';
