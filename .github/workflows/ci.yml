@@ -48,6 +48,8 @@ jobs:
           fetch-depth: 0
       - name: Require synchronized update artifacts
         run: python3 scripts/renovate-artifacts.py check
+      - name: Require dependency ownership coverage
+        run: python3 scripts/extra_dependencies.py audit > "$RUNNER_TEMP/dependency-coverage.json"
       - name: Select validation from changed paths
         id: plan
         env:

@@ -17,6 +17,18 @@ let
 
 in
 {
+  update-extra-dependencies = app "update-extra-dependencies" [
+    pkgs.git
+    pkgs.nix
+    pkgs.skopeo
+    pkgs.bash
+    pkgs.jq
+    pkgs.curl
+    pkgs.coreutils
+    pkgs.findutils
+  ] ''
+    exec ${python}/bin/python3 ${self}/scripts/extra_dependencies.py "$@"
+  '';
   deploy = script "deploy" [
     pkgs.jujutsu
     pkgs.openssh

@@ -11,6 +11,13 @@ import sys
 import tempfile
 
 UPDATERS = {
+    "extra-dependencies": (
+        ["python3", "scripts/extra_dependencies.py", "refresh"],
+        [
+            "capabilities/monitoring/notifications.nix",
+            "integrations/nixflix/plugins/jellyfin/plugins.json",
+        ],
+    ),
     "whisparr": (["python3", "pkgs/whisparr/update.py"], ["pkgs/whisparr/default.nix"]),
     "notifiarr": (
         ["python3", "pkgs/notifiarr/update.py"],
@@ -94,8 +101,9 @@ def main():
     repository = os.environ["GITHUB_REPOSITORY"]
     if repository != "declarative-dale/nixflix":
         parser.error("This publisher is scoped to declarative-dale/nixflix")
-    if args.kind == "jellyfin-plugins":
-        # Only the ABI-aware manifest aggregator still needs scheduled discovery.
+    if args.kind in {"jellyfin-plugins", "extra-dependencies"}:
+        # Supplemental discovery yields to Renovate instead of creating a second
+        # update backlog. Scheduled/manual runs retry a deferred post-merge hook.
         # Yield to Renovate instead of opening a second update backlog.
         pending = json.loads(
             run(
@@ -116,7 +124,7 @@ def main():
         if any(
             p["headRefName"].startswith(("renovate/", "automated/")) for p in pending
         ):
-            print("Another update PR is open; defer the Jellyfin-only refresh.")
+            print("Another update PR is open; defer supplemental discovery.")
             return
     branch = "automated/" + (
         "media-applications" if args.kind == "jellyfin-plugins" else args.kind
@@ -187,6 +195,11 @@ def main():
         body.write(
             f"Update {args.kind} against current main.\n\nCI must pass and the owner must review and merge. Comin deploys merged main.\n"
         )
+        if args.kind == "extra-dependencies":
+            body.write(
+                "\nRefresh Apprise's Linux amd64 image digest and Jellyfin's ABI-aware catalog. "
+                "Policy, vendored sources, compatibility fallbacks and test selections remain independently reviewed.\n"
+            )
         if args.kind == "upstream":
             body.write(
                 "\nReview the NixFlix lock change and adapter patches, then compare host configuration and recovery checks.\n"
