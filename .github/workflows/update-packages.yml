@@ -1,7 +1,7 @@
 name: Update artifacts
 on:
   pull_request_target:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, closed]
     paths:
       - .github/package-versions.json
       - flake.lock
@@ -22,7 +22,7 @@ env:
 jobs:
   generate:
     if: >-
-      github.event_name == 'pull_request_target' && github.actor == 'renovate[bot]' && github.repository == 'declarative-dale/nixflix' && github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.event.pull_request.head.ref, 'renovate/') && github.event.pull_request.base.ref == 'main'
+      github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.actor == 'renovate[bot]' && github.repository == 'declarative-dale/nixflix' && github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.event.pull_request.head.ref, 'renovate/') && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -77,9 +77,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 "$RUNNER_TEMP/publish-artifacts.py" publish --payload "$RUNNER_TEMP/update-artifacts/artifacts.json"
-  jellyfin-manifests:
+  extra-dependencies:
     timeout-minutes: 45
-    if: github.event_name != 'pull_request_target' && github.repository == 'declarative-dale/nixflix'
+    if: >-
+      github.repository == 'declarative-dale/nixflix' && (github.event_name != 'pull_request_target' || (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.event.pull_request.head.ref, 'renovate/') && github.event.pull_request.base.ref == 'main'))
+    concurrency:
+      group: supplemental-dependency-updates
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -93,7 +97,7 @@ jobs:
       - uses: DeterminateSystems/determinate-nix-action@v3.24.1
         with:
           kvm: false
-      - name: Refresh ABI-compatible Jellyfin manifests when the update queue is empty
+      - name: Audit and refresh dependencies outside Renovate when the queue is empty
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/update-pr.py jellyfin-plugins
+        run: python3 scripts/update-pr.py extra-dependencies

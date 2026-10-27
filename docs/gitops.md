@@ -27,7 +27,8 @@ Merge only after the required CI check passes. Do not enable Comin against the o
 | Group | Updates | Owner |
 | --- | --- | --- |
 | System dependencies | Flake lock revisions, Caddy replace-response commit/hash, Navidrome generated plugin options | Renovate plus artifact helper |
-| Media applications | Mylar3/Stash digests, Maintainerr, Notifiarr, ABI-compatible Jellyfin plugin manifests | Renovate plus artifact helper |
+| Media applications | Mylar3/Stash digests, Maintainerr, Notifiarr and Whisparr v2 | Renovate plus artifact helper |
+| Supplemental dependencies | Apprise digest and ABI-aware Jellyfin catalog | Post-Renovate-merge hook; scheduled/manual fallback |
 | CI tooling | GitHub Actions and runtime versions recognized by that manager | Renovate |
 | Major upgrades | Explicit major releases stay in separate PRs | Renovate; manual review |
 | Upstream nixflix | Reviewed `nixflix` input lock updates | `upstream-sync.yml`; Sunday 12:00 UTC or manual |
@@ -80,11 +81,14 @@ resulting diff, and commit it with the input change. This command runs local
 scripts and does not publish or merge anything.
 
 Jellyfin manifests cannot be discovered reliably through generic GitHub releases:
-they combine multiple upstream catalogs and Jellyfin ABI constraints. A Sunday
-12:30 UTC/manual fallback creates one `automated/media-applications` PR when no
-Renovate or other automated update PR is open. The five independent scheduled
-package updater jobs have been removed. The fallback is outside Renovate's PR
-counter; a later Renovate run can still open its own PR while that fallback is open.
+they combine multiple upstream catalogs and Jellyfin ABI constraints. The
+supplemental updater refreshes that catalog and Apprise after a Renovate update
+is merged, with the existing Sunday 12:30 UTC/manual fallback. It creates one
+`automated/extra-dependencies` PR when no Renovate or automated update PR is open.
+The five independent scheduled package updater jobs remain removed. The fallback
+is outside Renovate's PR counter; a later bot run can still open its own PR.
+See [dependency coverage and supplemental updates](dependency-updates.md) for the
+inventory, intentional exclusions and `nix run .#update-extra-dependencies`.
 
 Historical container pins and disabled Apprise are excluded. TRaSH/Recyclarr
 policy URLs stay pinned to reviewed revisions in `modules/flake/inputs.nix`

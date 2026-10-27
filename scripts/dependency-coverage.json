@@ -1,0 +1,29 @@
+{
+  "nixPins": [
+    {"paths": ["capabilities/monitoring/notifications.nix"], "owner": "supplemental", "reason": "Apprise's digest is refreshed by update-extra-dependencies."},
+    {"paths": ["capabilities/media/packages.nix"], "owner": "manual-compatibility", "reason": "Seerr 3.5.1 is a minimum-version fallback, superseded by newer nixpkgs-media packages; Bazarr's Python and the kernel series need compatibility review."},
+    {"paths": ["pkgs/notifiarr/default.nix", "pkgs/whisparr/default.nix", "pkgs/maintainerr/default.nix", "integrations/nixflix/compatibility/caddy/default.nix"], "owner": "renovate-artifacts", "reason": "Renovate discovers releases; the trusted artifact helper regenerates source and dependency hashes."},
+    {"paths": ["integrations/nixflix/plugins/navidrome/gen/*.nix"], "owner": "renovate-artifacts", "reason": "Regenerated from plugin bundles when nixpkgs changes."},
+    {"paths": ["integrations/nixflix/vendor/**/*.nix"], "owner": "manual-vendor", "reason": "Reviewed source snapshot; provenance hashes must be updated deliberately."},
+    {"paths": ["tests/**/*.nix", "lib/jellyfin-plugins.nix"], "owner": "manual-fixture", "reason": "Independently reviewed examples and regression fixtures; refreshing a catalog must not rewrite them."},
+    {"paths": ["flake.nix", "modules/flake/inputs.nix"], "owner": "manual-policy", "reason": "Explicit TRaSH/Recyclarr revisions are deliberate policy pins; channel changes and flake-file regeneration are reviewed together."}
+  ],
+  "containers": {
+    "mylar3": "renovate",
+    "stash": "renovate",
+    "readarr": "retired-container",
+    "whisparr": "retired-container",
+    "notifiarr": "retired-container",
+    "bazarr": "retired-container",
+    "bazarr-4k": "retired-container",
+    "audiobookshelf": "retired-container",
+    "tautulli": "retired-container"
+  },
+  "manualInputs": {
+    "trash-guides": "Media policy requires a deliberate migration, not a package upgrade.",
+    "recyclarr-templates": "Media policy requires a deliberate migration, not a package upgrade."
+  },
+  "supplementalImages": [
+    {"path": "capabilities/monitoring/notifications.nix", "repository": "docker.io/caronc/apprise", "tag": "latest"}
+  ]
+}
