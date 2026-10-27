@@ -1191,7 +1191,7 @@ in
           modules = [
             ../../integrations/nixflix/plugins/navidrome/runtime.nix
             {
-                  config._module.args.pkgs.pkgsCross.wasi32.navidromePlugins = { };
+              config._module.args.pkgs.pkgsCross.wasi32.navidromePlugins = { };
               options = {
                 nixflix.enable = lib.mkOption {
                   default = true;
