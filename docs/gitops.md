@@ -68,6 +68,8 @@ generator log in the `Update artifacts` workflow first. Caddy resolves exact
 commits through Go's module proxy, avoiding unauthenticated GitHub API quota.
 Navidrome reads both `share/*.ndp` and `share/plugins/*.ndp` package layouts and
 preserves the previous generated files if any plugin fails regeneration.
+With the newer `withPlugins` API, the adapter defaults Navidrome's plugin engine
+off for an empty selection, avoiding writes to a missing Nix-store directory.
 The NixFlix adapter also supplies the matching Jellyfin helper alongside the
 retained plugin modules, preserving their public source-spec options.
 Input repository/channel changes require manual
