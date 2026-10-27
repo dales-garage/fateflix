@@ -36,7 +36,9 @@ def catalog(root):
     return {
         "vm": vm,
         "host": host,
-        "all": vm | host | {"formatting", "docs-build", "unit-tests"},
+        "all": vm
+        | host
+        | {"formatting", "check-flake-file", "docs-build", "unit-tests"},
     }
 
 
@@ -56,6 +58,8 @@ def select(names, changed):
     for path in changed:
         if not path:
             continue
+        if path.endswith(".nix"):
+            production = True
         if (
             path == "flake.nix"
             or path == "flake.lock"
@@ -64,21 +68,22 @@ def select(names, changed):
             return full_plan(
                 names["all"], "Shared Nix inputs or packages changed; full suite"
             )
-        if path.startswith("modules/"):
+        if path.startswith("hosts/"):
+            checks |= names["host"]
+            production = True
+            reasons.add("host configuration")
+            continue
+        if path.startswith(("modules/", "capabilities/", "integrations/")):
             # Generated plugin metadata is application-scoped. Keep host
             # validation even if Navidrome is enabled on production later.
-            if path.startswith("modules/navidrome/plugins/gen/"):
+            if path.startswith("integrations/nixflix/plugins/navidrome/gen/"):
                 checks |= {"navidrome-basic", "unit-tests", "docs-build"}
                 checks |= names["host"]
                 production = True
                 reasons.add("Navidrome generated plugins")
                 continue
             return full_plan(names["all"], "Shared Nix modules changed; full suite")
-        if path.startswith("hosts/"):
-            checks |= names["host"]
-            production = True
-            reasons.add("production host")
-        elif path in {"scripts/ci-plan.py", "tests/check-names.nix"} or path.startswith(
+        if path in {"scripts/ci-plan.py", "tests/check-names.nix"} or path.startswith(
             ".github/workflows/"
         ):
             checks |= names["host"] | {"unit-tests"}
@@ -183,6 +188,8 @@ def verify(results):
     prepare = results.get("prepare", {})
     if prepare.get("result") != "success":
         raise ValueError("CI planning did not succeed")
+    if results.get("evaluate", {}).get("result") != "success":
+        raise ValueError("Full flake evaluation did not succeed")
     outputs = prepare.get("outputs", {})
     checks = json.loads(outputs["checks"])
     if (

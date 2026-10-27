@@ -19,9 +19,9 @@ OUTPUTS = [
     "pkgs/whisparr/default.nix",
     "pkgs/maintainerr/default.nix",
     "pkgs/maintainerr/missing-hashes.json",
-    "modules/caddy/default.nix",
-    "modules/navidrome/plugins/gen/*-plugin.nix",
-    "modules/jellyfin/plugins/plugins.json",
+    "integrations/nixflix/compatibility/caddy/default.nix",
+    "integrations/nixflix/plugins/navidrome/gen/*-plugin.nix",
+    "integrations/nixflix/plugins/jellyfin/plugins.json",
 ]
 
 
@@ -127,7 +127,10 @@ def check():
         if version != inputs()["packages"][name]:
             raise ValueError("Package version is not synchronized: " + name)
     sha = inputs()["packages"]["caddyserver/replace-response"].split("@")[1]
-    if sha[:12] not in Path("modules/caddy/default.nix").read_text():
+    if (
+        sha[:12]
+        not in Path("integrations/nixflix/compatibility/caddy/default.nix").read_text()
+    ):
         raise ValueError("Caddy revision is not synchronized")
 
 
@@ -165,13 +168,18 @@ def commands(before, current, grouped_media=True):
         result.append(
             [
                 "bash",
-                "modules/caddy/update.sh",
+                "integrations/nixflix/compatibility/caddy/update.sh",
                 versions["caddyserver/replace-response"].split("@")[1],
                 "--force",
             ]
         )
     if system_changed:
-        result.append(["bash", "modules/navidrome/plugins/update.sh"])
+        result.append(
+            [
+                "bash",
+                "integrations/nixflix/plugins/navidrome/update.sh",
+            ]
+        )
     media_changed = before["containers"] != current["containers"] or any(
         before["packages"][name] != versions[name]
         for name in (
@@ -181,7 +189,13 @@ def commands(before, current, grouped_media=True):
         )
     )
     if grouped_media and media_changed:
-        result.append(["bash", "modules/jellyfin/plugins/update.sh", "--manifest-only"])
+        result.append(
+            [
+                "bash",
+                "integrations/nixflix/plugins/jellyfin/update.sh",
+                "--manifest-only",
+            ]
+        )
     return result
 
 

@@ -12,75 +12,7 @@ work to the media VM. Backup automation remains deferred to a separate Xen
 Orchestra project. Nix generations restore system software and configuration;
 they do not restore application databases or reverse database migrations.
 Readarr stays enabled with its existing library pending a separate replacement
-assessment. The reliability services do not migrate or restore application
-databases; application version upgrades can migrate their own databases.
-
-## Updating packages safely
-
-The operating-system modules track NixOS 26.05 (`nixpkgs-host`). The locked
-`nixpkgs-media` input supplies newer native Plex, SABnzbd, Bazarr, Tautulli,
-Audiobookshelf and Seerr packages, plus the 6.18 LTS kernel. Both Bazarr
-instances use the same selected package. Seerr 3.5.1 is temporarily sourced
-explicitly until Nixpkgs catches up; its dependency lock is unchanged, and its
-Node runtime comes from the fresh package set. Later packaged Seerr releases
-automatically replace this override. Hardware settings, FFmpeg, containers,
-service users and media paths retain their existing configuration.
-
-Update from current `main`, rather than rebuilding an old migration bookmark.
-In the colocated Jujutsu checkout, preserve pending work with a recovery bookmark
-before starting an empty change on `main@origin`:
-
-```sh
-jj bookmark create recovery/before-update -r @
-jj git fetch --remote origin
-jj new main@origin
-nix flake update
-nix build --no-link .#nixosConfigurations.nixflix-production.config.system.build.toplevel
-```
-
-Review the lock diff and submit it through the existing PR/CI/Comin workflow.
-Do not update the deliberately pinned TRaSH/Recyclarr policy revisions as part
-of a package refresh. `system.stateVersion` describes persistent state defaults;
-it stays at 26.05. Kernel installation takes effect on the next planned boot;
-activation alone does not replace the running kernel.
-
-Before switching application versions, take consistent SQLite backups and copy
-other application state to a private local recovery directory. Nix generations
-do not restore those databases. A failed activation can still have started a
-newer application, so inspect its logs and database compatibility before any
-software downgrade. The Comin profile and the ordinary system profile can have
-different histories: verify the intended generation's Stash image, operations
-files and service definitions before activating it. Never select an old image
-against a newer Stash database. Preserve the failed generation and working-tree
-changes for diagnosis. After recovery, build from current main and use the
-explicit production target for any authorized manual switch:
-
-```sh
-sudo nixos-rebuild switch --flake .#nixflix-production
-sudo nixflix-health check
-systemctl --failed
-```
-
-Whisparr uses the official stable v2 release through `pkgs/whisparr`, preserving
-its episode/series API and existing import hooks. The tested upgrade advances
-the main database migration version from 17 to 215 (25 applied migrations) and
-retains the tested series, quality profiles and notifications. Preserve the
-consistent pre-upgrade copy; a software-only downgrade is not a data rollback.
-Renovate tracks its four-part
-`2.x.y-release.build` tags in `.github/package-versions.json`; develop/nightly
-and v3 releases are excluded because they need separate workflow validation.
-The trusted base-branch artifact helper downloads the exact release, validates
-its published digest and executable architecture, updates the fixed hash and
-requires synchronized artifacts before CI. Readarr remains on its existing
-retired package. Stash already runs the stable 0.31.1 image and is not downgraded.
-
-Hosted Renovate's weekly lock maintenance covers all branch-tracking flake
-inputs, including host and media Nixpkgs. The artifact fingerprint includes every
-locked input, so an update cannot accidentally bypass synchronization just
-because the generic `nixpkgs` input stayed unchanged. Dependency changes with
-no generated output still refresh that fingerprint. Existing Caddy/Navidrome
-hash refreshes follow their generic Nixpkgs input; Jellyfin's ABI-aware manifest
-refresh retains its scheduled helper. No updater runs on the playback VM.
+assessment. This batch enables no media deletion or database migrations.
 
 ## Storage and advisories
 
@@ -94,7 +26,7 @@ pause again if space is still insufficient. See the
 The restored configuration is patched before SABnzbd starts so it receives the
 same limits as the declared settings, without replacing providers or queues.
 
-Capacity thresholds in bytes are configurable under `nixflixHost.capacity`:
+Capacity thresholds in bytes are configurable under `fateflix.storage.capacity`:
 
 | Filesystem | Warning below | Critical below |
 | --- | --- | --- |
@@ -111,7 +43,7 @@ accessing NAS metadata; it neither enumerates directories nor reads media.
 An exclusive local lock remains held by a worker blocked in the kernel, so
 later attempts cannot accumulate more NAS workers. Never force-unmount the
 share to clear such a worker. Inspect its process state and NAS/network health.
-Results expire after `nixflixHost.capacity.probeMaxAge` (180 seconds by default),
+Results expire after `fateflix.storage.capacity.probeMaxAge` (180 seconds by default),
 and results from a previous boot are unknown. Failed NAS probes publish unknown;
 a blocked worker's last results eventually expire. Ordinary health checks and
 HTTP endpoints read local state only.
@@ -154,13 +86,6 @@ as a failure. It reads state, result and completion timestamp together. Complete
 failures, timeouts and a reconciliation that has never completed remain unhealthy.
 The existing report stays available while the check waits, subject to its normal
 freshness, boot and generation checks. Health checks never start reconciliation.
-Notification setup retries transient cold-start failures for up to 90 seconds per
-connection, within a shared 120-second retry window. This accommodates native apps
-that report systemd startup before their HTTP APIs are ready. Permanent HTTP
-authentication/configuration errors fail promptly; successful connection markers
-and unrelated providers remain preserved. The 240-second service limit and
-five-minute retry timer still bound prolonged outages. Bazarr uses the current
-Python 3.13 package set because its upstream 1.6.2 release does not support 3.14.
 The health service has an eight-minute overall limit to accommodate the readiness
 retry window, this completion wait, and the remaining bounded API checks.
 
@@ -347,3 +272,36 @@ the previous generation selected and prints no credential values. An already
 incomplete old generation is retained for inspection rather than edited in place.
 
 For a finite batch of AV1 MKVs, see the [verified MP4 remux queue](remux.md).
+
+## Independent probe refresh and Plex cloud reconciliation
+
+Capacity refreshes retain a still-valid NAS sample while publishing the new local
+root result. The NAS sample keeps its own measurement timestamp, so a blocked
+refresh cannot extend the 180-second freshness limit. A completed failed probe
+still immediately publishes inaccessible/unknown status. Samples from another
+boot are never reused. This avoids a one-second false NAS failure during a
+successful refresh without hiding a real failure or performing SMB reads in the
+health endpoint.
+
+`notifiarr-connections.service` reconciles local applications with
+`--local-only`. `notifiarr-plex-webhooks.service` independently reconciles Plex
+account webhooks with `--plex-webhooks-only`. Both retry on their five-minute
+timers; the latter preserves a visible failed unit/journal when Plex's cloud is
+unavailable, while local readiness remains based on local application checks.
+Neither command resolves credentials for the other command's work. The cloud
+unit cannot start Plex or other application services. Its first scheduled run
+is five minutes after its timer starts; it is not a boot/activation dependency,
+so a Plex cloud failure cannot fail the configuration switch itself.
+
+Inspect the cloud job separately with
+`sudo systemctl status notifiarr-plex-webhooks.service` and
+`sudo journalctl -u notifiarr-plex-webhooks.service --since '-30 minutes'`.
+Permanent authentication/configuration errors still fail promptly. Transient
+HTTP/network and application cold-start errors use the bounded 90-second job
+and 120-second shared retry windows already validated in production.
+
+Media package selections live in `capabilities/media/packages.nix` and use the
+same locked `nixpkgs-media` revision as production. Bazarr retains its supported
+Python 3.13 interpreter for both instances. Whisparr's verified package version,
+all existing image pins and the current kernel selection are preserved during
+the refactored rollout; merging the architecture must not downgrade applications.

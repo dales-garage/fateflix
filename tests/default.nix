@@ -1,6 +1,7 @@
 {
   lib,
   nixosModules,
+  nixflixSource,
   pkgs ? import <nixpkgs> { inherit system; },
   system ? builtins.currentSystem,
 }:
@@ -11,6 +12,7 @@
       system
       pkgs
       nixosModules
+      nixflixSource
       lib
       ;
   };

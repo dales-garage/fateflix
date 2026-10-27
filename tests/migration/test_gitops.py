@@ -113,7 +113,7 @@ class HealthTests(unittest.TestCase):
 
 class UpdateTests(unittest.TestCase):
     def test_formatting_only_update_is_noop(self):
-        path = "modules/navidrome/plugins/gen/lyrics-plugin.nix"
+        path = "integrations/nixflix/plugins/navidrome/gen/lyrics-plugin.nix"
         with (
             patch.object(updates, "changed_files", side_effect=[[path], []]),
             patch.object(updates.Path, "exists", return_value=True),
@@ -144,36 +144,27 @@ class UpdateTests(unittest.TestCase):
             )
         )
 
-    def test_already_merged_upstream_is_noop(self):
-        with patch.object(updates, "run") as run:
-            run.return_value.stdout = "abc\n"
-            run.return_value.returncode = 0
-            self.assertFalse(updates.sync_upstream())
-            self.assertFalse(
-                any(c.args[:2] == ("git", "merge") for c in run.call_args_list)
-            )
+    def test_upstream_update_only_refreshes_the_lock(self):
+        with patch.object(updates.Path, "read_bytes", side_effect=[b"old", b"new"]):
+            with patch.object(updates, "run") as run:
+                self.assertTrue(updates.sync_upstream())
+                run.assert_called_once_with("nix", "flake", "update", "nixflix")
 
-    def test_conflict_aborts_without_pushing(self):
-        def fake(*args, **kwargs):
-            from subprocess import CompletedProcess
+    def test_upstream_update_is_noop_when_current(self):
+        with patch.object(updates.Path, "read_bytes", return_value=b"same"):
+            with patch.object(updates, "run"):
+                self.assertFalse(updates.sync_upstream())
 
-            code = (
-                1
-                if args[:2] in [("git", "merge-base"), ("git", "merge")]
-                and "--abort" not in args
-                else 0
-            )
-            return CompletedProcess(args, code, stdout="conflicted.nix\n")
-
-        with patch.object(updates, "run", side_effect=fake) as run:
-            with self.assertRaises(RuntimeError):
-                updates.sync_upstream()
-            self.assertIn(
-                ("git", "merge", "--abort"), [c.args for c in run.call_args_list]
-            )
-            self.assertFalse(
-                any(c.args[:2] == ("git", "push") for c in run.call_args_list)
-            )
+    def test_failed_dependency_update_does_not_publish(self):
+        with patch.object(updates.Path, "read_bytes", return_value=b"old"):
+            with patch.object(
+                updates, "run", side_effect=RuntimeError("fetch failed")
+            ) as run:
+                with self.assertRaises(RuntimeError):
+                    updates.sync_upstream()
+                self.assertFalse(
+                    any(c.args[:2] == ("git", "push") for c in run.call_args_list)
+                )
 
     def test_release_assets_match_architecture_and_digest(self):
         binary = bytearray(64)

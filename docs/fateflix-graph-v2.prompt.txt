@@ -1,0 +1,134 @@
+Use case: infographic-diagram.
+Asset type: detailed technical architecture poster, high-resolution landscape 3840 x 2880, zoomable documentation.
+Primary request: Create a NEW expanded dependency-and-directory graph for FateFlix. The previous overview omitted directory ownership. This image MUST visibly show nested subdirectories and their files UNDER the capability or external dependency that imports them. Do not make a flat list of sibling filenames. No previous image is a reference: redesign the composition completely.
+
+Title exactly: "FateFlix — expanded module tree"
+Subtitle: "Dependency → registration → owned directory → implementation files"
+Style: clean technical diagram on white, navy text, precise monospaced filenames, restrained blue/teal/purple/orange branches. Thin connected tree lines and small folder-shaped directory nodes. Generous spacing. Make each card a REAL nested tree with visible connectors and indented children. All text readable when zoomed. Use three horizontal bands, not the old left-root six-branch layout.
+
+BAND 1 — Dependencies and host composition, across the top:
+A dependency tree:
+"flake.nix"
+  → "flake-parts + import-tree" → "modules/ (only discovery root)"
+  → "flake-file" → "modules/flake/" → "bootstrap.nix", "inputs.nix", "outputs.nix", "checks.nix"
+A composition tree:
+"Den"
+  → "modules/hosts/production.nix" → "media-server + deployment"
+  → "modules/hosts/staging.nix" → "media-server"
+A shared profile node:
+"modules/profiles/media-server.nix"
+  → "fateflix-base" → "modules/_hosts/nixflix/"
+    → "default.nix", "hardware-configuration.nix", "storage.nix", "network.nix"
+    → "administrator.pub", "containers.json", "local-services.json"
+  → "storage · secrets · media · downloads · playback · imports · monitoring · freecore"
+Note: "Deployment is included only by production."
+Note: "nixflix aliases nixflix-production."
+
+BAND 2 — Capability ownership (the largest part, a spacious 3-column × 3-row grid of NINE nested tree cards). Heading: "modules/capabilities/ — each registration owns the branches below".
+Every card MUST have at least THREE VISIBLE LEVELS: registration filename → implementation directory → individual files. File entries are siblings unless specifically shown nested. Keep the full directory label visible in each card.
+
+CARD 1 "storage.nix"
+  → "modules/_modules/storage/"
+    → "default.nix"
+      → "capacity.nix"
+      → "staging.nix"
+This indentation means default.nix imports the other two.
+
+CARD 2 "secrets.nix"
+  → "modules/_modules/secrets/"
+    → "default.nix"
+    → "apps.nix"
+    → "provision.py · role.py"
+    → "provision-secrets.py"
+    → "provision-notifications.py"
+    → "provision-notifiarr.py"
+    → "import-pass.py · router_credentials.py"
+    → "secretspec.toml"
+    → "secretspec-staging.toml"
+    → "secretspec-notifiarr.toml"
+    → "secretspec-router.toml"
+Small annotation: "Runtime: SecretSpec 0.10.1; provider default pass"
+
+CARD 3 "media.nix"
+  → "nixosModules.default" → "adapted upstream NixFlix"
+  → "modules/_modules/media/"
+    → "services.nix"
+    → "native-media.nix"
+    → "homepage.nix"
+    → "proxy.nix"
+
+CARD 4 "downloads.nix"
+  → "modules/_modules/downloads/"
+    → "default.nix"
+      → "policy.nix"
+      → "sabnzbd.nix"
+
+CARD 5 "playback.nix"
+  → "modules/_modules/playback/"
+    → "default.nix"
+      → "gpu.nix"
+Small annotation: "intel | software"
+
+CARD 6 "imports.nix"
+  → "modules/_modules/imports/"
+    → "imports.nix"
+    → "remux.nix"
+
+CARD 7 "monitoring.nix"
+  → "modules/_modules/monitoring/"
+    → "notifiarr.nix"
+      → "notifications.nix"
+
+CARD 8 "freecore.nix"
+  → "modules/_modules/monitoring/"
+    → "freecore.nix"
+  → "modules/_hosts/nixflix/"
+    → "freecore.nix"
+  → "scripts/"
+    → "freecore-notifiarr.py"
+Small annotation: "Production NAS probes + NAS-local bridge payload"
+
+CARD 9 "deployment.nix" with a small orange badge "PRODUCTION ONLY"
+  → "modules/_modules/deployment/"
+    → "gitops.nix"
+      → "Comin"
+Note: "Staging never includes this aspect."
+
+BAND 3 — Upstream dependency and its nested adaptation directories (a wide expanded tree along the bottom):
+Heading: "Upstream NixFlix dependency and source adaptation"
+"github:kiriwalawren/nixflix"
+  → "modules/integrations/nixflix.nix"
+    → "modules/_integrations/nixflix/"
+      → "upstream-source.nix"
+      → "patches/"
+        → "arr-runtime-credentials.patch"
+        → "four-instance-integrations.patch"
+        → "notification-reconciliation.patch"
+      → "compat/modules/"
+        → "caddy/" → "default.nix · update.sh"
+        → "homepage.nix"
+        → "jellyfin/plugins/" → "default.nix · options.nix · resolvePlugins.nix · …"
+        → "navidrome/plugins/"
+          → "gen/ (five plugin definitions)"
+          → "lib/navidrome-plugins.nix"
+          → "default.nix · pluginsService.nix · …"
+        → "notifiarr/" → "default.nix · render.py"
+        → "recyclarr/" → "radarr-4k.nix · sonarr-4k.nix"
+        → "radarr-4k.nix · sonarr-4k.nix"
+Separate connected package branch:
+"modules/integrations/media-packages.nix"
+  → "pkgs/overlay.nix"
+    → "pkgs/maintainerr/"
+    → "pkgs/notifiarr/"
+Small dependency labels:
+"nixpkgs-host → host systems + source-only IFD"
+"nixpkgs → media packages + overlay"
+"vpn-confinement → nixosModules.default"
+
+Footer legend:
+"Solid branches: inclusion, explicit imports, or ownership. Directory boxes expand into their files."
+"Underscore directories are excluded from import-tree discovery; raw NixOS modules are imported explicitly."
+"… indicates additional files inside that directory."
+"Secrets: production project nixflix; isolated staging project nixflix-staging; values resolve at runtime."
+
+Constraints: Exact filename spelling. Visibly nested directory hierarchies, not flat boxes with unrelated path names. No obsolete modules/aspects, modules/upstream, modules/options.nix or modules/settings.nix. Keep FreeCORE separate from monitoring ownership even though they share a physical directory. Do not imply deployment is in media-server. No photos, mascots, logos, gradients, or watermark. Readability and accurate parent-child relationships matter most.

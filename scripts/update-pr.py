@@ -20,14 +20,24 @@ UPDATERS = {
         ["bash", "pkgs/maintainerr/update.sh"],
         ["pkgs/maintainerr/default.nix", "pkgs/maintainerr/missing-hashes.json"],
     ),
-    "caddy": (["bash", "modules/caddy/update.sh"], ["modules/caddy/default.nix"]),
+    "caddy": (
+        ["bash", "integrations/nixflix/compatibility/caddy/update.sh"],
+        ["integrations/nixflix/compatibility/caddy/default.nix"],
+    ),
     "jellyfin-plugins": (
-        ["bash", "modules/jellyfin/plugins/update.sh", "--manifest-only"],
-        ["modules/jellyfin/plugins/plugins.json"],
+        [
+            "bash",
+            "integrations/nixflix/plugins/jellyfin/update.sh",
+            "--manifest-only",
+        ],
+        ["integrations/nixflix/plugins/jellyfin/plugins.json"],
     ),
     "navidrome-plugins": (
-        ["bash", "modules/navidrome/plugins/update.sh"],
-        ["modules/navidrome/plugins/gen/*-plugin.nix"],
+        [
+            "bash",
+            "integrations/nixflix/plugins/navidrome/update.sh",
+        ],
+        ["integrations/nixflix/plugins/navidrome/gen/*-plugin.nix"],
     ),
 }
 
@@ -72,29 +82,9 @@ def formatted_changes(patterns):
 
 
 def sync_upstream():
-    run("git", "fetch", "https://github.com/kiriwalawren/nixflix.git", "main")
-    sha = run("git", "rev-parse", "FETCH_HEAD", capture=True).stdout.strip()
-    if (
-        run("git", "merge-base", "--is-ancestor", sha, "HEAD", check=False).returncode
-        == 0
-    ):
-        return False
-    result = run("git", "merge", "--no-ff", "--no-edit", sha, check=False)
-    if result.returncode:
-        conflicts = run(
-            "git", "diff", "--name-only", "--diff-filter=U", capture=True
-        ).stdout
-        run("git", "merge", "--abort")
-        summary = os.environ.get("GITHUB_STEP_SUMMARY")
-        if summary:
-            with open(summary, "a") as stream:
-                stream.write(
-                    "Upstream sync stopped; no partial merge published.\n\nConflicting files:\n```\n"
-                    + conflicts
-                    + "```\n"
-                )
-        raise RuntimeError("Upstream merge needs manual conflict resolution")
-    return True
+    before = Path("flake.lock").read_bytes()
+    run("nix", "flake", "update", "nixflix")
+    return before != Path("flake.lock").read_bytes()
 
 
 def main():
@@ -179,8 +169,10 @@ def main():
     run("git", "checkout", "-b", branch, "origin/main")
     if args.kind == "upstream":
         if not sync_upstream():
-            print("Upstream is already included.")
+            print("Upstream dependency is already current.")
             return
+        run("git", "add", "--", "flake.lock")
+        run("git", "commit", "-m", "Update NixFlix dependency")
     else:
         command, patterns = UPDATERS[args.kind]
         run("nix", "develop", "--command", *command)
@@ -197,7 +189,7 @@ def main():
         )
         if args.kind == "upstream":
             body.write(
-                "\nUse a merge commit to preserve upstream ancestry. Review host overrides, state migrations, and update workflows.\n"
+                "\nReview the NixFlix lock change and adapter patches, then compare host configuration and recovery checks.\n"
             )
         body.flush()
         run(

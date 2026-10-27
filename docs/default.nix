@@ -1,7 +1,12 @@
-{ pkgs, inputs, ... }:
+{
+  pkgs,
+  inputs,
+  nixflixModule,
+  ...
+}:
 let
   docsGenerator = import ./generator {
-    inherit pkgs;
+    inherit pkgs nixflixModule;
     inherit (pkgs) lib;
   };
 
@@ -18,7 +23,7 @@ in
 {
   docs = pkgs.stdenv.mkDerivation {
     name = "nixflix-docs";
-    src = ../.;
+    src = ./..;
 
     nativeBuildInputs = [ pythonEnv ];
 

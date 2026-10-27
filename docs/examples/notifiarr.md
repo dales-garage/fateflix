@@ -28,7 +28,7 @@ module binds to loopback by default and does not open the firewall.
 
 ## Personal host
 
-`hosts/nixflix/notifiarr.nix` enables the client only in production. Its UI is
+`capabilities/monitoring/notifiarr.nix` enables the client only in production. Its UI is
 available on the LAN at `http://10.69.0.18:5454`; the firewall restricts access to
 the existing server/client LANs. Sign in with the Notifiarr account as described
 in the [upstream login instructions](https://notifiarr.wiki/pages/client/afterInstall/).
@@ -62,7 +62,7 @@ and restart both `notifiarr` and `notifiarr-connections`.
 
 The deployment follows the repository's `migration/nixflix` bookmark workflow.
 `/etc/nixos/flake.nix` pins the deployed GitHub commit, so
-`sudo nixos-rebuild switch --flake /etc/nixos#nixflix` retains the module.
+`sudo nixos-rebuild switch --flake /etc/nixos#fateflix` retains the module.
 To run its provisioner independently of the remote checkout:
 
 ```sh

@@ -4,6 +4,7 @@
   nixosModules,
 }:
 let
+  fixtures = import ../fixture-paths.nix;
   jellyfinPlugins = import ../../lib/jellyfin-plugins.nix { inherit (pkgs) lib; };
 
   manifestHash =
@@ -14,29 +15,7 @@ let
       toHashFormat = "sri";
     };
 
-  lapseManifest = builtins.toFile "lapse-manifest.json" (
-    builtins.toJSON [
-      {
-        guid = "486090e1-ca92-46e1-8549-9f6bb914a1d0";
-        name = "LAPSE";
-        overview = "Sync subtitles that have drifted out of time. Open Settings after installing to set it up.";
-        description = "Lines up subtitles against a film or episode's audio, or against another subtitle file, using the LAPSE alignment engine.";
-        owner = "rs-jensen";
-        category = "General";
-        imageUrl = "https://raw.githubusercontent.com/rs-jensen/lapse-jellyfin-plugin/v2.1.1/Jellyfin.Plugin.Lapse/Configuration/LAPSE.png";
-        versions = [
-          {
-            version = "2.1.1.0";
-            changelog = "See the release notes on GitHub.";
-            targetAbi = "10.11.0.0";
-            sourceUrl = "https://github.com/rs-jensen/lapse-jellyfin-plugin/releases/download/v2.1.1/lapse-jellyfin-plugin-v2.1.1.zip";
-            checksum = "cf0633dab1acaf6e053862f3c2c47706";
-            timestamp = "2026-10-17T10:18:11Z";
-          }
-        ];
-      }
-    ]
-  );
+  lapseManifest = fixtures."lapse-manifest.json";
 in
 pkgs.testers.runNixOSTest {
   name = "jellyfin-users";
@@ -243,7 +222,7 @@ pkgs.testers.runNixOSTest {
           ];
           pluginRepositories = lib.mkForce {
             "LAPSE Repo" = {
-              url = builtins.unsafeDiscardStringContext "file://${lapseManifest}";
+              url = builtins.unsafeDiscardStringContext "file://${toString lapseManifest}";
               hash = manifestHash lapseManifest;
               enabled = true;
             };

@@ -14,12 +14,11 @@ enables fork processing and the Nix manager.
 
 Protect `main` with the `CI required` check, strict/up-to-date status checks,
 required PRs (zero additional approving reviews for this single-owner repo),
-and disabled force pushes/deletion. Keep merge commits enabled for upstream
-syncs. Disable repository automerge. Allow Actions to create PRs, keeping the
+and disabled force pushes/deletion. Disable repository automerge. Allow Actions to create PRs, keeping the
 default token read-only; only the update jobs request write permissions.
 
-The implementation branch includes the original migration history and an upstream
-merge commit. Review the upstream reconciliation separately from Comin changes.
+FateFlix consumes upstream through the locked NixFlix source input. See
+[the modular configuration guide](fateflix.md) for the adapter and update process.
 Merge only after the required CI check passes. Do not enable Comin against the old
 `main`, which does not contain the production host configuration.
 
@@ -31,7 +30,7 @@ Merge only after the required CI check passes. Do not enable Comin against the o
 | Media applications | Mylar3/Stash digests, Maintainerr, Notifiarr, ABI-compatible Jellyfin plugin manifests | Renovate plus artifact helper |
 | CI tooling | GitHub Actions and runtime versions recognized by that manager | Renovate |
 | Major upgrades | Explicit major releases stay in separate PRs | Renovate; manual review |
-| Upstream nixflix | Upstream merge commits | `upstream-sync.yml`; Sunday 12:00 UTC or manual |
+| Upstream nixflix | Reviewed `nixflix` input lock updates | `upstream-sync.yml`; Sunday 12:00 UTC or manual |
 | TRaSH/Recyclarr policy and NixOS release channel | Deliberate policy/release changes | Owner; excluded from automatic upgrades |
 
 Renovate allows one active branch/PR at a time, with a daily 06:00–10:59
@@ -79,15 +78,16 @@ package updater jobs have been removed. The fallback is outside Renovate's PR
 counter; a later Renovate run can still open its own PR while that fallback is open.
 
 Historical container pins and disabled Apprise are excluded. TRaSH/Recyclarr
-policy URLs stay pinned to reviewed revisions in `flake.nix`: disabling a package
+policy URLs stay pinned to reviewed revisions in `modules/flake/inputs.nix`
+and the generated `flake.nix`: disabling a package
 rule alone does not stop lock maintenance advancing an unpinned input. Nix digest
 pinning stays disabled for branch-only flake URLs; the lock file supplies pins.
 The host stays on NixOS 26.05. Optional Jellyfin/Navidrome modules remain maintained
 without enabling them on production. The inherited omnibus updater is not scheduled.
 
-Upstream merge conflicts abort without publishing a partial merge. Existing
-upstream/fallback PRs are left untouched. Check policy pins and workflows during
-upstream review. Actions uses `GITHUB_TOKEN`, not a PAT or production credentials;
+Upstream updates refresh only the `nixflix` lock entry. Adapter patch failures
+stop evaluation and must be resolved in the PR. Existing upstream/fallback PRs
+are left untouched. Check policy pins and workflows during upstream review. Actions uses `GITHUB_TOKEN`, not a PAT or production credentials;
 token-created commits explicitly dispatch `ci.yml` to run CI automatically. GitHub
 also creates a separate approval-held `pull_request` run for bot-created PRs.
 Live testing found that this can keep the PR blocked even after dispatched CI
@@ -104,12 +104,12 @@ The planner prints its duration and selected checks in the job log and summary.
 | Changed files | Validation |
 | --- | --- |
 | Documentation | Formatting, docs build, Python tests |
-| Production host or runtime scripts | Formatting, all host evaluation checks, production build, Python tests |
+| Production host or runtime scripts | Formatting, all host evaluation checks, both host builds, Python tests |
 | Individual Nix test fixture | Formatting, that fixture, Python tests |
 | Shared VM fixtures | Formatting, VM suite, Python tests |
-| Shared modules, libraries, packages, flake inputs or unknown paths | Full Nix suite, production build, Python tests and Renovate validation |
-| Generated Navidrome plugins | Formatting, Navidrome VM, Nix unit tests, docs build, host evaluation, production build and Python tests |
-| CI infrastructure | Formatting, host evaluation checks, Nix unit tests, production build, Python tests and Renovate validation |
+| Shared modules, libraries, packages, flake inputs or unknown paths | Full Nix suite, both host builds, Python tests and Renovate validation |
+| Generated Navidrome plugins | Formatting, Navidrome VM, Nix unit tests, docs build, host evaluation, both host builds and Python tests |
+| CI infrastructure | Formatting, host evaluation checks, Nix unit tests, both host builds, Python tests and Renovate validation |
 
 Grouped changes take the union of their scopes. Missing bases and manual full
 runs select everything. Renames are treated as a removal and addition so moving
@@ -117,7 +117,7 @@ a host file into a documentation directory cannot hide its former scope.
 Renovate validation runs only for relevant configuration/infrastructure changes
 or full runs; ordinary Python tests no longer download Node and Renovate.
 
-The catalog comes from VM test filenames and host `*-eval.nix` fixtures. The always-selected
+The catalog comes from VM test filenames and host `*-eval.nix` fixtures. Full flake evaluation is always required. The always-selected
 formatting check also asserts that this catalog exactly matches exported flake
 checks; a new or removed check cannot silently escape CI. Update
 `tests/check-names.nix` and `scripts/ci-plan.py` together for new check categories.
@@ -131,7 +131,7 @@ with one Nix build per runner, two build cores and one evaluation thread.
 KVM is enabled only for VM checks. Network-requiring VM fixtures retain their
 existing sandbox exception, detected from the fixture before scheduling rather
 than by evaluating the derivation twice. Python, Renovate, Nix and production
-jobs have explicit timeouts. CI builds validate the production closure; they do
+jobs have explicit timeouts. CI builds validate both host closures; they do
 not deploy, contact the media VM or run remux jobs.
 
 Nix jobs run on GitHub-hosted Ubuntu runners using

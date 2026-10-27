@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
     inputs:
       full:
-        description: Run every Nix check and the production build
+        description: Run every Nix check and both host builds
         type: boolean
         default: false
   push:
@@ -21,6 +21,8 @@ concurrency:
 
 env:
   PYTHONUNBUFFERED: '1'
+  GC_FREE_SPACE_DIVISOR: '16'
+  GC_INITIAL_HEAP_SIZE: '104857600'
   # Bound evaluation/build memory on standard hosted runners.
   NIX_CONFIG: |
     eval-cores = 1
@@ -129,8 +131,26 @@ jobs:
           fi
           nix build --no-write-lock-file --no-link --keep-going -L "${targets[@]}" "${options[@]}"
 
+  evaluate:
+    name: Full flake evaluation
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: DeterminateSystems/determinate-nix-action@v3.24.0
+        with:
+          kvm: false
+      - run: nix build --no-write-lock-file --no-link .#lib.nixflixSource
+      - run: nix eval --impure --json --file tests/fixture-paths.nix
+      - run: nix flake check --no-build --no-write-lock-file --show-trace
+      - run: nix eval --no-write-lock-file .#nixosConfigurations.fateflix.config.system.build.toplevel.drvPath
+      - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-production.config.system.build.toplevel.drvPath
+      - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-staging.config.system.build.toplevel.drvPath
+
   production:
-    name: Production system
+    name: Both host systems
     needs: prepare
     if: needs.prepare.outputs.production == 'true'
     runs-on: ubuntu-latest
@@ -139,17 +159,18 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Free runner space for the production closure
+      - name: Free runner space for both host closures
         run: sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc
       - uses: DeterminateSystems/determinate-nix-action@v3.24.0
         with:
           kvm: false
-      - run: nix build --no-write-lock-file --no-link -L .#nixosConfigurations.nixflix-production.config.system.build.toplevel
+      - run: nix build --no-write-lock-file --no-link -L .#nixosConfigurations.nixflix-production.config.system.build.toplevel .#nixosConfigurations.nixflix-staging.config.system.build.toplevel
+      - run: python3 scripts/check-secret-canary.py
 
   required:
     name: CI required
     if: always()
-    needs: [prepare, checks, production, gitops, renovate]
+    needs: [prepare, evaluate, checks, production, gitops, renovate]
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:

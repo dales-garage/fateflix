@@ -121,7 +121,7 @@ DNS. `--zone public` changes only router-local DNS; `public-dns` explicitly
 changes Cloudflare records. A Git push never changes router or VM configuration.
 The router DNS app preserves unrelated overrides and refuses unowned conflicts.
 
-`secretspec-router.toml` declares separate `public_tls` and `router_web` profiles,
+`capabilities/secrets/secretspec-router.toml` declares separate `public_tls` and `router_web` profiles,
 without inheriting required application secrets. The Cloudflare token remains in
 `secretspec/nixflix/public_tls/CLOUDFLARE_DNS_API_TOKEN` in pass on `.18`; it needs
 Zone Read and DNS Edit only for `dalebox.pw`. No account ID is needed. Provisioning
@@ -335,7 +335,7 @@ A cloned identity must remain isolated until the final cutover.
 
 ## Secrets
 
-SecretSpec declares required credentials in `secretspec.toml`. Following the
+SecretSpec declares required credentials in `capabilities/secrets/secretspec.toml`. Following the
 [pass provider convention](https://secretspec.dev/providers/pass/), entries are
 `secretspec/nixflix/default/NAME`. `scripts/extract-source-secrets.py` runs as root
 on Ubuntu and streams its output directly to `scripts/import-pass.py` on .18.
@@ -441,7 +441,7 @@ ssh -F /dev/null -L 15055:127.0.0.1:15055 marty@10.69.0.18
 
 Browse `http://localhost:15055`; stop the relay when finished. Plex cloud sign-in
 and external notifications/downloads are intentionally unavailable in isolation.
-For later GPU validation set `nixflixHost.gpuPassthrough.enable = true` only after
+For later GPU validation set `fateflix.playback.acceleration = "intel"` only after
 passthrough exists, then test VA-API and real Plex/Stash transcoding. Production
 cutover still requires a final consistent transfer, tested cloud authentication,
 provider credentials, deliberate routing changes, and a memory/concurrency decision.
@@ -502,7 +502,7 @@ other unrelated tunnel routes must remain intact.
 ## Verification after RAM and GPU upgrade
 
 This host is Usenet-only. FlareSolverr, qBittorrent, and torrent download-client
-integrations are explicitly disabled in `hosts/nixflix/services.nix`. Its Arr
+integrations are explicitly disabled in `capabilities/media/services.nix`. Its Arr
 delay-profile declarations also disable torrents. The restored application
 databases retain runtime settings: all seven Arr instances (including native
 Readarr and Whisparr) have `enableTorrent=false` and `preferredProtocol=usenet`.

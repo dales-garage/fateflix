@@ -1,4 +1,4 @@
-name: Upstream sync
+name: Upstream dependency update
 on:
   workflow_dispatch:
   schedule:
@@ -20,7 +20,10 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - name: Create upstream PR and dispatch CI
+      - uses: DeterminateSystems/determinate-nix-action@v3.24.0
+        with:
+          kvm: false
+      - name: Create upstream dependency PR and dispatch CI
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/update-pr.py upstream

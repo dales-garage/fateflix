@@ -4,6 +4,7 @@
   nixosModules,
 }:
 let
+  fixtures = import ../fixture-paths.nix;
   inherit (pkgs) lib;
   jellyfinPlugins = import ../../lib/jellyfin-plugins.nix { inherit lib; };
   secrets = import ../../lib/secrets { inherit lib; };
@@ -18,7 +19,9 @@ let
   # Helper to evaluate a NixOS configuration without building
   evalConfig =
     modules:
-    import "${pkgs.path}/nixos/lib/eval-config.nix" {
+    # Keep a path value so lazy-tree evaluation can read the source directly
+    # without copying all of Nixpkgs into a read-only flake-check store.
+    import (pkgs.path + "/nixos/lib/eval-config.nix") {
       inherit system;
       modules = [
         nixosModules
@@ -347,22 +350,7 @@ in
 
   jellyfin-plugin-repo-service-generation =
     let
-      targetAbi = "${pkgs.jellyfin.version}.0";
-      manifest = builtins.toFile "jellyfin-plugin-repo-service-generation.json" (
-        builtins.toJSON [
-          {
-            guid = "c83d86bb-a1e0-4c35-a113-e2101cf4ee6b";
-            name = "Intro Skipper";
-            versions = [
-              {
-                version = "12.0.5.0";
-                inherit targetAbi;
-                sourceUrl = "https://github.com/intro-skipper/intro-skipper/releases/download/12.0/v12.0.5.0/intro-skipper-v12.0.5.0.zip";
-              }
-            ];
-          }
-        ]
-      );
+      manifest = fixtures."jellyfin-plugin-repo-service-generation.json";
       config = evalConfig [
         {
           nixflix = {
@@ -372,7 +360,7 @@ in
               enable = true;
               system.pluginRepositories = lib.mkForce {
                 "Test Repo" = {
-                  url = builtins.unsafeDiscardStringContext "file://${manifest}";
+                  url = builtins.unsafeDiscardStringContext "file://${toString manifest}";
                   hash = manifestHash manifest;
                   enabled = true;
                 };
@@ -410,21 +398,7 @@ in
 
   jellyfin-plugin-repo-relaxed-version-check =
     let
-      manifest = builtins.toFile "jellyfin-plugin-relaxed-version-check.json" (
-        builtins.toJSON [
-          {
-            guid = "486090e1-ca92-46e1-8549-9f6bb914a1d0";
-            name = "LAPSE";
-            versions = [
-              {
-                version = "2.0.1.0";
-                targetAbi = "10.11.0.0";
-                sourceUrl = "https://github.com/Schwponaco-org/lapse-jellyfin-plugin/releases/download/v2.0.1/lapse-jellyfin-plugin-v2.0.1.zip";
-              }
-            ];
-          }
-        ]
-      );
+      manifest = fixtures."jellyfin-plugin-relaxed-version-check.json";
       config = evalConfig [
         {
           nixflix = {
@@ -434,7 +408,7 @@ in
               enable = true;
               system.pluginRepositories = lib.mkForce {
                 "LAPSE Repo" = {
-                  url = builtins.unsafeDiscardStringContext "file://${manifest}";
+                  url = builtins.unsafeDiscardStringContext "file://${toString manifest}";
                   hash = manifestHash manifest;
                   enabled = true;
                 };
@@ -467,37 +441,8 @@ in
 
   jellyfin-plugin-repo-ambiguity-assertion =
     let
-      targetAbi = "${pkgs.jellyfin.version}.0";
-      manifestA = builtins.toFile "jellyfin-plugin-repo-a.json" (
-        builtins.toJSON [
-          {
-            guid = "11111111-1111-1111-1111-111111111111";
-            name = "Collision Plugin";
-            versions = [
-              {
-                version = "1.0.0.0";
-                inherit targetAbi;
-                sourceUrl = "https://example.invalid/repo-a.zip";
-              }
-            ];
-          }
-        ]
-      );
-      manifestB = builtins.toFile "jellyfin-plugin-repo-b.json" (
-        builtins.toJSON [
-          {
-            guid = "22222222-2222-2222-2222-222222222222";
-            name = "Collision Plugin";
-            versions = [
-              {
-                version = "1.0.0.0";
-                inherit targetAbi;
-                sourceUrl = "https://example.invalid/repo-b.zip";
-              }
-            ];
-          }
-        ]
-      );
+      manifestA = fixtures."jellyfin-plugin-repo-a.json";
+      manifestB = fixtures."jellyfin-plugin-repo-b.json";
       result = builtins.tryEval (
         let
           config = evalConfig [
@@ -510,12 +455,12 @@ in
                   apiKey = "test-api-key";
                   system.pluginRepositories = lib.mkForce {
                     "Repo A" = {
-                      url = builtins.unsafeDiscardStringContext "file://${manifestA}";
+                      url = builtins.unsafeDiscardStringContext "file://${toString manifestA}";
                       hash = manifestHash manifestA;
                       enabled = true;
                     };
                     "Repo B" = {
-                      url = builtins.unsafeDiscardStringContext "file://${manifestB}";
+                      url = builtins.unsafeDiscardStringContext "file://${toString manifestB}";
                       hash = manifestHash manifestB;
                       enabled = true;
                     };

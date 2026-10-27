@@ -10,7 +10,9 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 SPEC = importlib.util.spec_from_file_location(
-    "freecore", Path(__file__).resolve().parents[2] / "scripts/freecore-notifiarr.py"
+    "freecore",
+    Path(__file__).resolve().parents[2]
+    / "capabilities/freecore/scripts/freecore-notifier.py",
 )
 bridge = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(bridge)

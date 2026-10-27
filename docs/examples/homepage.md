@@ -2,7 +2,7 @@
 
 `nixflix.homepage` wraps the native NixOS Homepage service with Nixflix proxy
 integration and runtime API credentials. It is opt-in; the `.18` production host
-enables it in `hosts/nixflix/homepage.nix`. The staging host leaves it disabled.
+enables it in `capabilities/media/homepage.nix`. The staging host leaves it disabled.
 
 The host configuration includes all 17 media applications, grouped into Watch &
 Listen, Movies & TV, Downloads & Subtitles, Books & Music, and Adult. Sonarr,
@@ -32,7 +32,7 @@ not user authentication. Add proxy authentication before any future public route
 
 ```nix
 {
-  nixflixHost.homepage = {
+  fateflix.media.dashboard = {
     apiWidgets = true;
     useInternalNames = true; # false uses direct IP:port links
     showAdultServices = true;
@@ -43,7 +43,7 @@ not user authentication. Add proxy authentication before any future public route
 
 Ports and hostnames come from `hosts/nixflix/local-services.json`. Edit that
 manifest to change the host's Homepage port, keeping the firewall and router
-configuration consistent. Customize the cards in `hosts/nixflix/homepage.nix`;
+configuration consistent. Customize the cards in `capabilities/media/homepage.nix`;
 use `lib.mkAfter` to append groups or `lib.mkForce` to replace them. Turning off
 `apiWidgets` keeps every link and HTTP monitor and removes the credential loads.
 

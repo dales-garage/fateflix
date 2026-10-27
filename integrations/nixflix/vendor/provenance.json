@@ -1,0 +1,25 @@
+{
+  "files": {
+    "modules/jellyfin/plugins/default.nix": "e1f20d82e404158cbb44318a71f977f8a709a690103a3227b4bdf9cb1e54e9f9",
+    "modules/jellyfin/plugins/fetch-manifest.sh": "c9db00757419d6b200307d9bb6a9abbf92d5e93263a63706f845f125c66d545b",
+    "modules/jellyfin/plugins/fromJson.nix": "172072920c0e721bfe6b186eb8f6d7a32e7bc237ab5654fbb0ffe1a0480adde6",
+    "modules/jellyfin/plugins/openSubtitles.nix": "949f1dad28198a752474e379033a69850e55becac37fa94315f2fa3264b243e5",
+    "modules/jellyfin/plugins/options.nix": "11d6bae50c8282775bd8d630028778ce90961f904f7b7b496f9e4d8888e685ef",
+    "modules/jellyfin/plugins/pluginsService.nix": "6b1ab65036304d096f7ab7f0e94f9288b7780d5a775a685c9a1b138ba4dd185f",
+    "modules/jellyfin/plugins/resolvePlugins.nix": "4f55a878673110a49f8cce5b5de8572392450049f3b6b66f3435d0434ada7f27",
+    "modules/jellyfin/plugins/selectVersions.nix": "0c6efd69553be6c07070ee57ca0f4f7434b3d0d2483a19af1b2335cb7bbda561",
+    "modules/jellyfin/plugins/sources.txt": "55cd6f7c7abb0bb4477096dc8b695cc97e59f87c7fbb31090795858a8d214edc",
+    "modules/jellyfin/plugins/subbuzz.nix": "d11797643f2bc2c41918a7d4c8c9d8c3d7eeac82627e35ae91a973a06459423b",
+    "modules/jellyfin/plugins/subtitleExtract.nix": "fc087ce65b8815ef84ae74be279066aa487c88a7e7743beb28160438bde1ac4c",
+    "modules/navidrome/plugins/assertions.nix": "70e1beb4082148386f888fe90f9556b90acc137cfc898118fec61fc5054e7360",
+    "modules/navidrome/plugins/default.nix": "daa6d69a02f36fc030886353d7974582be73331280a7e32f784de8c63f2a59ef",
+    "modules/navidrome/plugins/firstClass.nix": "13ab7a905f0a327000448892d675869b30e8942324c619875b870d55aac3d294",
+    "modules/navidrome/plugins/fromGenerated.nix": "9c31dd9611be50e67e8f7e88a6c148a05590f81707484d6bc0e89dd0d525572d",
+    "modules/navidrome/plugins/lib/navidrome-plugins.nix": "f13b49b3a76147dd015d1782068afb1bc8121b7c36df3a0b95cf5dfe9b908469",
+    "modules/navidrome/plugins/lyrics-extra.nix": "c0bf9891b986f733c60fa91d5300823c9d426da18fb774c7c56df78e15261851",
+    "modules/navidrome/plugins/pluginsService.nix": "b36d403e38ee475451f1e0027ad7bb08a8a5f6e9dd4cc569b091a1b7c7f35d9e",
+    "modules/navidrome/plugins/schemaToOptions.nix": "aeafb9ef899e4199254055078bf79e23f2cbc7735057633a435dd5398954dbea"
+  },
+  "repository": "https://github.com/kiriwalawren/nixflix",
+  "revision": "b668fa4159b9a294efd6e49ea3b889ecdd77e809"
+}

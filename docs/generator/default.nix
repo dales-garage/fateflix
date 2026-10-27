@@ -1,6 +1,10 @@
-{ pkgs, lib }:
+{
+  pkgs,
+  lib,
+  nixflixModule,
+}:
 let
-  optionsGenerator = import ./generate-options.nix { inherit pkgs lib; };
+  optionsGenerator = import ./generate-options.nix { inherit pkgs lib nixflixModule; };
 in
 {
   inherit (optionsGenerator) optionsDocs;

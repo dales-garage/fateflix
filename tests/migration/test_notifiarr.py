@@ -1,4 +1,6 @@
+import contextlib
 import copy
+import io
 import importlib.util
 import json
 from pathlib import Path
@@ -8,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "modules/notifiarr"))
+sys.path.insert(0, str(ROOT / "integrations/nixflix/compatibility/notifiarr"))
 from render import resolve
 
 spec = importlib.util.spec_from_file_location(
@@ -19,6 +21,53 @@ spec.loader.exec_module(connections)
 
 
 class NotifiarrTest(unittest.TestCase):
+    def test_local_reconciliation_does_not_resolve_or_call_plex_cloud(self):
+        raw = {
+            "apiKey": "private",
+            "arr": [],
+            "seerr": {},
+            "bazarr": [],
+            "plex": {"token": {"_secret": "/unavailable/cloud/token"}},
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "connections.json"
+            manifest.write_text(json.dumps(raw))
+            with patch.object(
+                sys, "argv", ["configure-notifiarr.py", str(manifest), "--local-only"]
+            ), patch.object(connections, "connect_seerr") as local, patch.object(
+                connections, "connect_plex"
+            ) as cloud, contextlib.redirect_stdout(
+                io.StringIO()
+            ):
+                connections.main()
+            local.assert_called_once_with({}, "private")
+            cloud.assert_not_called()
+
+    def test_cloud_failure_remains_a_failure_without_touching_local_connections(self):
+        raw = {
+            "plex": {"token": "private-canary"},
+            "plexWebhook": "http://127.0.0.1:5454/plex",
+            "arr": [{"api_key": {"_secret": "/unavailable/local/key"}}],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            manifest = Path(directory) / "connections.json"
+            manifest.write_text(json.dumps(raw))
+            with patch.object(
+                sys,
+                "argv",
+                ["configure-notifiarr.py", str(manifest), "--plex-webhooks-only"],
+            ), patch.object(
+                connections, "connect_plex", side_effect=ValueError("private-canary")
+            ) as cloud, patch.object(
+                connections, "connect_arr"
+            ) as local:
+                with self.assertRaises(SystemExit) as error:
+                    connections.main()
+            cloud.assert_called_once()
+            local.assert_not_called()
+            self.assertIn("plex-webhooks", str(error.exception))
+            self.assertNotIn("private-canary", str(error.exception))
+
     def test_extended_outage_does_not_exhaust_future_timer_attempts(self):
         from unittest.mock import Mock
 

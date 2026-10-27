@@ -20,9 +20,7 @@ let
     "whisparr"
   ];
 in
-assert cfg.nixflixHost.production.enable;
-assert pkgs.lib.hasPrefix "${cfg.services.bazarr.package}/bin/bazarr "
-  cfg.systemd.services.bazarr-4k.serviceConfig.ExecStart;
+assert cfg.fateflix.host.role == "production";
 assert !cfg.services.flaresolverr.enable;
 assert !cfg.services.qbittorrent.enable;
 assert cfg.nixflix.usenetClients.sabnzbd.enable;

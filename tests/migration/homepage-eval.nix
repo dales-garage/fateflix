@@ -20,7 +20,7 @@ let
     (host.extendModules {
       modules = [
         {
-          nixflixHost.homepage = {
+          fateflix.media.dashboard = {
             apiWidgets = false;
             useInternalNames = false;
             showAdultServices = false;

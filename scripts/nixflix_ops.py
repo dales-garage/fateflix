@@ -52,6 +52,14 @@ def cached_probe():
     try:
         value = read_json(STATE / "capacity.json")
         if fresh(value, cfg["probeMaxAge"]):
+            # A root-only publication may carry the previous NAS sample while
+            # the next SMB syscall is running. Never refresh that sample's age.
+            nas_checked = value.get("nas", {}).get("checked", value["checked"])
+            if not fresh(
+                {"checked": nas_checked, "boot_id": value["boot_id"]},
+                cfg["probeMaxAge"],
+            ):
+                value["nas"] = {"status": "unknown"}
             return value
     except (OSError, ValueError):
         pass
@@ -91,6 +99,18 @@ def probe():
                 value["root"] = {"status": "unknown"}
             # Publish root results before any potentially blocking NAS syscall.
             value["nas"] = {"status": "unknown"}
+            try:
+                previous = read_json(STATE / "capacity.json")
+                nas_checked = previous.get("nas", {}).get(
+                    "checked", previous["checked"]
+                )
+                if fresh(
+                    {"checked": nas_checked, "boot_id": previous["boot_id"]},
+                    cfg["probeMaxAge"],
+                ):
+                    value["nas"] = previous["nas"] | {"checked": nas_checked}
+            except (OSError, ValueError, KeyError):
+                pass
             write_json("capacity.json", value)
             try:
                 mounts = json.loads(
@@ -101,7 +121,7 @@ def probe():
                             "1",
                             "--json",
                             "--mountpoint",
-                            "/data",
+                            cfg.get("storageRoot", "/data"),
                             "-o",
                             "FSTYPE,OPTIONS",
                         ],
@@ -115,8 +135,10 @@ def probe():
                 ].split(","):
                     raise ValueError("NAS mount mode")
                 # Metadata access only. No enumeration, content scans or writes.
-                os.stat("/data/media")
-                value["nas"] = capacity("/data", cfg["nas"], inodes=False)
+                os.stat(cfg.get("mediaRoot", "/data/media"))
+                value["nas"] = capacity(
+                    cfg.get("storageRoot", "/data"), cfg["nas"], inodes=False
+                )
                 value["nas"]["accessible"] = True
             except (
                 OSError,
@@ -127,6 +149,7 @@ def probe():
             ):
                 value["nas"] = {"status": "unknown", "accessible": False}
             # Keep the start timestamp: a slow probe cannot publish fresh results.
+            value["nas"]["checked"] = value["checked"]
             write_json("capacity.json", value)
     except BlockingIOError:
         return
@@ -181,7 +204,7 @@ def recover():
         if held("all"):
             return
         # Mount and app reconciliation are independent. Never wait on SMB here.
-        systemctl("start", "--no-block", "data.mount")
+        systemctl("start", "--no-block", cfg.get("mountUnit", "data.mount"))
         systemctl("start", "--no-block", "nixflix-capacity-probe.service")
         if not nas_ready():
             return

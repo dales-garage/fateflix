@@ -1,6 +1,9 @@
-{ pkgs, lib }:
+{
+  pkgs,
+  lib,
+  nixflixModule,
+}:
 let
-  nixflixModule = import ../../modules;
 
   baseNixOS = _: {
     options = {
@@ -53,10 +56,7 @@ let
       { _module.args = { inherit pkgs; }; }
       baseNixOS
       nixflixModule
-      {
-        nixpkgs.system = "x86_64-linux";
-        nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
-      }
+      { nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux"; }
     ];
   };
 
@@ -71,7 +71,7 @@ let
           decl:
           let
             declStr = toString decl;
-            rootStr = toString ../../.;
+            rootStr = toString ../..;
           in
           if lib.hasPrefix rootStr declStr then lib.removePrefix (rootStr + "/") declStr else declStr
         ) opt.declarations;

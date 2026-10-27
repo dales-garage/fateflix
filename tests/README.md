@@ -211,3 +211,10 @@ CI planning tests cover file scopes, grouped changes, rename handling, missing
 bases, network/KVM matrix metadata and the required-check gate. Run
 `python -m unittest discover -s tests/migration -p 'test_ci_plan.py'` without Nix.
 See [CI validation scopes](../docs/gitops.md) for when full VM testing is selected.
+
+FateFlix also evaluates `settings-eval` and `torrent-policy-eval`, including feature
+disabling, custom library paths, and individually selected torrent clients. The
+flake-file consistency check verifies the generated bootstrap. See
+[the modular configuration guide](../docs/fateflix.md). Verification for this
+refactor runs in an isolated checkout on the NixFlix VM; it does not activate the
+result or change Comin's source.

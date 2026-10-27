@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Reconcile notification connections, preserving unrelated providers and backups."""
 
+import argparse
 import copy
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
@@ -239,17 +240,33 @@ def reconcile(item, deadline=None):
 
 def main():
     os.umask(0o077)
-    cfg = resolve(json.loads(Path(sys.argv[1]).read_text()))
-    jobs = [
-        (app["name"], lambda app=app: connect_arr(app, cfg["apiKey"]))
-        for app in cfg["arr"]
-    ]
-    jobs += [("seerr", lambda: connect_seerr(cfg["seerr"], cfg["apiKey"]))]
-    jobs += [
-        (app["name"], lambda app=app: connect_bazarr(app, cfg["apiKey"]))
-        for app in cfg["bazarr"]
-    ]
-    jobs += [("plex-webhooks", lambda: connect_plex(cfg["plex"], cfg["plexWebhook"]))]
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("manifest", type=Path)
+    selection = parser.add_mutually_exclusive_group()
+    selection.add_argument("--local-only", action="store_true")
+    selection.add_argument("--plex-webhooks-only", action="store_true")
+    args = parser.parse_args()
+    raw = json.loads(args.manifest.read_text())
+    if args.plex_webhooks_only:
+        raw = {key: raw[key] for key in ("plex", "plexWebhook")}
+    elif args.local_only:
+        raw = {key: raw[key] for key in ("apiKey", "arr", "seerr", "bazarr")}
+    cfg = resolve(raw)
+    jobs = []
+    if not args.plex_webhooks_only:
+        jobs += [
+            (app["name"], lambda app=app: connect_arr(app, cfg["apiKey"]))
+            for app in cfg["arr"]
+        ]
+        jobs += [("seerr", lambda: connect_seerr(cfg["seerr"], cfg["apiKey"]))]
+        jobs += [
+            (app["name"], lambda app=app: connect_bazarr(app, cfg["apiKey"]))
+            for app in cfg["bazarr"]
+        ]
+    if not args.local_only:
+        jobs += [
+            ("plex-webhooks", lambda: connect_plex(cfg["plex"], cfg["plexWebhook"]))
+        ]
 
     # All workers share this retry deadline, including jobs queued behind the
     # first six. An in-flight connection can make at most three 30s requests;
