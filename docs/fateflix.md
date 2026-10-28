@@ -176,7 +176,7 @@ construction. `integrations/nixflix/default.nix` assembles fetched upstream
 source with `patches/`, verbatim `vendor/modules/`, maintained `compatibility/`,
 `plugins/` and `pkgs/` overlays. Vendored files record their original revision,
 paths and digests in `vendor/provenance.json`. See the
-[integration boundary](https://github.com/declarative-dale/nixflix/blob/fateflix/integrations/nixflix/README.md). Public `nixosModules.default`, `nixflix`, and
+[integration boundary](https://github.com/dales-garage/fateflix/blob/main/integrations/nixflix/README.md). Public `nixosModules.default`, `nixflix`, and
 `download-policy` exports are preserved. The source-only IFD remains: evaluation
 needs an x86_64 builder to realize the small patched source tree. Prime it with
 `nix build --no-link .#lib.nixflixSource` before a read-only flake check.
@@ -220,7 +220,7 @@ derivations, package versions, identities, storage, credentials metadata and hos
 contracts. `modules/_support/host-contract.nix` projects the current contracts. See the
 [validation record](fateflix-v2-validation.md) for results and remaining acceptance.
 
-Comin continues to poll `declarative-dale/nixflix` branch `main`, output
+Comin continues to poll `dales-garage/fateflix` branch `main`, output
 `nixflix-production`. This work performs no activation and changes no production
 services or media. Live staging deployment and rollback remain **unverified**
 until a separate target is available. Passing repository checks does not make v2

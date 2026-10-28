@@ -48,7 +48,7 @@ in
       remotes = [
         {
           name = "origin";
-          url = "https://github.com/declarative-dale/nixflix.git";
+          url = "https://github.com/dales-garage/fateflix.git";
           branches.main = {
             name = "main";
             operation = "switch";
@@ -75,7 +75,7 @@ in
     environment.systemPackages = [ health ];
     environment.etc."nixflix/gitops-services.json".text = builtins.toJSON healthManifest;
     environment.etc."nixos/README.gitops".text = ''
-      Managed by Comin from declarative-dale/nixflix main.
+      Managed by Comin from dales-garage/fateflix main.
       Production output: nixosConfigurations.nixflix-production.
       Merge reviewed PRs; do not run an independent nixos-rebuild here.
       Status: sudo comin status; sudo nixflix-health check

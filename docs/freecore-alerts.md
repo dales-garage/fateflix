@@ -27,7 +27,7 @@ After the reviewed PR is merged, run:
 NAS_ALERT_DIR=/mnt/POOL/monitoring/notifiarr
 install -d -m 700 "$NAS_ALERT_DIR"
 fetch -o "$NAS_ALERT_DIR/freecore-notifiarr.py" \
-  https://raw.githubusercontent.com/declarative-dale/nixflix/main/capabilities/freecore/scripts/freecore-notifier.py
+  https://raw.githubusercontent.com/dales-garage/fateflix/main/capabilities/freecore/scripts/freecore-notifier.py
 chmod 700 "$NAS_ALERT_DIR/freecore-notifiarr.py"
 /usr/local/bin/python3 "$NAS_ALERT_DIR/freecore-notifiarr.py" init
 ```

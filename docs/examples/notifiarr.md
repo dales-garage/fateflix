@@ -67,7 +67,7 @@ To run its provisioner independently of the remote checkout:
 
 ```sh
 revision=$(cat /var/lib/nixflix-deploy/deployed)
-nix run "github:declarative-dale/nixflix/$revision#provision-notifiarr"
+nix run "github:dales-garage/fateflix/$revision#provision-notifiarr"
 ```
 
 The site controls integration triggers, Discord channels, client tunnels, and

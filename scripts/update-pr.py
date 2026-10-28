@@ -99,8 +99,8 @@ def main():
     parser.add_argument("kind", choices=["upstream", *UPDATERS])
     args = parser.parse_args()
     repository = os.environ["GITHUB_REPOSITORY"]
-    if repository != "declarative-dale/nixflix":
-        parser.error("This publisher is scoped to declarative-dale/nixflix")
+    if repository != "dales-garage/fateflix":
+        parser.error("This publisher is scoped to dales-garage/fateflix")
     if args.kind in {"jellyfin-plugins", "extra-dependencies"}:
         # Supplemental discovery yields to Renovate instead of creating a second
         # update backlog. Scheduled/manual runs retry a deferred post-merge hook.

@@ -73,3 +73,25 @@ temporarily disappear. A previously published version changing bytes, or a
 plugin changing identity, requires manual review. Intentional removals remain a
 manual catalog edit. A successful refresh means the available catalogs were
 processed, not that every remote repository was reachable.
+
+## Organization transfer
+
+The canonical repository is `dales-garage/fateflix`. On `marty@10.69.0.18`,
+the administrator checkout is `/home/marty/fateflix`; its origin uses
+`https://github.com/dales-garage/fateflix.git`. Upstream remains
+`kiriwalawren/nixflix`. Internal NixFlix module names, service names and state
+paths retain their existing names. Router configuration ownership comments
+retain the original repository name so previously managed files remain recognized.
+
+GitHub App installations belong to the account that installed them. Install
+[Renovate](https://github.com/apps/renovate/installations/new) in `dales-garage`
+and explicitly select `fateflix`, which remains a fork. The existing
+`forkProcessing: enabled` configuration and dependency dashboard are retained.
+Check other app installations under the organization's Settings → GitHub Apps.
+GitHub Actions itself needs no separate app installation.
+
+CI accepts merge queue `merge_group` events and compares the candidate against
+`merge_group.base_sha`, including earlier queued changes. Before enabling a
+merge queue for `main`, require `CI required` and choose the desired merge
+method. A public organization repository supports merge queues on GitHub Free.
+This migration does not enable a queue or change branch protection.

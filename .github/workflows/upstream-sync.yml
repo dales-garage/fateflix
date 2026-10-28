@@ -13,7 +13,7 @@ concurrency:
 jobs:
   sync:
     timeout-minutes: 10
-    if: github.repository == 'declarative-dale/nixflix'
+    if: github.repository == 'dales-garage/fateflix'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
