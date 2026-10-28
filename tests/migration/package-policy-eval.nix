@@ -8,7 +8,7 @@ let
       modules = [
         {
           options.packagePolicy = lib.mkOption {
-            type = policy.type;
+            inherit (policy) type;
             default = { };
           };
         }
