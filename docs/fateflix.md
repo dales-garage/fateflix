@@ -148,6 +148,7 @@ The policy does not change runtime service names, state paths, UID/GID values,
 secret contracts, storage/download defaults, or public flake output aliases.
 Reusable exported upstream NixOS modules still respect the consuming host's own
 Nixpkgs policy; this flake-parts setting governs the FateFlix appliance outputs.
+
 ## Media service catalog
 
 `lib/media-services.nix` validates a credential-free catalog with Nix module

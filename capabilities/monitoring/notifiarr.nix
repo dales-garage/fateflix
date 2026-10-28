@@ -30,13 +30,7 @@ let
       apiKey = {
         _secret = cfg.apiKeyFile;
       };
-      arr = map (
-        name:
-        (app name)
-        // {
-          apiVersion = services.catalog.${name}.apiVersion;
-        }
-      ) arrNames;
+      arr = map (name: (app name) // { apiVersion = services.catalog.${name}.apiVersion; }) arrNames;
       seerr = {
         url = services.origin "seerr";
         api_key = secret "/var/lib/seerr/settings.json" "json" [

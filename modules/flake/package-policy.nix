@@ -4,7 +4,7 @@ let
 in
 {
   options.fateflix.packagePolicy = lib.mkOption {
-    type = policy.type;
+    inherit (policy) type;
     default = { };
     description = ''
       Shared package policy applied before constructing host, media and tooling

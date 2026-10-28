@@ -1,6 +1,5 @@
 # Evaluated before constructing any of the appliance's package sets.
-{ lib }:
-{
+{ lib }: {
   type = lib.types.submodule {
     options = {
       unfree = lib.mkOption {
