@@ -1,4 +1,10 @@
-{ inputs, lib, ... }: {
+{
+  inputs,
+  lib,
+  fateflixPackagePolicy,
+  ...
+}:
+{
   imports = [
     inputs.flake-file.flakeModules.default
     inputs.den.flakeModules.default
@@ -20,8 +26,15 @@
     inputs.nixpkgs-host.lib.nixosSystem (
       args
       // {
+        modules = (args.modules or [ ]) ++ [
+          {
+            nixpkgs.config =
+              (import ../../lib/package-policy.nix { inherit lib; }).nixpkgsConfig
+                fateflixPackagePolicy;
+          }
+        ];
         specialArgs = (args.specialArgs or { }) // {
-          inherit inputs;
+          inherit inputs fateflixPackagePolicy;
         };
       }
     )

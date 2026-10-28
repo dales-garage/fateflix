@@ -1,11 +1,13 @@
-{ inputs, ... }: {
+{ inputs, fateflixPackagePolicy, ... }: {
   perSystem =
     { system, ... }:
     let
       inherit (inputs) self;
       pkgs = import inputs.nixpkgs {
         inherit system;
-        config.allowUnfree = true;
+        config =
+          (import ../../lib/package-policy.nix { lib = inputs.nixpkgs.lib; }).nixpkgsConfig
+            fateflixPackagePolicy;
         overlays = [ self.overlays.default ];
       };
       treefmt = inputs.treefmt-nix.lib.evalModule pkgs ../../treefmt.nix;

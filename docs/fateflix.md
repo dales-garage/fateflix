@@ -116,6 +116,39 @@ behavior. The `freecore` aspect owns its dedicated telemetry module, the existin
 SMB/HTTPS checks, and the standalone NAS bridge payload; see
 [FreeCORE telemetry](freecore-alerts.md).
 
+## Package policy
+
+`fateflix.packagePolicy` is a **flake-parts option**, not a NixOS option. It is
+resolved before constructing the host, media and tooling package sets, so one
+policy covers all three without changing their independently pinned inputs.
+Unfree packages remain **allowed by default** (`unfree = "allow"`).
+
+A flake-parts module can explicitly restrict that policy:
+
+```nix
+{
+  fateflix.packagePolicy = {
+    unfree = "allowlist"; # "allow", "deny", or "allowlist"
+    allowedNames = [ "plexmediaserver" ];
+  };
+}
+```
+
+`allowedNames` uses `lib.getName` (the package's unversioned Nixpkgs name), not a
+service name or attribute path. For example, the `plex` service uses a package
+named `plexmediaserver`. An empty allowlist permits no unfree packages. `deny`
+permits none; `allow` permits all. The list has no effect outside allowlist mode.
+Invalid modes and non-string names fail typed module evaluation. Nixpkgs emits
+its normal unfree-package error when a selected package is denied: no capability
+is silently disabled, substituted or removed. The current media profile selects
+Plex, so `deny` requires a deliberate service/profile change before that host can
+build. Do not override `nixpkgs.config.allowUnfree` separately in host modules.
+
+The policy does not change runtime service names, state paths, UID/GID values,
+secret contracts, storage/download defaults, or public flake output aliases.
+Reusable exported upstream NixOS modules still respect the consuming host's own
+Nixpkgs policy; this flake-parts setting governs the FateFlix appliance outputs.
+
 ## Runtime secrets
 
 The secrets capability owns declarations, installers and operator apps in

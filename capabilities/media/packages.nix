@@ -1,5 +1,6 @@
 {
   inputs,
+  fateflixPackagePolicy,
   lib,
   pkgs,
   ...
@@ -9,7 +10,7 @@ let
   # set carries application releases that have not reached that channel yet.
   media = import inputs.nixpkgs-media {
     inherit (pkgs.stdenv.hostPlatform) system;
-    config.allowUnfree = true;
+    config = (import ../../lib/package-policy.nix { inherit lib; }).nixpkgsConfig fateflixPackagePolicy;
   };
 in
 {
