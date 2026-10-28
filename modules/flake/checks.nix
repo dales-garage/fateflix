@@ -41,6 +41,7 @@
         operations-eval = import ../../tests/migration/operations-eval.nix {
           inherit pkgs;
           host = self.nixosConfigurations.nixflix-production;
+          staging = self.nixosConfigurations.nixflix-staging;
         };
         remux-eval = import ../../tests/migration/remux-eval.nix {
           inherit pkgs;
