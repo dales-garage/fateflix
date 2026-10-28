@@ -144,27 +144,16 @@ class UpdateTests(unittest.TestCase):
             )
         )
 
-    def test_upstream_update_only_refreshes_the_lock(self):
-        with patch.object(updates.Path, "read_bytes", side_effect=[b"old", b"new"]):
-            with patch.object(updates, "run") as run:
-                self.assertTrue(updates.sync_upstream())
-                run.assert_called_once_with("nix", "flake", "update", "nixflix")
-
-    def test_upstream_update_is_noop_when_current(self):
-        with patch.object(updates.Path, "read_bytes", return_value=b"same"):
-            with patch.object(updates, "run"):
-                self.assertFalse(updates.sync_upstream())
-
-    def test_failed_dependency_update_does_not_publish(self):
-        with patch.object(updates.Path, "read_bytes", return_value=b"old"):
-            with patch.object(
-                updates, "run", side_effect=RuntimeError("fetch failed")
-            ) as run:
-                with self.assertRaises(RuntimeError):
-                    updates.sync_upstream()
-                self.assertFalse(
-                    any(c.args[:2] == ("git", "push") for c in run.call_args_list)
-                )
+    def test_retired_upstream_publisher_fails_before_running_commands(self):
+        with (
+            patch("sys.argv", ["update-pr.py", "upstream"]),
+            patch.object(updates, "run") as run,
+        ):
+            with self.assertRaises(SystemExit) as error:
+                updates.main()
+        self.assertEqual(error.exception.code, 2)
+        run.assert_not_called()
+        self.assertNotIn("upstream", updates.UPDATERS)
 
     def test_release_assets_match_architecture_and_digest(self):
         binary = bytearray(64)

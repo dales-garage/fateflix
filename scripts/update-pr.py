@@ -88,15 +88,9 @@ def formatted_changes(patterns):
     return changed
 
 
-def sync_upstream():
-    before = Path("flake.lock").read_bytes()
-    run("nix", "flake", "update", "nixflix")
-    return before != Path("flake.lock").read_bytes()
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("kind", choices=["upstream", *UPDATERS])
+    parser.add_argument("kind", choices=list(UPDATERS))
     args = parser.parse_args()
     repository = os.environ["GITHUB_REPOSITORY"]
     if repository != "dales-garage/fateflix":
@@ -175,21 +169,14 @@ def main():
     )
     run("git", "fetch", "origin", "main")
     run("git", "checkout", "-b", branch, "origin/main")
-    if args.kind == "upstream":
-        if not sync_upstream():
-            print("Upstream dependency is already current.")
-            return
-        run("git", "add", "--", "flake.lock")
-        run("git", "commit", "-m", "Update NixFlix dependency")
-    else:
-        command, patterns = UPDATERS[args.kind]
-        run("nix", "develop", "--command", *command)
-        changed = formatted_changes(patterns)
-        if not changed:
-            print("Already current; no PR needed.")
-            return
-        run("git", "add", "--", *changed)
-        run("git", "commit", "-m", "Update " + args.kind)
+    command, patterns = UPDATERS[args.kind]
+    run("nix", "develop", "--command", *command)
+    changed = formatted_changes(patterns)
+    if not changed:
+        print("Already current; no PR needed.")
+        return
+    run("git", "add", "--", *changed)
+    run("git", "commit", "-m", "Update " + args.kind)
     run("git", "push", "origin", "HEAD:refs/heads/" + branch)
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md") as body:
         body.write(
@@ -199,10 +186,6 @@ def main():
             body.write(
                 "\nRefresh Apprise's Linux amd64 image digest and Jellyfin's ABI-aware catalog. "
                 "Policy, vendored sources, compatibility fallbacks and test selections remain independently reviewed.\n"
-            )
-        if args.kind == "upstream":
-            body.write(
-                "\nReview the NixFlix lock change and adapter patches, then compare host configuration and recovery checks.\n"
             )
         body.flush()
         run(

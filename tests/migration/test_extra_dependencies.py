@@ -115,6 +115,24 @@ class CoverageTests(unittest.TestCase):
             )
         )
 
+    def test_ci_validator_and_python_pins_are_owned_not_unversioned(self):
+        result = extra.audit(ROOT)
+        pins = {
+            entry.get("name"): entry
+            for entry in result["dependencies"]
+            if entry.get("name") in {"renovate", "PyYAML"}
+        }
+        self.assertEqual(set(pins), {"renovate", "PyYAML"})
+        for entry in pins.values():
+            self.assertEqual(entry["owner"], "renovate")
+            self.assertRegex(entry["pin"], r"^\d+\.\d+\.\d+$")
+        self.assertFalse(
+            any(
+                entry["owner"] == "unversioned-tooling"
+                for entry in result["dependencies"]
+            )
+        )
+
     def test_new_image_and_container_and_package_require_ownership(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -124,6 +142,8 @@ class CoverageTests(unittest.TestCase):
                 "hosts/nixflix/containers.json",
                 "flake.lock",
                 ".github/package-versions.json",
+                ".github/workflows/ci.yml",
+                ".github/requirements-ci.txt",
             ]:
                 (root / name).parent.mkdir(parents=True, exist_ok=True)
                 (root / name).write_bytes((ROOT / name).read_bytes())

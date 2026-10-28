@@ -83,9 +83,11 @@ def select(names, changed):
                 reasons.add("Navidrome generated plugins")
                 continue
             return full_plan(names["all"], "Shared Nix modules changed; full suite")
-        if path in {"scripts/ci-plan.py", "tests/check-names.nix"} or path.startswith(
-            ".github/workflows/"
-        ):
+        if path in {
+            "scripts/ci-plan.py",
+            "tests/check-names.nix",
+            ".github/requirements-ci.txt",
+        } or path.startswith(".github/workflows/"):
             checks |= names["host"] | {"unit-tests"}
             production = True
             renovate = True

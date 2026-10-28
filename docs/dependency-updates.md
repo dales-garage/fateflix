@@ -32,14 +32,14 @@ CI rejects newly discovered literal pins or manifest entries without ownership.
 | Apprise | Supplemental refresh resolves `docker.io/caronc/apprise:latest`, requires Linux amd64 and pins the registry's top-level digest |
 | Jellyfin plugin catalog | Supplemental refresh uses the existing ABI-aware source aggregator and verified download hashes |
 | Navidrome generated plugin options | Existing artifact helper regenerates from the selected Nixpkgs plugin bundles when that lock changes |
-| Other flake inputs, including upstream NixFlix and documentation theme | Renovate lock maintenance; upstream also has its existing reviewed dependency PR workflow |
+| Other flake inputs, including upstream NixFlix and documentation theme | Renovate lock maintenance and trusted artifact fingerprint refresh; no parallel upstream publisher |
 | TRaSH Guides and Recyclarr templates | Deliberate policy pins; automatic refresh excluded |
 | Seerr 3.5.1 fallback | Minimum compatibility override; newer `nixpkgs-media` Seerr supersedes it automatically, removal/change requires review |
 | Vendored plugin implementations and source list | Deliberate source snapshot with checked provenance; never overwritten by catalog refresh |
 | Jellyfin examples and test plugin selections | Independent regression fixtures; never rewritten by supplemental discovery |
 | Historical Readarr, Whisparr, Notifiarr, Bazarr, Audiobookshelf and Tautulli image entries | Retained migration records; these services run natively, so unused container pins are not refreshed |
 | GitHub Actions and supported runtime declarations | Renovate's GitHub Actions manager |
-| CI's PyYAML installation and Renovate validator | Unversioned tool invocations fetch at execution time; no repository version pin to advance |
+| CI's PyYAML installation and Renovate validator | Exact pins in `.github/requirements-ci.txt` and `ci.yml`; Renovate requirements/custom managers keep them in the CI tooling group |
 
 This is an audit of repository-owned pins, not a vulnerability scanner or an
 inventory of live credentials, databases, media or remote service endpoints.

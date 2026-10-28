@@ -31,8 +31,12 @@ Merge only after the required CI check passes. Do not enable Comin against the o
 | Supplemental dependencies | Apprise digest and ABI-aware Jellyfin catalog | Post-Renovate-merge hook; scheduled/manual fallback |
 | CI tooling | GitHub Actions and runtime versions recognized by that manager | Renovate |
 | Major upgrades | Explicit major releases stay in separate PRs | Renovate; manual review |
-| Upstream nixflix | Reviewed `nixflix` input lock updates | `upstream-sync.yml`; Sunday 12:00 UTC or manual |
+| Upstream nixflix | Reviewed `nixflix` input lock updates and synchronized artifact fingerprint | Renovate lock-file maintenance plus artifact helper |
 | TRaSH/Recyclarr policy and NixOS release channel | Deliberate policy/release changes | Owner; excluded from automatic upgrades |
+
+Renovate is the sole automated owner of GitHub Actions and flake lock updates.
+There is no parallel Dependabot configuration or scheduled upstream lock writer.
+The ABI-aware supplemental updater below remains intentionally separate.
 
 Renovate allows one active branch/PR at a time, with a daily 06:00–10:59
 America/Chicago window. A subsequent bot run can open the next group after a
@@ -98,9 +102,13 @@ pinning stays disabled for branch-only flake URLs; the lock file supplies pins.
 The host stays on NixOS 26.05. Optional Jellyfin/Navidrome modules remain maintained
 without enabling them on production. The inherited omnibus updater is not scheduled.
 
-Upstream updates refresh only the `nixflix` lock entry. Adapter patch failures
-stop evaluation and must be resolved in the PR. Existing upstream/fallback PRs
-are left untouched. Check policy pins and workflows during upstream review. Actions uses `GITHUB_TOKEN`, not a PAT or production credentials;
+Upstream lock updates arrive in Renovate system-dependency PRs. The trusted
+artifact helper refreshes the fingerprint before CI accepts the change. Adapter
+patch failures stop evaluation and must be resolved in the PR. Manual upstream
+updates must use the local artifact refresh command above; the retired
+`update-pr.py upstream` publisher is no longer accepted. Existing upstream/fallback
+PRs are left untouched. Check policy pins and workflows during upstream review.
+Actions uses `GITHUB_TOKEN`, not a PAT or production credentials;
 token-created commits explicitly dispatch `ci.yml` to run CI automatically. GitHub
 also creates a separate approval-held `pull_request` run for bot-created PRs.
 Live testing found that this can keep the PR blocked even after dispatched CI
@@ -129,6 +137,22 @@ runs select everything. Renames are treated as a removal and addition so moving
 a host file into a documentation directory cannot hide its former scope.
 Renovate validation runs only for relevant configuration/infrastructure changes
 or full runs; ordinary Python tests no longer download Node and Renovate.
+
+CI validation uses explicit tool versions rather than an unversioned `npx`
+resolution: Renovate 44.188.2 on Node 24.22.1, and PyYAML 6.0.3 from
+`.github/requirements-ci.txt`. Renovate maintains all three pins. The Node
+24.x bound follows Renovate's [published engine requirement at the pinned
+release](https://github.com/renovatebot/renovate/blob/44.188.2/package.json)
+(`^24.11.0`); raise the bound only after reviewing the validator's supported
+runtime and passing strict validation. PyYAML's pin comes from its
+[official release](https://github.com/yaml/pyyaml/releases/tag/6.0.3).
+A runtime-major proposal such as PR #58 should not be merged independently of
+that compatibility review. Current `managerFilePatterns` and `baseBranchPatterns`
+configuration stays intact; obsolete validators must not force a schema downgrade.
+
+Documentation publication watches `integrations/**` and `capabilities/**` as
+well as modules and libraries, because they contribute generated options. This
+trigger does not enable GitHub Pages or change repository protection settings.
 
 The catalog comes from VM test filenames and host `*-eval.nix` fixtures. Full flake evaluation is always required. The always-selected
 formatting check also asserts that this catalog exactly matches exported flake
