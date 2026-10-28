@@ -83,6 +83,7 @@ class SelectionTests(unittest.TestCase):
     def test_ci_changes_validate_production_without_app_vm_tests(self):
         for path in [
             "scripts/ci-plan.py",
+            ".github/requirements-ci.txt",
             ".github/workflows/ci.yml",
             "tests/check-names.nix",
         ]:
@@ -323,6 +324,90 @@ class WorkflowTests(unittest.TestCase):
             )
         )
         self.assertIn("renovate", self.jobs["renovate"]["if"])
+
+    def test_validator_and_python_dependencies_are_pinned_and_owned(self):
+        steps = self.jobs["renovate"]["steps"]
+        node = next(s for s in steps if "setup-node" in s.get("uses", ""))
+        self.assertRegex(node["with"]["node-version"], r"^24\.\d+\.\d+$")
+        command = next(
+            s["run"] for s in steps if "renovate-config-validator" in s.get("run", "")
+        )
+        version = ci.re.search(r"--package renovate@(\d+\.\d+\.\d+) ", command)
+        self.assertIsNotNone(version)
+        self.assertIn("--strict renovate.json", command)
+        requirements = ROOT / ".github/requirements-ci.txt"
+        self.assertRegex(requirements.read_text().strip(), r"^PyYAML==\d+\.\d+\.\d+$")
+        self.assertTrue(
+            any(
+                "-r .github/requirements-ci.txt" in s.get("run", "")
+                for s in self.jobs["gitops"]["steps"]
+            )
+        )
+        config = json.loads((ROOT / "renovate.json").read_text())
+        self.assertIn("pip_requirements", config["enabledManagers"])
+        self.assertIn("baseBranchPatterns", config)
+        self.assertTrue(
+            all(
+                "managerFilePatterns" in manager for manager in config["customManagers"]
+            )
+        )
+        validator = next(
+            m
+            for m in config["customManagers"]
+            if m.get("depNameTemplate") == "renovate"
+        )
+        # Renovate uses RE2 named captures; Python uses an equivalent spelling.
+        pattern = validator["matchStrings"][0].replace(
+            "(?<currentValue>", "(?P<currentValue>"
+        )
+        match = ci.re.search(pattern, (ROOT / ".github/workflows/ci.yml").read_text())
+        self.assertEqual(match.group("currentValue"), version.group(1))
+        rule = next(
+            r for r in config["packageRules"] if r.get("matchDepNames") == ["node"]
+        )
+        self.assertEqual(rule["matchFileNames"], [".github/workflows/ci.yml"])
+        self.assertEqual(rule["allowedVersions"], "/^24\\./")
+
+    def test_renovate_is_the_only_actions_and_lock_update_owner(self):
+        self.assertFalse((ROOT / ".github/dependabot.yml").exists())
+        self.assertFalse((ROOT / ".github/workflows/upstream-sync.yml").exists())
+        config = json.loads((ROOT / "renovate.json").read_text())
+        self.assertIn("github-actions", config["enabledManagers"])
+        self.assertIn("nix", config["enabledManagers"])
+        self.assertTrue(config["lockFileMaintenance"]["enabled"])
+        for rule in config["packageRules"]:
+            if rule.get("enabled") is False:
+                self.assertNotIn("nixflix", rule.get("matchDepNames", []))
+        workflows = "\n".join(
+            p.read_text() for p in (ROOT / ".github/workflows").glob("*.yml")
+        )
+        self.assertNotIn("update-pr.py upstream", workflows)
+        self.assertIn("update-pr.py extra-dependencies", workflows)
+
+    def test_media_group_does_not_override_action_runtime_ownership(self):
+        config = json.loads((ROOT / "renovate.json").read_text())
+        media = next(
+            rule
+            for rule in config["packageRules"]
+            if rule.get("groupName") == "Media applications"
+        )
+        # setup-node/setup-python versions use github-releases too. Restrict
+        # this later rule to custom application managers, not CI runtimes.
+        self.assertEqual(media["matchManagers"], ["custom.regex"])
+        self.assertNotIn("github-actions", media["matchManagers"])
+        majors = next(
+            rule
+            for rule in config["packageRules"]
+            if rule.get("matchUpdateTypes") == ["major"]
+        )
+        self.assertIsNone(majors["groupName"])
+
+    def test_docs_publication_covers_generated_option_sources(self):
+        workflow = yaml.safe_load((ROOT / ".github/workflows/docs.yml").read_text())
+        # PyYAML's YAML 1.1 loader treats the GitHub Actions key `on` as true.
+        paths = workflow[True]["push"]["paths"]
+        for source in ("modules/**", "capabilities/**", "integrations/**", "lib/**"):
+            self.assertIn(source, paths)
 
     def test_nix_check_runs_once_and_matrix_is_bounded(self):
         self.assertEqual(self.jobs["checks"]["strategy"]["max-parallel"], 4)

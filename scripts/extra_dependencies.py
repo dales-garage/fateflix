@@ -45,7 +45,11 @@ def renovate_dependencies(root):
     config = json.loads((root / "renovate.json").read_text())
     result = set()
     for manager in config["customManagers"]:
-        for path in ("hosts/nixflix/containers.json", ".github/package-versions.json"):
+        for path in (
+            "hosts/nixflix/containers.json",
+            ".github/package-versions.json",
+            ".github/workflows/ci.yml",
+        ):
             if not any(
                 re.search(pattern.strip("/"), path)
                 for pattern in manager["managerFilePatterns"]
@@ -54,7 +58,9 @@ def renovate_dependencies(root):
             for pattern in manager["matchStrings"]:
                 pattern = re.sub(r"\(\?<([A-Za-z][A-Za-z0-9_]*)>", r"(?P<\1>", pattern)
                 for match in re.finditer(pattern, (root / path).read_text()):
-                    result.add(match["depName"])
+                    result.add(
+                        match.groupdict().get("depName") or manager["depNameTemplate"]
+                    )
     return result
 
 
@@ -121,6 +127,31 @@ def audit(root):
         entries.append(entry)
         if entry["owner"] == "unclassified":
             unknown.append(entry)
+    renovate = json.loads((root / "renovate.json").read_text())
+    for name, path, pattern, owned in [
+        (
+            "renovate",
+            ".github/workflows/ci.yml",
+            r"--package renovate@(\d+\.\d+\.\d+) ",
+            "renovate" in discovered,
+        ),
+        (
+            "PyYAML",
+            ".github/requirements-ci.txt",
+            r"^PyYAML==(\d+\.\d+\.\d+)$",
+            "pip_requirements" in renovate["enabledManagers"],
+        ),
+    ]:
+        match = re.search(pattern, (root / path).read_text(), re.MULTILINE)
+        entry = {
+            "path": path,
+            "name": name,
+            "pin": match[1] if match else None,
+            "owner": "renovate" if match and owned else "unclassified",
+        }
+        entries.append(entry)
+        if entry["owner"] == "unclassified":
+            unknown.append(entry)
     entries.extend(
         [
             {
@@ -142,11 +173,6 @@ def audit(root):
                 "path": "capabilities/, docs/default.nix, modules/flake/outputs.nix",
                 "owner": "renovate-lock",
                 "reason": "Native services, kernel patches, Python/Node dependencies and documentation tools follow the three locked nixpkgs package sets.",
-            },
-            {
-                "path": ".github/workflows/ci.yml: PyYAML and Renovate validator",
-                "owner": "unversioned-tooling",
-                "reason": "Fetched on each CI run without a version pin; no repository version to refresh.",
             },
         ]
     )

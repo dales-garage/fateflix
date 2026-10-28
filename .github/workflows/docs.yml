@@ -8,6 +8,8 @@ on:
       - docs/**
       - README.md
       - modules/**
+      - capabilities/**
+      - integrations/**
       - lib/**
       - pkgs/**
       - flake.nix

@@ -20,7 +20,8 @@
   "enabledManagers": [
     "nix",
     "github-actions",
-    "custom.regex"
+    "custom.regex",
+    "pip_requirements"
   ],
   "lockFileMaintenance": {
     "enabled": true,
@@ -69,12 +70,36 @@
       "groupSlug": "ci-tooling"
     },
     {
+      "description": "Keep the validator on its supported Node 24 runtime; review Renovate engines before raising this bound",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchDepNames": [
+        "node"
+      ],
+      "matchFileNames": [
+        ".github/workflows/ci.yml"
+      ],
+      "allowedVersions": "/^24\\./"
+    },
+    {
+      "matchDepNames": [
+        "renovate",
+        "PyYAML"
+      ],
+      "groupName": "CI tooling",
+      "groupSlug": "ci-tooling"
+    },
+    {
       "matchDatasources": [
         "docker",
         "github-releases"
       ],
       "groupName": "Media applications",
-      "groupSlug": "media-applications"
+      "groupSlug": "media-applications",
+      "matchManagers": [
+        "custom.regex"
+      ]
     },
     {
       "matchDepNames": [
@@ -143,6 +168,18 @@
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "regex:^(?<major>2)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-release\\.(?<build>\\d+)$",
       "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/ci\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=npm depName=renovate\\s+- run: npx --yes --package renovate@(?<currentValue>[^ ]+)"
+      ],
+      "datasourceTemplate": "npm",
+      "depNameTemplate": "renovate",
+      "versioningTemplate": "npm"
     }
   ],
   "branchConcurrentLimit": 1,
