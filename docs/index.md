@@ -1,44 +1,47 @@
 ---
-title: Getting Started
+title: FateFlix
 ---
 
-!!! tip "Quick Start"
+# FateFlix
 
-    New to Nixflix? Start with the [Installation Guide](getting-started/index.md) or explore the [Basic Setup Example](examples/basic-setup.md).
+<p align="center">
+  <img src="assets/logo.svg" alt="Red NixFlix logo, reused from upstream" width="160" />
+</p>
 
-# README_PLACEHOLDER
+FateFlix is a downstream NixOS appliance flake built on
+[NixFlix](https://github.com/kiriwalawren/nixflix). It consumes pinned upstream
+source as a flake input, adapts its media-service modules and composes them with
+host configuration, storage, runtime secrets, playback, processing, monitoring
+and production deployment.
 
-## Quick Example
+NixFlix supplies the declarative media configuration. FateFlix turns that
+foundation into an opinionated system with its own operating policy and update
+workflow. The input is declared with `flake = false`, so FateFlix imports modules
+from an assembled source tree rather than consuming upstream flake outputs.
 
-```nix
-{
-  nixflix = {
-    enable = true;
-    mediaDir = "/data/media";
-    stateDir = "/var/lib";
+## Choose a starting point
 
-    sonarr = {
-      enable = true;
-      config.apiKey = {_secret = "/run/secrets/sonarr-api-key";};
-    };
+- **Explore or adapt the appliance:** begin with [Getting started](getting-started/index.md).
+- **Understand the composition:** read [Architecture and configuration](fateflix.md).
+- **Operate the existing appliance:** use [GitOps and updates](gitops.md) and
+  [Operations](operations.md).
+- **Configure individual applications:** use the module examples and
+  [option reference](reference/index.md). These document the service module
+  interface; the appliance's capability composition supplies its host policy.
 
-    prowlarr = {
-      enable = true;
-      config.apiKey = {_secret = "/run/secrets/prowlarr-api-key";};
-    };
+## Upstream and downstream
 
-    sabnzbd = {
-      enable = true;
-      settings.misc.api_key = {_secret = "/run/secrets/sabnzbd-api-key";};
-    };
+| NixFlix provides | FateFlix builds on top |
+| --- | --- |
+| Media-service options and API-based configuration | A composed NixOS host with production/staging roles |
+| Application integrations | Storage, secrets, download and playback policy |
+| Upstream source releases | Locked inputs, compatibility changes and reviewed dependency updates |
 
-    jellyfin.enable = true;
-  };
-}
-```
+The appliance's checked-in hardware and filesystem definitions belong to an
+existing machine. Adapt those definitions before deploying elsewhere. See
+[Getting started](getting-started/index.md) for the difference between the
+complete appliance and the reusable module exports.
 
-## Next Steps
-
-- [Installation](getting-started/index.md) - Add Nixflix to your NixOS configuration
-- [Examples](examples/basic-setup.md) - Copy-paste ready configurations
-- [Reference](reference/index.md) - Complete documentation of all options
+The red logo is reused from upstream NixFlix. For the original project's setup
+and service documentation, visit the
+[upstream documentation](https://kiriwalawren.github.io/nixflix/).

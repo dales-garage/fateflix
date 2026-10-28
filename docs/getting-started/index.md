@@ -2,175 +2,98 @@
 title: Getting Started
 ---
 
-# Getting Started
+# Getting started with FateFlix
 
-This guide shows how to add Nixflix to your NixOS configuration using flakes.
+FateFlix offers a complete downstream appliance and reusable adapted NixFlix
+modules. Choose the appliance when working on this repository's host
+composition, or the module export when adding media services to a NixOS host
+you already maintain.
 
-## Prerequisites
+## Inspect the appliance
 
-- NixOS
-- Git for version control
-- Basic familiarity with NixOS modules
-- Some form of secrets management, like [sops-nix](https://github.com/Mic92/sops-nix)
+Use a machine with Nix and flakes enabled. The adapted upstream source is built
+for `x86_64-linux`; evaluation needs a builder for that system.
 
-From here, you have two ways of using Nixflix in your configuration, those being with and without Flakes.
-
-## Without Flakes
-The `default.nix` at the root of the repository exposes the NixOS module for non-flake users.
-### With `builtins.fetchTarball`
-```nix
-{ pkgs, ... }:
-let
-  nixflix = import (builtins.fetchTarball "https://github.com/kiriwalawren/nixflix/archive/main.tar.gz") { inherit pkgs; };
-  # You can pin the module to a specific commit by replacing main with the commit's hash
-in {
-  imports = [ nixflix.nixosModules.default ];
-}
+```sh
+git clone https://github.com/dales-garage/fateflix.git
+cd fateflix
+nix develop
+nix build --no-link .#lib.nixflixSource
+nix eval .#nixosConfigurations.fateflix.config.system.build.toplevel.drvPath
 ```
-### With `pkgs.fetchFromGitHub`
-```nix
-{ pkgs, ... }:
-let
-  nixflix = import (pkgs.fetchFromGitHub {
-    owner = "kiriwalawren";
-    repo = "nixflix";
-    rev = "main"; # You can use the rev to pin the module to a specific commit using its hash
-    sha256 = ""; # replace with the actual hash which will likely be returned after your rebuild errors out.
-  }) { inherit pkgs; };
-in {
-  imports = [ nixflix.nixosModules.default ];
-}
-```
-### With [npins](https://github.com/andir/npins)
-First, add nixflix to your pins:
-```bash
-npins add github kiriwalawren nixflix --branch main
-```
-Then import the module:
-```nix
-{ pkgs, ... }:
-let
-  sources = import path/to/npins/folder;
-  nixflix = import sources.nixflix { inherit pkgs; };
-in {
-  imports = [ nixflix.nixosModules.default ];
-}
-```
-These aren't the only ways to add the Nixflix module to your configuration (you could use `builtins.fetchGit` for example) although they are the most common ones.
-## With Flakes
-### Enable Flakes
 
-If you haven't already enabled flakes, add this to your configuration:
+These commands fetch dependencies and evaluate the production system without
+activating it. To build its closure:
+
+```sh
+nix build --no-link .#nixosConfigurations.fateflix.config.system.build.toplevel
+```
+
+`fateflix`, `nixflix` and `nixflix-production` name the same production system.
+`nixflix-staging` selects a staging role with separate secrets and no production
+Comin deployment. It shares the existing machine's hardware definitions.
+
+## Adapt the appliance to another machine
+
+The checked-in hosts are specific to the existing appliance. Before activation,
+review these sources together:
+
+| Source | What to adapt |
+| --- | --- |
+| `hosts/nixflix/` | Hardware, filesystem identities, networking, storage and local endpoints |
+| `modules/hosts/` | Host declarations and production/staging role selection |
+| `modules/profiles/media-server.nix` | Capability selection and shared host policy |
+| `capabilities/` | Storage, download, playback, processing, monitoring and secrets settings |
+
+Use [Architecture and configuration](../fateflix.md) to understand the capability
+composition and canonical options. Provision credentials through the
+[documented runtime secrets workflow](../fateflix.md#runtime-secrets). A separate
+staging machine needs its own hardware definitions.
+
+For the existing production appliance, follow [GitOps and updates](../gitops.md).
+Comin owns activation from reviewed `main`; local evaluation and builds are
+separate from deployment.
+
+## Use the adapted modules on your own host
+
+Add FateFlix as an input to your own flake, then import its module export:
 
 ```nix
 {
-  nix.settings.experimental-features = ["nix-command" "flakes"];
-}
-```
-
-### Adding Nixflix to Your Flake
-
-Add Nixflix as an input to your `flake.nix`:
-
-```nix
-{
-  description = "My NixOS Configuration";
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-
-    nixflix = {
-      url = "github:kiriwalawren/nixflix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    fateflix.url = "github:dales-garage/fateflix";
   };
 
-  outputs = {
-    self,
-    nixpkgs,
-    nixflix,
-    ...
-  }: {
-    nixosConfigurations.yourhost = nixpkgs.lib.nixosSystem {
+  outputs = { nixpkgs, fateflix, ... }: {
+    nixosConfigurations.my-media-host = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
         ./configuration.nix
-        nixflix.nixosModules.default
+        fateflix.nixosModules.default
       ];
     };
   };
 }
 ```
 
-## Minimal Configuration Example
+Your `configuration.nix` supplies the machine configuration and selects services
+through `nixflix.*` options. The import exposes FateFlix's adapted NixFlix module
+interface; it does not import the appliance's host profile, storage choices or
+Comin deployment.
 
-Here's a minimal configuration to get started:
+See the [basic module example](../examples/basic-setup.md) and
+[options reference](../reference/index.md) for service configuration. Application
+API credentials must use runtime secret paths rather than literal values in Nix.
+For unadapted upstream NixFlix, follow the
+[upstream installation guide](https://kiriwalawren.github.io/nixflix/getting-started/).
 
-```nix
-{
-  nixflix = {
-    enable = true;
-    mediaDir = "/data/media";
-    stateDir = "/data/.state";
+## How the dependency is consumed
 
-    # Reverse proxy: choose one
-    nginx.enable = true;
-    # caddy.enable = true;
+FateFlix declares `inputs.nixflix` with the upstream GitHub URL and
+`flake = false`. `flake.lock` pins the source revision. The integration assembles
+that source with local patches and overlays before exposing its NixOS modules.
 
-    postgres.enable = true;
-
-    sonarr = {
-      enable = true;
-      config = {
-        apiKey = {_secret = config.sops.secrets."sonarr/api_key".path;};
-        hostConfig.password = {_secret = config.sops.secrets."sonarr/password".path;};
-      };
-    };
-
-    radarr = {
-      enable = true;
-      config = {
-        apiKey = {_secret = config.sops.secrets."radarr/api_key".path;};
-        hostConfig.password = {_secret = config.sops.secrets."radarr/password".path;};
-      };
-    };
-
-    prowlarr = {
-      enable = true;
-      config = {
-        apiKey = {_secret = config.sops.secrets."prowlarr/api_key".path;};
-        hostConfig.password = {_secret = config.sops.secrets."prowlarr/password".path;};
-      };
-    };
-
-    sabnzbd = {
-      enable = true;
-      settings = {
-        misc.api_key = {_secret = config.sops.secrets."sabnzbd/api_key".path;};
-      };
-    };
-
-    jellyfin = {
-      enable = true;
-      users.admin = {
-        policy.isAdministrator = true;
-        password = {_secret = config.sops.secrets."jellyfin/admin_password".path;};
-      };
-    };
-
-    navidrome = {
-      enable = true;
-      users.admin = {
-        userName = "admin";
-        isAdmin = true;
-        password = {_secret = config.sops.secrets."navidrome/admin_password".path;};
-      };
-    };
-  };
-}
-```
-
-## Next Steps
-
-- Review the [Basic Setup Example](../examples/basic-setup.md) for a complete configuration
-- See the [Options Reference](../reference/index.md) for all available settings
+See [Architecture and configuration](../fateflix.md#how-nixflix-becomes-the-appliance)
+for the path from upstream input to appliance output, and
+[Dependency updates](../dependency-updates.md) for how changes are reviewed.

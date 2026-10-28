@@ -1,151 +1,114 @@
-> **FateFlix**: [modular configuration and upstream updates](docs/fateflix.md).
-> Production output: `.#fateflix` (retained aliases: `nixflix`, `nixflix-production`).
-> Personal VM operations: [Comin GitOps and updates](docs/gitops.md).
+<p align="center">
+  <img src="docs/assets/logo.svg" alt="Red NixFlix logo, reused to credit the upstream project" width="180" />
+</p>
 
-![FateFlix capability dependencies and module tree](https://raw.githubusercontent.com/dales-garage/fateflix/refs/heads/main/docs/fateflix-graph-v3.png)
+<h1 align="center">FateFlix</h1>
+<p align="center">A downstream NixOS media appliance, built on NixFlix.</p>
 
-<h1 align="center">
-  <img src="https://raw.githubusercontent.com/kiriwalawren/nixflix/refs/heads/main/docs/assets/logo.svg" width="250px"/>
-  <div>Nixflix</div>
-  <div>
-    <a href="https://github.com/kiriwalawren/nixflix/issues"><img src="https://img.shields.io/github/issues/kiriwalawren/nixflix?color=f5a97f&labelColor=303446&style=for-the-badge"></a>
-    <a href="https://github.com/kiriwalawren/nixflix/stargazers"><img src="https://img.shields.io/github/stars/kiriwalawren/nixflix?color=c6a0f6&labelColor=303446&style=for-the-badge"></a>
-    <a href="https://github.com/kiriwalawren/nixflix"><img src="https://img.shields.io/github/repo-size/kiriwalawren/nixflix?color=ea999c&labelColor=303446&style=for-the-badge"></a>
-    <a href="https://github.com/kiriwalawren/nixflix/blob/main/LICENSE"><img src="https://img.shields.io/static/v1.svg?style=for-the-badge&label=License&message=MPL-2.0&logoColor=ca9ee6&colorA=313244&colorB=a6da95"/></a>
-    <a href="https://nixos.org"><img src="https://img.shields.io/badge/NixOS-unstable-blue.svg?style=for-the-badge&labelColor=303446&logo=NixOS&logoColor=white&color=91D7E3"></a>
-  </div>
-  <a href="https://builtwithnix.org"><img src="https://builtwithnix.org/badge.svg"/></a>
-</h1>
+FateFlix is an opinionated appliance flake that brings media services, storage,
+download policy, playback, monitoring and deployment together as a complete
+NixOS system. It consumes [NixFlix](https://github.com/kiriwalawren/nixflix) as a
+pinned input and builds an operational media host on top of its declarative
+service modules.
 
-Nixflix is a declarative media server configuration manager for NixOS. The aim of the project is to automate
-all of the connective tissue required to get Starr and Jellyfin services ([Sonarr](https://github.com/Sonarr/Sonarr), [Radarr](https://github.com/Radarr/Radarr), [Lidarr](https://github.com/Lidarr/Lidarr), [Prowlarr](https://github.com/Prowlarr/Prowlarr), [Jellyfin](https://github.com/jellyfin/jellyfin), [Seerr](https://github.com/seerr-team/seerr)) working
-together. I want users to be able to configure this module and it just works.
+NixFlix provides the foundation: NixOS options and API-based configuration that
+connect media applications such as Sonarr, Radarr, Prowlarr and Jellyfin.
+FateFlix adds the host configuration and operating policy around those modules,
+including runtime secrets, storage layout, processing jobs, health checks and
+reviewed updates through Comin.
 
-## Why Nixflix?
+## How FateFlix uses NixFlix
 
-Dreading the thought of configuring a media server from scratch. Again...
+The relationship is explicit in the flake inputs:
 
-Nixflix makes it so you never have to again!
+```nix
+nixflix = {
+  url = "github:kiriwalawren/nixflix";
+  flake = false;
+};
+```
 
-Managing media server configuration can be very painful:
+NixFlix is an input to FateFlix's flake, pinned by `flake.lock`. The
+`flake = false` setting fetches upstream's source rather than evaluating its
+flake outputs. FateFlix assembles that source with reviewed patches,
+compatibility modules, plugin support and package definitions, then imports the
+resulting NixOS modules into its own host composition.
 
-- **No version control** for settings
-- **Tedious navigation** through UI systems
-- **And annoying interservice** Configuration
+| Layer | Responsibility |
+| --- | --- |
+| Upstream NixFlix | Declarative media-service options and application configuration |
+| FateFlix integration | Pinned upstream source, patches, compatibility changes and module exports |
+| FateFlix capabilities | Storage, secrets, media, downloads, playback, processing and monitoring policy |
+| FateFlix appliance | Machine configuration, production/staging roles and production deployment |
 
-All of these services have APIs, surely we can use this to automate the whole thing.
+See [the architecture guide](docs/fateflix.md) for composition and capability
+ownership, and [the NixFlix integration](integrations/nixflix/README.md) for the
+source assembly process.
 
-Nixflix is:
+## What the appliance adds
 
-- ✅ **Opinionated** — Don't you hate having to think for yourself?
-- ✅ **API-based** — Nixflix uses official REST APIs of each service (with a couple minor exceptions)
-- ✅ **Idempotent** — All services safely execute repeatedly
-- ✅ **Commanding** — Your code is _the_ source of truth, no need to fear drift
+- **Host composition:** shared capabilities assembled with Den, flake-parts and
+  import-tree, with separate production and staging roles.
+- **Storage and download policy:** canonical media/download paths, capacity
+  checks and explicit protocol restrictions.
+- **Runtime secrets:** provisioning through SecretSpec, with separate production
+  and staging namespaces.
+- **Playback and processing:** acceleration settings, playback diagnostics,
+  conversion and remux tooling.
+- **Operations:** monitoring, persistent maintenance holds, backup/recovery
+  procedures and optional FreeCORE NAS telemetry.
+- **Reviewed updates:** Renovate, artifact generation and CI feed pull requests;
+  Comin follows reviewed production changes on `main`.
 
-## Features
+## Explore or adapt FateFlix
 
-- **Media Server Stack**: Pre-configured modules for Sonarr, Radarr, Lidarr, and Prowlarr
-- **Declarative API Configuration**: Configure services declaratively via NixOS options, automatically applied through their REST APIs
-- **PostgreSQL Integration**: Optional PostgreSQL backend for all Arr services
-- **WireGuard VPN Integration**: Built-in support for Wireguard VPN with kill switch and custom DNS
-- **Flexible Directory Management**: Configurable media and state directories with automatic setup
-- **Service Dependencies**: Configure custom systemd service dependencies
-- **Reverse Proxy Support**: Configurable nginx or Caddy integration for all services, with per-service opt-out
-- **Unified Theming**: All supported services can be themed to look the same, powered by [theme.park](https://docs.theme-park.dev/)
-- [**TRaSH Guides**](https://trash-guides.info): Default configuration follows TRaSH guidelines
+Start with [Getting started](docs/getting-started/index.md). The preferred
+production output is `nixosConfigurations.fateflix`; `nixflix` and
+`nixflix-production` are retained aliases. `nixflix-staging` is an alternate
+role of the same machine configuration, with production deployment disabled.
 
-### Upcoming Features
+The checked-in appliance describes a specific machine and storage layout.
+Adapt hardware, filesystem identities, networking, storage and secrets before
+using it on another host. The staging output shares those machine definitions;
+it is not a ready-made second machine.
 
-- [ ] Better music tooling
+FateFlix also exports `nixosModules.default` (alias `nixosModules.nixflix`) for
+consuming its adapted NixFlix modules in your own NixOS configuration. Importing
+that module gives you the service options; the complete appliance comes from
+FateFlix's host and capability composition.
 
 ## Documentation
 
-Check out the [documentation](https://kiriwalawren.github.io/nixflix/) to get started.
+- [Getting started](docs/getting-started/index.md): inspect the appliance or use
+  its adapted modules on your own host.
+- [Architecture and configuration](docs/fateflix.md): inputs, capability
+  ownership, host roles and settings.
+- [GitOps and updates](docs/gitops.md): production deployment and recovery.
+- [Operations](docs/operations.md): playback, storage and maintenance.
+- [Dependency updates](docs/dependency-updates.md): Renovate and supplemental
+  dependency ownership.
+- [Migration runbook](docs/migration/nixflix.md): deployment history and detailed
+  operator procedures.
 
-## Services
-
-### Starr Stack
-
-All Arr services (Sonarr, Radarr, Lidarr, Prowlarr) support:
-
-- API-based configuration
-- PostgreSQL integration
-- Reverse proxy (nginx or Caddy)
-- Automatic directory creation
-- Root folder management
-- Custom media directories
-
-### Jellyfin
-
-- Basic server management
-- Libraries are automatically configured based on selected media managers
-- Plugin management
-- Subtitle downloader management
-
-### Seerr
-
-- Media request management
-- Automatic integration with Starr services
-- Automatic integration with Jellyfin libraries
-
-### Navidrome
-
-- Music Server
-- Supports OpenSubsonic API
-
-### SABnzbd
-
-- Automatic integration with Starr services
-
-### qBittorrent
-
-- Automatic integration with Starr services
-
-### Soulseek (slskd)
-
-- Automatic integration with Aurral (comming soon)
-
-### WireGuard VPN
-
-- Generic WireGuard support
-- Kill switch
-
-### Maintainerr
-
-- Automatic cleanup of old media
-
-### Notifiarr
-
-- Native client with runtime secrets and configurable media integrations
-- [Module configuration and personal host provisioning](docs/examples/notifiarr.md)
+The [upstream NixFlix documentation](https://kiriwalawren.github.io/nixflix/)
+explains the original project's modules and configuration. FateFlix's docs
+cover the downstream appliance and its adaptations.
 
 ## Development
 
-Enter development shell:
-
-```bash
+```sh
 nix develop
-```
-
-Format code:
-
-```bash
 nix fmt
+nix build --no-link .#lib.nixflixSource
+nix flake check --no-build
 ```
 
-Check formatting and linting:
+The adapted source must be realized before evaluation; see the architecture
+guide for builder requirements and the full validation procedure.
+`nix flake check --no-build` evaluates checks; `nix flake check` also builds them.
 
-```bash
-nix flake check
-```
+## Upstream credit and license
 
-## License
-
-MPL 2.0
-
-## Personal nixflix deployment
-
-This fork also manages the NixOS staging VM at `10.69.0.18`. See the [migration and operations runbook](docs/migration/nixflix.md) for Jujutsu workflow, exact-revision deployment, secrets, isolation, backups, and rollback.
-
-Production playback diagnostics, storage advisories, and persistent maintenance holds
-are described in the [operations guide](docs/operations.md).
+FateFlix builds on [NixFlix by Kiri Walawren](https://github.com/kiriwalawren/nixflix)
+and reuses its red logo. Upstream's work remains the foundation for the media
+configuration. This repository is licensed under [MPL 2.0](LICENSE).
