@@ -6,11 +6,11 @@
   ...
 }:
 let
-  localServices = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
-  healthManifest = localServices // {
-    services = lib.filterAttrs (
-      name: _: name != "sabnzbd" || config.nixflix.usenetClients.sabnzbd.enable
-    ) localServices.services;
+  local = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
+  services = import ../../lib/media-services.nix { inherit lib local; };
+  healthManifest = local // {
+    services = services.proxyPorts config;
+    serviceCatalog = services.health config;
     monitoring.notifiarr = config.nixflix.notifiarr.enable;
   };
   python = pkgs.python3.withPackages (p: [ p.pyyaml ]);

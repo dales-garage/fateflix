@@ -6,15 +6,17 @@
   ...
 }:
 let
+  local = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
+  mediaServices = import ../../lib/media-services.nix { inherit lib local; };
   production = config.fateflix.host.role == "production";
   bindAddress = if production then "0.0.0.0" else "127.0.0.1";
   secret = name: { _secret = "${config.fateflix.secrets.credentialDirectory}/${name}"; };
-  arr = name: port: {
+  arr = name: {
     enable = true;
     settings.server.bindaddress = if production then "*" else "127.0.0.1";
     config.apiKey = secret name;
     config.hostConfig = {
-      inherit port;
+      port = mediaServices.ports.${name};
       inherit bindAddress;
       username = null;
     };
@@ -32,57 +34,31 @@ let
     ];
   };
   images = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/containers.json);
+  # Only these two applications still use containers; retired migration pins
+  # remain in containers.json, not a second runtime port catalog here.
   containers = {
-    bazarr = {
-      port = 6767;
-      internal = 6767;
-    };
-    bazarr-4k = {
-      port = 6777;
-      internal = 6767;
-    };
-    whisparr = {
-      port = 6969;
-      internal = 6969;
-    };
-    readarr = {
-      port = 8787;
-      internal = 8787;
-    };
-    mylar3 = {
-      port = 8090;
-      internal = 8090;
-    };
-    tautulli = {
-      port = 8181;
-      internal = 8181;
-    };
-    audiobookshelf = {
-      port = 13378;
-      internal = 80;
-    };
-    stash = {
-      port = 9999;
-      internal = 9999;
-    };
+    mylar3 = { };
+    stash = { };
   };
+
 in
 {
   nixflix = {
     enable = true;
     serviceDependencies = [ "nixflix-nas-ready.service" ];
     # This host uses Usenet only, including after future upstream merges.
-    sonarr = arr "sonarr" 8990;
-    sonarr-4k = arr "sonarr-4k" 8989;
-    radarr = arr "radarr" 7879;
-    radarr-4k = arr "radarr-4k" 7878;
-    lidarr = arr "lidarr" 8686;
+    sonarr = arr "sonarr";
+    sonarr-4k = arr "sonarr-4k";
+    radarr = arr "radarr";
+    radarr-4k = arr "radarr-4k";
+    lidarr = arr "lidarr";
     prowlarr = {
       enable = true;
       settings.server.bindaddress = if production then "*" else "127.0.0.1";
       config.apiKey = secret "prowlarr";
       config.indexerProxies = lib.mkForce [ ];
       config.hostConfig = {
+        port = mediaServices.ports.prowlarr;
         inherit bindAddress;
         username = null;
       };
@@ -153,7 +129,7 @@ in
   systemd.services.plex.serviceConfig.BindReadOnlyPaths = [ "${config.nixflix.mediaDir}:/media" ];
   services.seerr = {
     enable = true;
-    port = 5055;
+    port = mediaServices.ports.seerr;
   };
   users.users.seerr = {
     isSystemUser = true;
@@ -167,59 +143,48 @@ in
   virtualisation.podman.enable = true;
   virtualisation.oci-containers = {
     backend = "podman";
-    containers =
-      lib.mapAttrs
-        (name: _c: {
-          image = images.${name};
-          autoStart = false;
-          environment = {
-            PUID = "1100";
-            PGID = "169";
-            TZ = "America/Chicago";
-          }
-          // lib.optionalAttrs (name == "audiobookshelf") { PORT = "13378"; }
-          // lib.optionalAttrs (name == "bazarr-4k") { WEBUI_PORTS = "6777/tcp"; }
-          // lib.optionalAttrs (name == "stash") {
-            STASH_CACHE = "/cache/";
-            STASH_STASH = "/data/";
-            STASH_GENERATED = "/generated/";
-            STASH_METADATA = "/metadata/";
-            STASH_CONFIG_FILE = "/root/.stash/config.yml";
-          };
-          volumes =
-            if name == "stash" then
-              [
-                "/var/lib/nixflix-containers/stash/config:/root/.stash"
-                "/var/lib/nixflix-containers/stash/generated:/generated"
-                "/var/lib/nixflix-containers/stash/metadata:/metadata"
-                "/var/lib/nixflix-containers/stash/cache:/cache"
-                "${config.nixflix.mediaDir}/porn:/data:ro"
-              ]
-            else
-              [
-                "/var/lib/nixflix-containers/${name}:/config"
-                ("${config.fateflix.storage.root}:/data" + lib.optionalString (!production) ":ro")
-              ]
-              ++ lib.optionals (name == "audiobookshelf") [
-                "/var/lib/nixflix-containers/audiobookshelf-metadata:/metadata"
-                "${config.nixflix.mediaDir}/audiobooks:/audiobooks:ro"
-                "${config.nixflix.mediaDir}/ebooks:/ebooks:ro"
-                ("${config.nixflix.mediaDir}/podcasts:/podcasts" + lib.optionalString (!production) ":ro")
-              ];
-          extraOptions = [
-            (if production then "--network=host" else "--network=ns:/run/netns/nixflix-staging")
-            "--cgroup-parent=nixflix-staging.slice"
+    containers = lib.mapAttrs (name: _c: {
+      image = images.${name};
+      autoStart = false;
+      environment = {
+        PUID = "1100";
+        PGID = "169";
+        TZ = "America/Chicago";
+      }
+      // lib.optionalAttrs (name == "audiobookshelf") { PORT = "13378"; }
+      // lib.optionalAttrs (name == "bazarr-4k") { WEBUI_PORTS = "6777/tcp"; }
+      // lib.optionalAttrs (name == "stash") {
+        STASH_CACHE = "/cache/";
+        STASH_STASH = "/data/";
+        STASH_GENERATED = "/generated/";
+        STASH_METADATA = "/metadata/";
+        STASH_CONFIG_FILE = "/root/.stash/config.yml";
+      };
+      volumes =
+        if name == "stash" then
+          [
+            "/var/lib/nixflix-containers/stash/config:/root/.stash"
+            "/var/lib/nixflix-containers/stash/generated:/generated"
+            "/var/lib/nixflix-containers/stash/metadata:/metadata"
+            "/var/lib/nixflix-containers/stash/cache:/cache"
+            "${config.nixflix.mediaDir}/porn:/data:ro"
+          ]
+        else
+          [
+            "/var/lib/nixflix-containers/${name}:/config"
+            ("${config.fateflix.storage.root}:/data" + lib.optionalString (!production) ":ro")
+          ]
+          ++ lib.optionals (name == "audiobookshelf") [
+            "/var/lib/nixflix-containers/audiobookshelf-metadata:/metadata"
+            "${config.nixflix.mediaDir}/audiobooks:/audiobooks:ro"
+            "${config.nixflix.mediaDir}/ebooks:/ebooks:ro"
+            ("${config.nixflix.mediaDir}/podcasts:/podcasts" + lib.optionalString (!production) ":ro")
           ];
-        })
-        (
-          lib.filterAttrs (
-            name: _:
-            lib.elem name [
-              "mylar3"
-              "stash"
-            ]
-          ) containers
-        );
+      extraOptions = [
+        (if production then "--network=host" else "--network=ns:/run/netns/nixflix-staging")
+        "--cgroup-parent=nixflix-staging.slice"
+      ];
+    }) containers;
   };
   users.users.media-container = {
     isSystemUser = true;

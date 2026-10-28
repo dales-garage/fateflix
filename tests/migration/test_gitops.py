@@ -22,6 +22,53 @@ notifiarr = load("notifiarr_update", "pkgs/notifiarr/update.py")
 
 
 class HealthTests(unittest.TestCase):
+    def test_service_probe_uses_catalog_identity_path_and_api_version(self):
+        spec = {"unit": "existing-unit", "healthPath": "/ready", "apiVersion": "v1"}
+        with (
+            patch.object(health, "active") as active,
+            patch.object(health, "http") as http,
+            patch.object(health, "arr") as arr,
+        ):
+            health.service("custom-arr", 1234, spec)
+        active.assert_called_once_with("existing-unit")
+        http.assert_called_once_with("http://127.0.0.1:1234/ready", probe=True)
+        arr.assert_called_once_with("custom-arr", 1234, "v1")
+
+    def test_non_arr_probe_does_not_guess_api_from_its_name(self):
+        spec = {"unit": "podman-stash", "healthPath": "/", "apiVersion": None}
+        with (
+            patch.object(health, "active") as active,
+            patch.object(health, "http"),
+            patch.object(health, "arr") as arr,
+        ):
+            health.service("sonarr", 9999, spec)
+        active.assert_called_once_with("podman-stash")
+        arr.assert_not_called()
+
+    def test_arr_advisory_names_come_from_catalog(self):
+        manifest = {
+            "serviceCatalog": {
+                "new-arr": {"apiVersion": "v3"},
+                "sonarr": {"apiVersion": None},
+            }
+        }
+        self.assertEqual(health.arr_names(manifest), {"new-arr"})
+
+    def test_mismatched_health_catalog_is_rejected_before_checks(self):
+        with (
+            patch.object(
+                health,
+                "read_json",
+                return_value={"services": {"sonarr": 8990}, "serviceCatalog": {}},
+            ),
+            patch.object(health, "run_check") as run,
+        ):
+            with self.assertRaisesRegex(
+                ValueError, "catalog and port manifest disagree"
+            ):
+                health.check()
+        run.assert_not_called()
+
     def test_startup_failure_is_retried_until_ready(self):
         with (
             patch.object(health, "check", side_effect=[1, 0]) as check,

@@ -148,6 +148,35 @@ The policy does not change runtime service names, state paths, UID/GID values,
 secret contracts, storage/download defaults, or public flake output aliases.
 Reusable exported upstream NixOS modules still respect the consuming host's own
 Nixpkgs policy; this flake-parts setting governs the FateFlix appliance outputs.
+## Media service catalog
+
+`lib/media-services.nix` validates a credential-free catalog with Nix module
+submodule types. `hosts/nixflix/local-services.json` remains the operator-facing
+source of service ports and router/public-name policy; it is not a second copy
+of runtime secrets. The catalog adds existing unit identities, Arr API versions,
+alias relationships, and health/dashboard paths.
+
+Downloads and Notifiarr derive their active Arr lists and API versions from the
+same helper. Staging derives its existing native service order; containers and
+torrent clients keep their existing lifecycle rules. Proxy routes, dashboard
+origins/widgets, selected native service port declarations, and the generated
+health manifest share the catalog ports. The health checker consumes generated
+unit/API metadata instead of maintaining a second hard-coded Arr list.
+
+The catalog is deliberately not a universal service factory. Application-specific
+settings, restored state/config paths, UID/GIDs, secret readers, and activation
+logic stay with their current capability owners. Labels and dashboard group order
+stay in the dashboard module. Alias `seeme`, unit `homepage-dashboard`, and
+`podman-mylar3`/`podman-stash` retain their existing identities. Health reports and
+public endpoints keep their current shape. The generated internal
+`gitops-services.json` gains a credential-free `serviceCatalog` projection.
+
+Catalog types reject invalid ports/API versions/paths and undeclared fields,
+including secret fields. A service/port catalog mismatch fails the health check
+instead of silently skipping a service. Disabling SABnzbd still removes its
+proxy, dashboard widget and health expectations without changing other defaults.
+Storage/download options remain owned by their existing local modules and the
+small media-server site-default profile; this helper adds no global defaults.
 
 ## Runtime secrets
 

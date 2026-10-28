@@ -6,6 +6,10 @@
 }:
 let
   localServices = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
+  mediaServices = import ../../lib/media-services.nix {
+    inherit lib;
+    local = localServices;
+  };
   bindAddress = if config.fateflix.host.role == "production" then "0.0.0.0" else "127.0.0.1";
   secret = name: { _secret = "${config.fateflix.secrets.credentialDirectory}/${name}"; };
 in
@@ -16,7 +20,7 @@ in
       api_key = secret "sabnzbd";
       nzb_key = secret "sabnzbd";
       host = bindAddress;
-      port = 8080;
+      port = mediaServices.ports.sabnzbd;
       download_free = "500G";
       complete_free = "500G";
       fulldisk_autoresume = 0;
@@ -37,7 +41,7 @@ in
             c['misc']['download_dir'] = ${builtins.toJSON config.fateflix.downloads.incompleteDir}
             c['misc']['complete_dir'] = ${builtins.toJSON config.fateflix.downloads.completedDir}
             c['misc']['host'] = '${bindAddress}'
-            c['misc']['port'] = '8080'
+            c['misc']['port'] = '${toString mediaServices.ports.sabnzbd}'
             c['misc']['download_free'] = '500G'
             c['misc']['complete_free'] = '500G'
             c['misc']['fulldisk_autoresume'] = '0'

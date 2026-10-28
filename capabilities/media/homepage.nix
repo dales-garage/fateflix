@@ -3,17 +3,10 @@ let
   local = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
   cfg = config.fateflix.media.dashboard;
   homepage = config.nixflix.homepage;
-  widgetServices = [
-    "sonarr"
-    "sonarr-4k"
-    "radarr"
-    "radarr-4k"
-    "prowlarr"
-    "lidarr"
-  ]
-  ++ lib.optional config.nixflix.usenetClients.sabnzbd.enable "sabnzbd";
+  services = import ../../lib/media-services.nix { inherit lib local; };
+  widgetServices = services.activeWidgets config;
   variable = name: lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] name);
-  origin = name: "http://127.0.0.1:${toString local.services.${name}}";
+  inherit (services) origin;
   card = name: label: description: {
     ${label} = {
       inherit description;
@@ -23,10 +16,10 @@ let
           if cfg.useInternalNames then
             "https://${name}.${local.domain}"
           else
-            "http://${local.address}:${toString local.services.${name}}"
+            "http://${local.address}:${toString services.ports.${name}}"
         )
-        + (if name == "plex" then "/web/" else "/");
-      siteMonitor = origin name + (if name == "plex" then "/web/" else "/");
+        + services.catalog.${name}.dashboardPath;
+      siteMonitor = origin name + services.catalog.${name}.dashboardPath;
     }
     // lib.optionalAttrs (cfg.apiWidgets && builtins.elem name widgetServices) {
       widget = {
@@ -59,7 +52,7 @@ in
   config = {
     nixflix.homepage = {
       enable = lib.mkDefault (config.fateflix.host.role == "production");
-      listenPort = local.services.homepage;
+      listenPort = services.ports.homepage;
       listenAddress = "0.0.0.0";
       # Router HTTPS and VM HTTP routes come from local-services.json.
       reverseProxy.expose = false;

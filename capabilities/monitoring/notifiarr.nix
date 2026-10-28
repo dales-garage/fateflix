@@ -6,29 +6,19 @@
 }:
 let
   cfg = config.nixflix.notifiarr;
-  ports = (builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json)).services;
+  local = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
+  services = import ../../lib/media-services.nix { inherit lib local; };
+  inherit (services) ports;
   secret = path: format: key: {
     _secret = path;
     inherit format key;
   };
-  arrNames =
-    lib.filter
-      (name: (config.nixflix.${name}.enable or false) || (config.services.${name}.enable or false))
-      [
-        "sonarr"
-        "sonarr-4k"
-        "radarr"
-        "radarr-4k"
-        "lidarr"
-        "prowlarr"
-        "readarr"
-        "whisparr"
-      ];
+  arrNames = services.activeArr config;
   arrKey = name: secret "/var/lib/${name}/config.xml" "xml" [ "ApiKey" ];
   app = name: {
     inherit name;
     interval = "5m";
-    url = "http://127.0.0.1:${toString ports.${name}}";
+    url = services.origin name;
     api_key = arrKey name;
   };
   bazarrNames = [
@@ -44,21 +34,11 @@ let
         name:
         (app name)
         // {
-          apiVersion =
-            if
-              lib.elem name [
-                "lidarr"
-                "prowlarr"
-                "readarr"
-              ]
-            then
-              "v1"
-            else
-              "v3";
+          apiVersion = services.catalog.${name}.apiVersion;
         }
       ) arrNames;
       seerr = {
-        url = "http://127.0.0.1:5055";
+        url = services.origin "seerr";
         api_key = secret "/var/lib/seerr/settings.json" "json" [
           "main"
           "apiKey"
@@ -66,7 +46,7 @@ let
       };
       bazarr = map (name: {
         inherit name;
-        url = "http://127.0.0.1:${toString ports.${name}}";
+        url = services.origin name;
         api_key = secret "/var/lib/${name}/config/config.yaml" "yaml" [
           "auth"
           "apikey"
@@ -115,7 +95,7 @@ in
             sabnzbd = lib.optional config.nixflix.usenetClients.sabnzbd.enable {
               name = "SABnzbd";
               interval = "5m";
-              url = "http://127.0.0.1:8080";
+              url = services.origin "sabnzbd";
               api_key = {
                 _secret = "/var/lib/nixflix-secrets/current/sabnzbd";
               };
@@ -123,13 +103,13 @@ in
             plex = {
               name = "Plex";
               interval = "5m";
-              url = "http://127.0.0.1:32400";
+              url = services.origin "plex";
               token = secret "/var/lib/plex/Plex Media Server/Preferences.xml" "xml" [ "@PlexOnlineToken" ];
             };
             tautulli = {
               name = "Tautulli";
               interval = "5m";
-              url = "http://127.0.0.1:8181";
+              url = services.origin "tautulli";
               api_key = secret "/var/lib/tautulli/config.ini" "ini" [
                 "General"
                 "api_key"
