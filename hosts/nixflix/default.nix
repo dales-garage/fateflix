@@ -21,7 +21,6 @@
     time.timeZone = "America/Chicago";
     i18n.defaultLocale = "en_US.UTF-8";
     system.stateVersion = "26.05";
-    nixpkgs.config.allowUnfree = true;
     nix.settings.experimental-features = [
       "nix-command"
       "flakes"
