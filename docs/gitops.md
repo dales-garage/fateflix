@@ -1,6 +1,6 @@
 # nixflix GitOps operations
 
-Production is `declarative-dale/nixflix` → reviewed `main` → Comin →
+Production is `dales-garage/fateflix` → reviewed `main` → Comin →
 `nixosConfigurations.nixflix-production`. Comin polls every 60 seconds and uses
 `switch`, making deployments persistent. Reboots are manual. The staging output
 has Comin disabled; there is no separate staging VM in this rollout.
@@ -166,8 +166,8 @@ September migration snapshots are not current backups.
 On the VM, clone the reviewed repository and run:
 
 ```sh
-git clone https://github.com/declarative-dale/nixflix.git
-cd nixflix
+git clone https://github.com/dales-garage/fateflix.git
+cd fateflix
 sudo bash scripts/gitops-bootstrap.sh /absolute/path/to/completed-backup
 sudo comin status
 sudo nixflix-health check

@@ -10,7 +10,7 @@ in
 assert cfg.services.comin.enable;
 assert !(staging.config.services ? comin);
 assert cfg.services.comin.hostname == "nixflix-production";
-assert remote.url == "https://github.com/declarative-dale/nixflix.git";
+assert remote.url == "https://github.com/dales-garage/fateflix.git";
 assert remote.branches.main.name == "main";
 assert remote.branches.main.operation == "switch";
 assert remote.branches.testing.name == "";

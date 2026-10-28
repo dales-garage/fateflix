@@ -22,7 +22,7 @@ env:
 jobs:
   generate:
     if: >-
-      github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.actor == 'renovate[bot]' && github.repository == 'declarative-dale/nixflix' && github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.event.pull_request.head.ref, 'renovate/') && github.event.pull_request.base.ref == 'main'
+      github.event_name == 'pull_request_target' && github.event.action != 'closed' && github.actor == 'renovate[bot]' && github.repository == 'dales-garage/fateflix' && github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.event.pull_request.head.ref, 'renovate/') && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -80,7 +80,7 @@ jobs:
   extra-dependencies:
     timeout-minutes: 45
     if: >-
-      github.repository == 'declarative-dale/nixflix' && (github.event_name != 'pull_request_target' || (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.event.pull_request.head.ref, 'renovate/') && github.event.pull_request.base.ref == 'main'))
+      github.repository == 'dales-garage/fateflix' && (github.event_name != 'pull_request_target' || (github.event.action == 'closed' && github.event.pull_request.merged == true && github.event.pull_request.user.login == 'renovate[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.event.pull_request.head.ref, 'renovate/') && github.event.pull_request.base.ref == 'main'))
     concurrency:
       group: supplemental-dependency-updates
       cancel-in-progress: false

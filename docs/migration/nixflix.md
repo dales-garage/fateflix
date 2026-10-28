@@ -1,6 +1,6 @@
 # nixflix migration and operations
 
-The personal fork `declarative-dale/nixflix` manages `marty@10.69.0.18`.
+The organization repository `dales-garage/fateflix` manages `marty@10.69.0.18`.
 `kiriwalawren/nixflix` is an upstream remote. A push never deploys the VM.
 The host uses locked NixOS 26.05; the project's original unstable input is retained.
 

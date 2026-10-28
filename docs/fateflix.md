@@ -1,52 +1,36 @@
-# FateFlix capability ownership
+# FateFlix architecture and configuration
 
-FateFlix composes production and staging downstream of pinned NixFlix.
+FateFlix is a downstream NixOS appliance flake built on pinned
+[NixFlix](https://github.com/kiriwalawren/nixflix). It consumes NixFlix as a
+flake input and builds a complete host around its media-service modules.
+Storage, runtime secrets, download policy, playback, processing, monitoring and
+production deployment are composed here, alongside the upstream integration.
+
+## How NixFlix becomes the appliance
+
+1. `modules/flake/inputs.nix` declares `inputs.nixflix` with
+   `url = "github:kiriwalawren/nixflix"` and `flake = false`. `flake.lock` pins
+   the fetched source; upstream flake outputs are not evaluated.
+1. `integrations/nixflix/default.nix` assembles that source with reviewed
+   patches, vendored modules, compatibility modules, plugins and packages.
+1. `modules/integrations/nixflix.nix` exports the assembled NixOS modules as
+   `nixosModules.default` and `nixosModules.nixflix`. The `nixflix-api` aspect
+   supplies those declarations to the capability composition.
+1. `modules/profiles/media-server.nix` combines the machine base with the
+   downloads, playback, processing, monitoring and FreeCORE capabilities.
+1. `modules/hosts/` selects production or staging. Production adds the deployment
+   capability; `nixosConfigurations.fateflix` exposes the resulting appliance.
+
+The module exports are reusable on another NixOS host. The appliance outputs
+include this repository's machine configuration and operating policy. See
+[Getting started](getting-started/index.md) to choose between them.
+
+## Composition and host roles
+
 `modules/` is the only import-tree discovery root, and every discovered file is
 a flake-parts module. Implementations live outside that root: `capabilities/`
 contains owned NixOS modules, `integrations/` adapts dependencies, and `hosts/`
 contains explicitly imported machine configuration.
-
-![FateFlix capability dependencies and expanded implementation directories](fateflix-graph-v3.png)
-
-The tree follows dependency ownership into subdirectories and files. Solid
-capability dependency edges represent required Den `includes`; the optional
-FreeCORE/Notifiarr connection does not activate monitoring. Ellipses mark
-additional files in a directory.
-
-<details markdown="1">
-<summary>Capability dependency graph as text</summary>
-
-```mermaid
-flowchart LR
-  H[Production and staging] --> P[media-server profile]
-  H --> D[deployment: production only]
-  P --> B[fateflix-base: machine configuration]
-  B --> S[storage]
-  P --> DL[downloads]
-  P --> PB[playback]
-  P --> PR[processing]
-  P --> M[monitoring]
-  P --> F[freecore]
-  D --> PB
-  PB --> ME[media]
-  PR --> ME
-  M --> ME
-  ME --> S
-  ME --> SE[secrets]
-  ME --> DP[download-policy: options and restrictions]
-  DL --> S
-  DL --> SE
-  DL --> DP
-  S --> API[nixflix-api: integration-owned upstream declarations]
-  DP --> API
-  F --> API
-  S --> C[fateflix-context: internal role]
-  SE --> C
-  F --> C
-  F -. optional Notifiarr probes .-> M
-```
-
-</details>
 
 `nixosConfigurations.fateflix` is the preferred production alias. It resolves
 to the same derivation as `nixflix-production` and the retained `nixflix` alias;
@@ -54,7 +38,7 @@ it is not another Den host. `nixflix-staging` remains the staging output.
 Hostnames, state versions, service identities, database locations, image pins,
 SecretSpec namespaces and host/media Nixpkgs separation are unchanged.
 
-## Required dependencies and optional integration
+## Capability ownership
 
 | Aspect | Required aspects |
 | --- | --- |
@@ -176,7 +160,7 @@ construction. `integrations/nixflix/default.nix` assembles fetched upstream
 source with `patches/`, verbatim `vendor/modules/`, maintained `compatibility/`,
 `plugins/` and `pkgs/` overlays. Vendored files record their original revision,
 paths and digests in `vendor/provenance.json`. See the
-[integration boundary](https://github.com/declarative-dale/nixflix/blob/fateflix/integrations/nixflix/README.md). Public `nixosModules.default`, `nixflix`, and
+[integration boundary](https://github.com/dales-garage/fateflix/blob/main/integrations/nixflix/README.md). Public `nixosModules.default`, `nixflix`, and
 `download-policy` exports are preserved. The source-only IFD remains: evaluation
 needs an x86_64 builder to realize the small patched source tree. Prime it with
 `nix build --no-link .#lib.nixflixSource` before a read-only flake check.
@@ -220,8 +204,59 @@ derivations, package versions, identities, storage, credentials metadata and hos
 contracts. `modules/_support/host-contract.nix` projects the current contracts. See the
 [validation record](fateflix-v2-validation.md) for results and remaining acceptance.
 
-Comin continues to poll `declarative-dale/nixflix` branch `main`, output
+Comin continues to poll `dales-garage/fateflix` branch `main`, output
 `nixflix-production`. This work performs no activation and changes no production
 services or media. Live staging deployment and rollback remain **unverified**
 until a separate target is available. Passing repository checks does not make v2
 deployment-ready.
+
+## Architecture reference
+
+The expanded graph is retained as an optional implementation reference.
+
+<details markdown="1">
+<summary>Expanded capability graph</summary>
+
+![FateFlix capability dependencies and expanded implementation directories](fateflix-graph-v3.png)
+
+The tree follows dependency ownership into subdirectories and files. Solid
+capability dependency edges represent required Den `includes`; the optional
+FreeCORE/Notifiarr connection does not activate monitoring. Ellipses mark
+additional files in a directory.
+
+<details markdown="1">
+<summary>Capability dependency graph as text</summary>
+
+```mermaid
+flowchart LR
+  H[Production and staging] --> P[media-server profile]
+  H --> D[deployment: production only]
+  P --> B[fateflix-base: machine configuration]
+  B --> S[storage]
+  P --> DL[downloads]
+  P --> PB[playback]
+  P --> PR[processing]
+  P --> M[monitoring]
+  P --> F[freecore]
+  D --> PB
+  PB --> ME[media]
+  PR --> ME
+  M --> ME
+  ME --> S
+  ME --> SE[secrets]
+  ME --> DP[download-policy: options and restrictions]
+  DL --> S
+  DL --> SE
+  DL --> DP
+  S --> API[nixflix-api: integration-owned upstream declarations]
+  DP --> API
+  F --> API
+  S --> C[fateflix-context: internal role]
+  SE --> C
+  F --> C
+  F -. optional Notifiarr probes .-> M
+```
+
+</details>
+
+</details>

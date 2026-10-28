@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and activate an exact committed revision from the personal fork."""
+"""Build and activate an exact committed revision from the organization repository."""
 
 import argparse
 import os
@@ -15,7 +15,7 @@ SSH = [
     "-o",
     "BatchMode=yes",
 ]
-REPOSITORY = "github:declarative-dale/nixflix"
+REPOSITORY = "github:dales-garage/fateflix"
 STAGING_CHECK = """
 # Reconcile target wants after a namespace dependency was restarted by activation.
 sudo -n systemctl restart nixflix-staging.target
@@ -69,13 +69,13 @@ sudo -n {result}/bin/switch-to-configuration switch
 sudo -n sh -c 'printf "%s\\n" {commit} > /var/lib/nixflix-deploy/deployed'
 sudo -n tee /etc/nixos/flake.nix >/dev/null <<'FLAKE'
 {{
-  description = "nixflix deployment entry point; edit the personal repository";
+  description = "nixflix deployment entry point; edit the organization repository";
   inputs.managed.url = "{flake}";
   outputs = {{ managed, ... }}: {{ inherit (managed) nixosConfigurations; }};
 }}
 FLAKE
 sudo -n tee /etc/nixos/configuration.nix >/dev/null <<'ENTRY'
-{{ ... }}: throw "Managed by declarative-dale/nixflix. Use nixos-rebuild --flake /etc/nixos#fateflix or the repository deployment commands."
+{{ ... }}: throw "Managed by dales-garage/fateflix. Use nixos-rebuild --flake /etc/nixos#fateflix or the repository deployment commands."
 ENTRY
 sudo -n nix flake lock /etc/nixos
 """

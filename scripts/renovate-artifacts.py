@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 import subprocess
 
-REPO = "declarative-dale/nixflix"
+REPO = "dales-garage/fateflix"
 VERSIONS = ".github/package-versions.json"
 STATE = ".github/update-artifacts.json"
 OUTPUTS = [
