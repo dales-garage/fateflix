@@ -23,16 +23,6 @@ import nixflix_playback
 import nixflix_retention
 
 STATE = Path("/var/lib/nixflix-gitops")
-ARR = {
-    "sonarr",
-    "sonarr-4k",
-    "radarr",
-    "radarr-4k",
-    "lidarr",
-    "prowlarr",
-    "readarr",
-    "whisparr",
-}
 
 
 def read_json(path):
@@ -62,9 +52,8 @@ def active(unit):
     subprocess.run(["systemctl", "is-active", "--quiet", unit], check=True)
 
 
-def arr(name, port):
+def arr(name, port, version):
     key = ET.parse(f"/var/lib/{name}/config.xml").findtext("ApiKey")
-    version = "v1" if name in ("lidarr", "prowlarr", "readarr") else "v3"
     base = f"http://127.0.0.1:{port}/api/{version}"
     headers = {"X-Api-Key": key}
     http(base + "/system/status", headers)
@@ -73,24 +62,17 @@ def arr(name, port):
         raise ValueError("Notifiarr connection missing")
 
 
-def service(name, port):
-    active(
-        "podman-" + name
-        if name in ("mylar3", "stash")
-        else "homepage-dashboard" if name == "homepage" else name
-    )
-    http(f"http://127.0.0.1:{port}/", probe=True)
-    if name in (
-        "sonarr",
-        "sonarr-4k",
-        "radarr",
-        "radarr-4k",
-        "lidarr",
-        "prowlarr",
-        "readarr",
-        "whisparr",
-    ):
-        arr(name, port)
+def arr_names(manifest):
+    return {
+        name for name, spec in manifest["serviceCatalog"].items() if spec["apiVersion"]
+    }
+
+
+def service(name, port, spec):
+    active(spec["unit"])
+    http(f"http://127.0.0.1:{port}{spec['healthPath']}", probe=True)
+    if spec["apiVersion"]:
+        arr(name, port, spec["apiVersion"])
 
 
 def nas():
@@ -119,10 +101,9 @@ def warning_categories(warnings):
     }
 
 
-def arr_advisory(name, port):
+def arr_advisory(name, port, version):
     try:
         key = ET.parse(f"/var/lib/{name}/config.xml").findtext("ApiKey")
-        version = "v1" if name in ("lidarr", "prowlarr", "readarr") else "v3"
         return warning_categories(
             http(f"http://127.0.0.1:{port}/api/{version}/health", {"X-Api-Key": key})
         )
@@ -191,10 +172,10 @@ def notifiarr():
     completed_oneshot("notifiarr-connections")
 
 
-def seerr():
+def seerr(port):
     key = read_json("/var/lib/seerr/settings.json")["main"]["apiKey"]
     cfg = http(
-        "http://127.0.0.1:5055/api/v1/settings/notifications/webhook",
+        f"http://127.0.0.1:{port}/api/v1/settings/notifications/webhook",
         {"X-Api-Key": key},
     )
     assert cfg["enabled"] and cfg["options"]["webhookUrl"].startswith(
@@ -202,22 +183,22 @@ def seerr():
     )
 
 
-def plex():
+def plex(port):
     token = (
         ET.parse("/var/lib/plex/Plex Media Server/Preferences.xml")
         .getroot()
         .get("PlexOnlineToken")
     )
     http(
-        "http://127.0.0.1:32400/library/sections",
+        f"http://127.0.0.1:{port}/library/sections",
         {"X-Plex-Token": token, "Accept": "application/json"},
     )
 
 
-def sabnzbd():
+def sabnzbd(port):
     key = Path("/var/lib/nixflix-secrets/current/sabnzbd").read_text().strip()
     value = http(
-        "http://127.0.0.1:8080/api?"
+        f"http://127.0.0.1:{port}/api?"
         + urlencode({"mode": "queue", "output": "json", "apikey": key})
     )
     assert "queue" in value
@@ -249,29 +230,39 @@ def run_check(item):
 def check():
     manifest = read_json("/etc/nixflix/gitops-services.json")
     services = manifest["services"]
+    catalog = manifest["serviceCatalog"]
+    if set(services) != set(catalog):
+        raise ValueError("Service catalog and port manifest disagree")
     notifiarr_enabled = manifest.get("monitoring", {}).get("notifiarr", True)
     jobs = [
-        (name, lambda n=name, p=port: service(n, p))
+        (name, lambda n=name, p=port: service(n, p, catalog[n]))
         for name, port in services.items()
-        if name != "seeme"
+        if catalog[name]["aliasOf"] is None
     ]
     jobs += [
         ("nas", nas),
         ("credentials", lambda: credentials(notifiarr_enabled)),
         ("networking", networking),
-        ("plex-api", plex),
+        ("plex-api", lambda: plex(services["plex"])),
         ("comin", lambda: active("comin")),
     ]
     if notifiarr_enabled:
-        jobs += [("notifiarr", notifiarr), ("seerr-webhook", seerr)]
+        jobs += [
+            ("notifiarr", notifiarr),
+            ("seerr-webhook", lambda: seerr(services["seerr"])),
+        ]
     if "sabnzbd" in services:
-        jobs.append(("sabnzbd-api", sabnzbd))
+        jobs.append(("sabnzbd-api", lambda: sabnzbd(services["sabnzbd"])))
     with ThreadPoolExecutor(max_workers=6) as executor:
         checks = dict(executor.map(run_check, jobs))
         advisories = dict(
             executor.map(
                 lambda item: (item[0], arr_advisory(*item)),
-                [(name, port) for name, port in services.items() if name in ARR],
+                [
+                    (name, port, catalog[name]["apiVersion"])
+                    for name, port in services.items()
+                    if name in arr_names(manifest)
+                ],
             )
         )
     report = {
@@ -333,7 +324,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 if name in ("capacity-warning", "capacity-critical"):
                     ok = ops.capacity_advisory(name.removeprefix("capacity-"))
-                elif name in ARR:
+                elif name in arr_names(read_json("/etc/nixflix/gitops-services.json")):
                     report = read_json(STATE / "health.json")
                     ok = (
                         ops.fresh(report, 900)

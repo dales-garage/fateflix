@@ -23,6 +23,9 @@
             "CI check catalog does not match flake checks; update tests/check-names.nix and scripts/ci-plan.py together";
           treefmt.config.build.check self;
         package-policy-eval = import ../../tests/migration/package-policy-eval.nix { inherit inputs pkgs; };
+        service-catalog-eval = import ../../tests/migration/service-catalog-eval.nix {
+          inherit inputs pkgs;
+        };
         capabilities-eval = import ../../tests/migration/capabilities-eval.nix { inherit inputs pkgs; };
         settings-eval = import ../../tests/migration/settings-eval.nix { inherit inputs pkgs; };
         torrent-policy-eval = import ../../tests/migration/torrent-policy-eval.nix {

@@ -328,6 +328,7 @@ class Advisory(unittest.TestCase):
                 "applications": {"sonarr": {"status": "warning", "private": "secret"}}
             },
         }
+        report["serviceCatalog"] = {"sonarr": {"apiVersion": "v3"}}
         with patch.object(health, "read_json", return_value=report), patch.object(
             health, "healthy", return_value=True
         ), patch.object(ops, "fresh", return_value=True), patch.object(
@@ -367,7 +368,12 @@ class Advisory(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d, patch.object(
             health, "STATE", Path(d)
         ), patch.object(
-            health, "read_json", return_value={"services": {"sonarr": 1}}
+            health,
+            "read_json",
+            return_value={
+                "services": {"sonarr": 1},
+                "serviceCatalog": {"sonarr": {"apiVersion": "v3", "aliasOf": None}},
+            },
         ), patch.object(
             health, "run_check", side_effect=lambda item: (item[0], {"healthy": True})
         ), patch.object(
@@ -392,6 +398,7 @@ class Advisory(unittest.TestCase):
             "read_json",
             return_value={
                 "services": {"plex": 32400},
+                "serviceCatalog": {"plex": {"apiVersion": None, "aliasOf": None}},
                 "monitoring": {"notifiarr": False},
             },
         ), patch.object(

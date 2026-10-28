@@ -9,37 +9,15 @@ let
     torrents = config.fateflix.downloads.torrents.allowed;
     usenet = config.fateflix.downloads.usenet.allowed;
   };
-  names =
-    lib.filter
-      (name: (config.nixflix.${name}.enable or false) || (config.services.${name}.enable or false))
-      [
-        "sonarr"
-        "sonarr-4k"
-        "radarr"
-        "radarr-4k"
-        "lidarr"
-        "prowlarr"
-        "readarr"
-        "whisparr"
-      ];
-  local = (builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json)).services;
+  local = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
+  services = import ../../lib/media-services.nix { inherit lib local; };
+  names = services.activeArr config;
   manifest = pkgs.writeText "fateflix-download-policy.json" (
     builtins.toJSON {
       inherit (cfg) torrents usenet;
       apps = map (name: {
         inherit name;
-        url = "http://127.0.0.1:${toString local.${name}}/api/${
-          if
-            lib.elem name [
-              "lidarr"
-              "prowlarr"
-              "readarr"
-            ]
-          then
-            "v1"
-          else
-            "v3"
-        }";
+        url = "${services.origin name}/api/${services.catalog.${name}.apiVersion}";
       }) names;
     }
   );

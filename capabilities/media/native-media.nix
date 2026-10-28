@@ -1,8 +1,19 @@
-{ config, pkgs, ... }: {
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
+let
+  local = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
+  mediaServices = import ../../lib/media-services.nix { inherit lib local; };
+in
+{
   services.bazarr = {
     enable = true;
     group = "media";
     dataDir = "/var/lib/bazarr";
+    listenPort = mediaServices.ports.bazarr;
   };
   # NixOS's Bazarr module is single-instance; use its pinned package for 4K too.
   users.users.bazarr-4k = {
@@ -15,7 +26,7 @@
     serviceConfig = {
       User = "bazarr-4k";
       Group = "media";
-      ExecStart = "${config.services.bazarr.package}/bin/bazarr --config /var/lib/bazarr-4k --port 6777 --no-update True";
+      ExecStart = "${config.services.bazarr.package}/bin/bazarr --config /var/lib/bazarr-4k --port ${toString mediaServices.ports.bazarr-4k} --no-update True";
       Restart = "on-failure";
       KillSignal = "SIGINT";
       SuccessExitStatus = "0 156";
@@ -27,6 +38,7 @@
     group = "media";
     dataDir = "/var/lib/tautulli";
     configFile = "/var/lib/tautulli/config.ini";
+    port = mediaServices.ports.tautulli;
   };
   users.users.tautulli = {
     isSystemUser = true;
@@ -36,7 +48,7 @@
     enable = true;
     group = "media";
     host = if (config.fateflix.host.role == "production") then "0.0.0.0" else "127.0.0.1";
-    port = 13378;
+    port = mediaServices.ports.audiobookshelf;
   };
   systemd.services.audiobookshelf.serviceConfig = {
     BindReadOnlyPaths = [

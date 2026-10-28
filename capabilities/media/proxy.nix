@@ -1,9 +1,8 @@
 { config, lib, ... }:
 let
   local = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
-  ports = lib.filterAttrs (
-    name: _: name != "sabnzbd" || config.nixflix.usenetClients.sabnzbd.enable
-  ) local.services;
+  services = import ../../lib/media-services.nix { inherit lib local; };
+  ports = services.proxyPorts config;
   routes = lib.concatLists (
     lib.mapAttrsToList (
       name: port:
@@ -39,7 +38,7 @@ in
       routes
       ++ [
         (lib.nameValuePair "http://seeme.dalebox.pw" {
-          extraConfig = "reverse_proxy http://127.0.0.1:5055";
+          extraConfig = "reverse_proxy ${services.origin "seerr"}";
         })
       ]
     )

@@ -7,36 +7,19 @@
 }:
 let
   production = config.fateflix.host.role == "production";
+  local = builtins.fromJSON (builtins.readFile ../../hosts/nixflix/local-services.json);
+  services = import ../../lib/media-services.nix { inherit lib local; };
   native =
-    lib.filter
-      (
-        name:
-        (name == "bazarr-4k" && config.users.users ? bazarr-4k)
-        || (config.services.${name}.enable or false)
-        || (config.nixflix.${name}.enable or false)
-        || (name == "sabnzbd" && config.nixflix.usenetClients.sabnzbd.enable)
-      )
-      [
-        "sonarr"
-        "sonarr-4k"
-        "radarr"
-        "radarr-4k"
-        "lidarr"
-        "prowlarr"
-        "sabnzbd"
-        "plex"
-        "seerr"
-        "bazarr"
-        "bazarr-4k"
-        "tautulli"
-        "audiobookshelf"
-        "readarr"
-        "whisparr"
-        "qbittorrent"
-        "rtorrent"
-        "deluge"
-        "transmission"
-      ];
+    services.activeNative config
+    ++
+      lib.filter
+        (name: (config.services.${name}.enable or false) || (config.nixflix.${name}.enable or false))
+        [
+          "qbittorrent"
+          "rtorrent"
+          "deluge"
+          "transmission"
+        ];
   containers = map (n: "podman-${n}") (
     builtins.attrNames config.virtualisation.oci-containers.containers
   );
