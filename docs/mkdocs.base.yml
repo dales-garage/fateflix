@@ -1,9 +1,7 @@
-site_name: Nixflix
-site_description: Declarative NixOS media server stack with Jellyfin and Arr services
-site_author: Kiriwa Lawrence
-site_url: https://kiriwalawren.github.io/nixflix
-repo_url: https://github.com/kiriwalawren/nixflix
-repo_name: kiriwalawren/nixflix
+site_name: FateFlix
+site_description: A downstream NixOS media appliance built on NixFlix
+repo_url: https://github.com/dales-garage/fateflix
+repo_name: dales-garage/fateflix
 edit_uri: edit/main/docs/
 theme:
   name: material
@@ -110,6 +108,12 @@ nav:
   - Home: index.md
   - Getting Started:
       - getting-started/index.md
+      - Architecture and Configuration: fateflix.md
+  - Operations:
+      - GitOps and Updates: gitops.md
+      - Operations Guide: operations.md
+      - Dependency Updates: dependency-updates.md
+      - Migration Runbook: migration/nixflix.md
   - Examples:
       - Basic Setup: examples/basic-setup.md
       - Jellyfin Plugins: examples/jellyfin-plugins.md
@@ -120,7 +124,7 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/kiriwalawren/nixflix
+      link: https://github.com/dales-garage/fateflix
 extra_css:
   - stylesheets/extra.css
-copyright: Copyright &copy; 2026 Kiri Walawren. Licensed under GPLv3.
+copyright: NixFlix by Kiri Walawren; FateFlix downstream contributors. Licensed under MPL 2.0.
