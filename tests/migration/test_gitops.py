@@ -206,6 +206,27 @@ class HealthTests(unittest.TestCase):
                 {"Host": "sonarr.vm.internal", "X-Api-Key": "private-key"},
             )
 
+    def test_health_freshness_rejects_future_and_expired_reports(self):
+        report = {
+            "healthy": True,
+            "checked": 1000,
+            "boot_id": "boot",
+            "system": "/nix/store/current",
+        }
+        for now, expected in (
+            (999, False),
+            (999.999, False),
+            (1000, True),
+            (1899.999, True),
+            (1900, False),
+            (2000, False),
+        ):
+            with self.subTest(now=now):
+                self.assertEqual(
+                    health.healthy(report, {}, {}, now, "boot", "/nix/store/current"),
+                    expected,
+                )
+
     def test_stale_or_previous_boot_or_generation_is_unhealthy(self):
         report = {
             "healthy": True,
