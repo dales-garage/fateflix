@@ -1,4 +1,5 @@
 import gzip
+from contextlib import ExitStack
 import importlib.util
 from pathlib import Path
 import struct
@@ -22,6 +23,109 @@ notifiarr = load("notifiarr_update", "pkgs/notifiarr/update.py")
 
 
 class HealthTests(unittest.TestCase):
+    def run_monitoring_health(self, monitoring, *, connection=False, api_healthy=True):
+        """Exercise check -> service -> arr without contacting a host or API."""
+        manifest = {
+            "services": {"sonarr": 8990, "plex": 32400, "seerr": 5055},
+            "serviceCatalog": {
+                name: {
+                    "unit": name,
+                    "healthPath": "/",
+                    "apiVersion": "v3" if name == "sonarr" else None,
+                    "aliasOf": None,
+                }
+                for name in ("sonarr", "plex", "seerr")
+            },
+        }
+        if monitoring is not None:
+            manifest["monitoring"] = {"notifiarr": monitoring}
+
+        def response(url, headers=None, probe=False):
+            if url.endswith("/system/status") and not api_healthy:
+                raise ValueError("private API failure")
+            if url.endswith("/notification"):
+                return [{"implementation": "Notifiarr"}] if connection else []
+            return 200 if probe else {}
+
+        with ExitStack() as stack:
+            mocks = {
+                name: stack.enter_context(patch.object(health, name))
+                for name in (
+                    "active",
+                    "nas",
+                    "credentials",
+                    "networking",
+                    "plex",
+                    "notifiarr",
+                    "seerr",
+                    "arr_advisory",
+                    "write_json",
+                )
+            }
+            mocks["arr_advisory"].return_value = {"status": "ok"}
+            stack.enter_context(
+                patch.object(health, "read_json", return_value=manifest)
+            )
+            stack.enter_context(
+                patch.object(health.ops, "cached_probe", return_value={})
+            )
+            stack.enter_context(
+                patch.object(health.Path, "read_text", return_value="boot")
+            )
+            stack.enter_context(
+                patch.object(health.os.path, "realpath", return_value="system")
+            )
+            key = stack.enter_context(patch.object(health.ET, "parse"))
+            key.return_value.findtext.return_value = "private-key"
+            http = stack.enter_context(
+                patch.object(health, "http", side_effect=response)
+            )
+            stack.enter_context(patch("builtins.print"))
+            result = health.check()
+        report = mocks["write_json"].call_args.args[1]
+        return result, report, http, mocks
+
+    def test_disabled_monitoring_keeps_arr_api_health_without_notifiarr(self):
+        result, report, http, mocks = self.run_monitoring_health(False)
+        self.assertEqual(result, 0)
+        self.assertTrue(report["checks"]["sonarr"]["healthy"])
+        http.assert_any_call(
+            "http://127.0.0.1:8990/api/v3/system/status", {"X-Api-Key": "private-key"}
+        )
+        self.assertFalse(
+            any(call.args[0].endswith("/notification") for call in http.call_args_list)
+        )
+        mocks["credentials"].assert_called_once_with(False)
+        mocks["notifiarr"].assert_not_called()
+        mocks["seerr"].assert_not_called()
+
+    def test_enabled_or_legacy_monitoring_still_requires_arr_connection(self):
+        for monitoring in (True, None):
+            with self.subTest(monitoring=monitoring):
+                result, report, _, mocks = self.run_monitoring_health(monitoring)
+                self.assertEqual(result, 1)
+                self.assertEqual(
+                    report["checks"]["sonarr"],
+                    {"healthy": False, "error_type": "ValueError"},
+                )
+                mocks["credentials"].assert_called_once_with(True)
+                mocks["notifiarr"].assert_called_once_with()
+                mocks["seerr"].assert_called_once_with(5055)
+                result, report, _, _ = self.run_monitoring_health(
+                    monitoring, connection=True
+                )
+                self.assertEqual(result, 0)
+                self.assertTrue(report["healthy"])
+
+    def test_disabled_monitoring_does_not_hide_an_arr_api_failure(self):
+        result, report, _, _ = self.run_monitoring_health(False, api_healthy=False)
+        self.assertEqual(result, 1)
+        self.assertEqual(
+            report["checks"]["sonarr"],
+            {"healthy": False, "error_type": "ValueError"},
+        )
+        self.assertNotIn("private", str(report))
+
     def test_service_probe_uses_catalog_identity_path_and_api_version(self):
         spec = {"unit": "existing-unit", "healthPath": "/ready", "apiVersion": "v1"}
         with (
@@ -32,7 +136,7 @@ class HealthTests(unittest.TestCase):
             health.service("custom-arr", 1234, spec)
         active.assert_called_once_with("existing-unit")
         http.assert_called_once_with("http://127.0.0.1:1234/ready", probe=True)
-        arr.assert_called_once_with("custom-arr", 1234, "v1")
+        arr.assert_called_once_with("custom-arr", 1234, "v1", notifiarr_enabled=True)
 
     def test_non_arr_probe_does_not_guess_api_from_its_name(self):
         spec = {"unit": "podman-stash", "healthPath": "/", "apiVersion": None}

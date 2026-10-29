@@ -52,14 +52,15 @@ def active(unit):
     subprocess.run(["systemctl", "is-active", "--quiet", unit], check=True)
 
 
-def arr(name, port, version):
+def arr(name, port, version, *, notifiarr_enabled=True):
     key = ET.parse(f"/var/lib/{name}/config.xml").findtext("ApiKey")
     base = f"http://127.0.0.1:{port}/api/{version}"
     headers = {"X-Api-Key": key}
     http(base + "/system/status", headers)
-    connections = http(base + "/notification", headers)
-    if not any(c.get("implementation") == "Notifiarr" for c in connections):
-        raise ValueError("Notifiarr connection missing")
+    if notifiarr_enabled:
+        connections = http(base + "/notification", headers)
+        if not any(c.get("implementation") == "Notifiarr" for c in connections):
+            raise ValueError("Notifiarr connection missing")
 
 
 def arr_names(manifest):
@@ -68,11 +69,11 @@ def arr_names(manifest):
     }
 
 
-def service(name, port, spec):
+def service(name, port, spec, *, notifiarr_enabled=True):
     active(spec["unit"])
     http(f"http://127.0.0.1:{port}{spec['healthPath']}", probe=True)
     if spec["apiVersion"]:
-        arr(name, port, spec["apiVersion"])
+        arr(name, port, spec["apiVersion"], notifiarr_enabled=notifiarr_enabled)
 
 
 def nas():
@@ -235,7 +236,12 @@ def check():
         raise ValueError("Service catalog and port manifest disagree")
     notifiarr_enabled = manifest.get("monitoring", {}).get("notifiarr", True)
     jobs = [
-        (name, lambda n=name, p=port: service(n, p, catalog[n]))
+        (
+            name,
+            lambda n=name, p=port: service(
+                n, p, catalog[n], notifiarr_enabled=notifiarr_enabled
+            ),
+        )
         for name, port in services.items()
         if catalog[name]["aliasOf"] is None
     ]
