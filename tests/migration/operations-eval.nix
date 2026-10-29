@@ -5,6 +5,27 @@
 }:
 let
   cfg = host.config;
+  roles = [
+    cfg
+    staging.config
+  ];
+  customTimeServers =
+    (host.extendModules {
+      modules = [ { networking.timeServers = pkgs.lib.mkForce [ "time.example.invalid" ]; } ];
+    }).config.services.chrony.servers;
+  customChronyServers =
+    (host.extendModules { modules = [ { services.chrony.servers = [ "chrony.example.invalid" ]; } ]; })
+    .config.services.chrony.servers;
+  chronyConfig =
+    role:
+    let
+      command = role.systemd.services.chronyd.serviceConfig.ExecStart;
+    in
+    # Regex captures lose string context; retain the generated config dependency
+    # so a sandboxed check builds the file before parsing it.
+    pkgs.lib.strings.addContextFrom command (
+      builtins.head (builtins.match ".* -f ([^ ]+)( .*)?" command)
+    );
   disabled =
     (host.extendModules {
       modules = [ { fateflix.playback.acceleration = pkgs.lib.mkForce "software"; } ];
@@ -23,6 +44,26 @@ let
     "prowlarr-indexer-proxies"
   ];
 in
+# Xen's host clock is only an initial source: keep one continuously running,
+# slew-only guest client in both roles. Exercise the native server override too.
+assert builtins.all (
+  role:
+  role.services.chrony.enable
+  && !role.services.ntp.enable
+  && !role.services.timesyncd.enable
+  && !role.services.chrony.makestep.enable
+  && !role.services.chrony.initstepslew.enabled
+  && !role.services.chrony.enableRTCTrimming
+  && role.services.chrony.extraFlags == [ ]
+  && role.services.chrony.extraConfig == "leapsecmode slew\n"
+  && role.services.chrony.servers == role.networking.timeServers
+  && role.services.chrony.servers != [ ]
+  && role.services.chrony.dispatcherScript
+  && role.systemd.services.chronyd.enable
+  && builtins.elem "multi-user.target" role.systemd.services.chronyd.wantedBy
+) roles;
+assert customTimeServers == [ "time.example.invalid" ];
+assert customChronyServers == [ "chrony.example.invalid" ];
 # Restored-state setup is disabled in both appliance roles; production's
 # deliberate download-policy reconciliation remains a separate service.
 assert builtins.all
@@ -84,6 +125,15 @@ assert builtins.all
     "readarr"
   ];
 pkgs.runCommand "operations-eval" { } ''
+  ${pkgs.lib.concatMapStringsSep "\n" (role: ''
+    # -p parses and prints only; it never runs a time daemon or sets the clock.
+    ${role.services.chrony.package}/bin/chronyd -p -f ${chronyConfig role} > chrony.conf
+    grep -Fx 'leapsecmode slew' chrony.conf
+    if grep -Ei '^[[:space:]]*(makestep|initstepslew|rtcfile|rtcautotrim)[[:space:]]' chrony.conf; then
+      echo 'Unexpected clock-step or RTC-trimming configuration' >&2
+      exit 1
+    fi
+  '') roles}
   ${pkgs.lib.concatMapStringsSep "\n"
     (
       role:

@@ -14,6 +14,49 @@ they do not restore application databases or reverse database migrations.
 Readarr stays enabled with its existing library pending a separate replacement
 assessment. This batch enables no media deletion or database migrations.
 
+## Guest time synchronization
+
+Both appliance roles configure the native NixOS `chronyd.service` as the only
+NTP client. The Xen guest module disables timesyncd because it assumes dom0
+supplies time, but [XCP-ng recommends a time client inside each guest](https://docs.xcp-ng.org/vms/advanced/#time-in-vms)
+as well as correctly synchronized hosts.
+
+The guest policy is **slew-only**, including daemon startup and leap seconds:
+`services.chrony.makestep.enable` and `initstepslew.enabled` are false, no
+clock-setting command-line flags are added, and `extraConfig` sets
+`leapsecmode slew`. RTC trimming is disabled for the virtual RTC. This explicitly
+overrides NixOS's default Chrony startup stepping; see the
+[Chrony directives](https://chrony-project.org/doc/4.8/chrony.conf.html#makestep).
+Large offsets can therefore take time to converge. Do not use `chronyc makestep`,
+`date --set`, or similar commands as a rollout shortcut. This daemon policy
+cannot prevent a hypervisor restore or an administrator from changing time.
+
+Time sources remain configurable through native NixOS options:
+`networking.timeServers` supplies the default list, or set
+`services.chrony.servers` for this client specifically. The checked-in host uses
+the NixOS default servers; replace the list with approved, reachable servers if
+the network restricts outbound NTP. The native NetworkManager dispatcher handles
+connectivity changes. No inbound NTP firewall port is opened.
+
+Repository evaluation verifies the declared policy, not the running VM's clock.
+After an authorized deployment, use read-only checks:
+
+```sh
+systemctl status chronyd --no-pager
+chronyc tracking
+chronyc sources -v
+journalctl -u chronyd --since '-30 minutes' --no-pager
+```
+
+Confirm a selected reachable source, a recent reference time, normal leap status,
+and a small/converging system-time offset; an active unit alone does not prove
+synchronization. Repeat after a network outage or VM lifecycle event as needed.
+If sources are unreachable or the offset does not converge, investigate the
+host clock, DNS and outbound NTP reachability without stepping the guest clock.
+The `/health` endpoint rejects future-dated reports as well as reports at least
+15 minutes old. A backward time change that puts a cached report in the future
+therefore makes it unhealthy until a new check completes or time catches up.
+
 ## Storage and advisories
 
 SABnzbd has `download_free = 500G`, `complete_free = 500G`, and
