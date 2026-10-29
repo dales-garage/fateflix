@@ -36,12 +36,7 @@ in
     pkgs.jujutsu
     pkgs.openssh
   ];
-  snapshot = (script "snapshot" [ ]) // {
-    meta.description = "Migration-only Ubuntu state snapshot; all declared source directories are required";
-  };
-  cutover-source = script "cutover-source" [ pkgs.openssh ];
-  migrate-native = script "migrate-native" [ pkgs.systemd ];
-  route-seerr = script "route-seerr" [ pkgs.openssh ];
+  legacy-ubuntu-migration = import ../legacy/ubuntu-migration/app.nix { inherit pkgs self; };
   router-dns = script "router-dns" [ pkgs.openssh ];
   router-https = script "router-https" [ pkgs.openssh ];
   public-dns = script "public-dns" [ pkgs.openssh ];
@@ -50,13 +45,9 @@ in
     pkgs.systemd
     pkgs.util-linux
   ];
-  restore = script "restore" [ pkgs.systemd ];
-  reassign-profiles = script "reassign-profiles" [ ];
-  validate-state = script "validate-state" [ ];
   test-isolation = script "test-isolation" [
     pkgs.systemd
     pkgs.iproute2
     pkgs.util-linux
   ];
-  configure-staging = script "configure-staging" [ pkgs.systemd ];
 }

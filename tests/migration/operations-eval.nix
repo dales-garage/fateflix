@@ -2,6 +2,7 @@
   pkgs,
   host,
   staging,
+  legacyApp,
 }:
 let
   cfg = host.config;
@@ -84,6 +85,9 @@ assert builtins.all
     "readarr"
   ];
 pkgs.runCommand "operations-eval" { } ''
+  # Exercise the packaged archive entry point without invoking any operation.
+  ${legacyApp.program} --help > /dev/null
+  ${legacyApp.program} > /dev/null
   ${pkgs.lib.concatMapStringsSep "\n"
     (
       role:

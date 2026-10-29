@@ -8,8 +8,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location("snapshot", ROOT / "scripts/snapshot.py")
+ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location("snapshot", ROOT / "snapshot.py")
 snapshot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(snapshot)
 

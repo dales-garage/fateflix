@@ -40,6 +40,7 @@
         };
         operations-eval = import ../../tests/migration/operations-eval.nix {
           inherit pkgs;
+          legacyApp = self.apps.${system}.legacy-ubuntu-migration;
           host = self.nixosConfigurations.nixflix-production;
           staging = self.nixosConfigurations.nixflix-staging;
         };

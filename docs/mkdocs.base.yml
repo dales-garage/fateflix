@@ -113,7 +113,7 @@ nav:
       - GitOps and Updates: gitops.md
       - Operations Guide: operations.md
       - Dependency Updates: dependency-updates.md
-      - Migration Runbook: migration/nixflix.md
+      - Completed Migration Archive: migration/nixflix.md
   - Examples:
       - Basic Setup: examples/basic-setup.md
       - Jellyfin Plugins: examples/jellyfin-plugins.md
