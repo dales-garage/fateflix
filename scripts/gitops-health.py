@@ -315,7 +315,7 @@ def check_until_ready(wait_seconds):
 def healthy(report, build, deploy, now, boot_id, system):
     return (
         report.get("healthy", False)
-        and now - report["checked"] < 900
+        and 0 <= now - report["checked"] < 900
         and report.get("boot_id") == boot_id
         and report.get("system") == system
         and build.get("status") != "failed"
