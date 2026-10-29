@@ -73,6 +73,7 @@ in
       };
     };
     environment.systemPackages = [ health ];
+    systemd.services.comin.serviceConfig.Slice = "nixflix-build.slice";
     environment.etc."nixflix/gitops-services.json".text = builtins.toJSON healthManifest;
     environment.etc."nixos/README.gitops".text = ''
       Managed by Comin from dales-garage/fateflix main.
