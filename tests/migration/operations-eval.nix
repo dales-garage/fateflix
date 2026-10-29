@@ -14,9 +14,8 @@ let
       modules = [ { networking.timeServers = pkgs.lib.mkForce [ "time.example.invalid" ]; } ];
     }).config.services.chrony.servers;
   customChronyServers =
-    (host.extendModules {
-      modules = [ { services.chrony.servers = [ "chrony.example.invalid" ]; } ];
-    }).config.services.chrony.servers;
+    (host.extendModules { modules = [ { services.chrony.servers = [ "chrony.example.invalid" ]; } ]; })
+    .config.services.chrony.servers;
   chronyConfig =
     role:
     let
