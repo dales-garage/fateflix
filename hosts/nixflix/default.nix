@@ -10,6 +10,7 @@
     ./storage.nix
     ./network.nix
     ./time.nix
+    ./maintenance.nix
     ./resources.nix
     (modulesPath + "/virtualisation/xen-domU.nix")
   ];
