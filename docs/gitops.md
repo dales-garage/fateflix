@@ -266,3 +266,29 @@ acceptance checks require access to the VM and are not implied by passing CI.
 
 Playback, capacity advisories, maintenance holds, retention reports, and the staged
 acceptance procedure are documented in [operations](operations.md).
+
+## Store maintenance and rollback roots
+
+Both VM roles schedule the native Nix garbage collector weekly, Sunday at 04:15
+in the configured host timezone, with up to 45 minutes of jitter. Missed runs are
+caught up by the persistent timer. The service has low CPU/IO weight, nice level
+19 and idle IO scheduling. This collects unreachable store paths; it does not
+delete system profiles, booted/current systems or Comin's retained generations.
+Comin continues to own its existing three boot entries, three successful
+deployments and five total deployments. Old bootstrap/system profiles remain
+roots until an operator deliberately reviews them.
+
+Native `nix.gc.automatic`, `dates`, `randomizedDelaySec` and `persistent` options
+can override these defaults. `nix.gc.options` must remain empty: this appliance
+rejects extra CLI options rather than risk generation-deletion flags. Do not use
+`nix-collect-garbage -d` as routine cleanup. Separately, Nix's build-time GC starts
+below `nix.settings.min-free` and targets `max-free`; defaults follow the existing
+root critical/warning thresholds (10/20 GiB). Setting `min-free = 0` disables
+build-time GC; `max-free` must still be greater. Neither collector can reclaim
+live roots or application state, and these thresholds are not a disk reservation.
+
+After an authorized rollout, inspect `systemctl list-timers nix-gc.timer`,
+`journalctl -u nix-gc`, root free space and the Comin/current/booted profile roots.
+Check that a retained known-good generation still exists before any cleanup
+outside this policy. Repository evaluation checks policy and command construction;
+it does not run garbage collection on the VM or establish current disk pressure.

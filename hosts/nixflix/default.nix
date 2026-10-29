@@ -9,6 +9,7 @@
     ./hardware-configuration.nix
     ./storage.nix
     ./network.nix
+    ./maintenance.nix
     (modulesPath + "/virtualisation/xen-domU.nix")
   ];
   config = {
