@@ -24,7 +24,8 @@ let
     builtins.attrNames config.virtualisation.oci-containers.containers
   );
   operations = "${pkgs.python3}/bin/python3 ${../../scripts/nixflix_ops.py}";
-  # Setup jobs may reconcile/delete restored state. They are explicit operations in staging.
+  # Upstream setup jobs may reconcile/delete restored state. Keep them disabled
+  # in both roles; production uses the separate download-policy reconciler.
   automation =
     lib.concatMap
       (
@@ -48,11 +49,16 @@ let
     ++ [
       "prowlarr-applications"
       "prowlarr-indexers"
-      "prowlarr-indexerproxies"
+      "prowlarr-indexer-proxies"
       "prowlarr-tags"
       "sabnzbd-categories"
       "lidarr-qualityprofiles"
       "lidarr-metadataprofiles"
+      "sonarr-metadata"
+      "sonarr-4k-metadata"
+      "radarr-metadata"
+      "radarr-4k-metadata"
+      "lidarr-metadata"
     ];
 in
 {

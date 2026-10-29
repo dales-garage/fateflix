@@ -1,4 +1,8 @@
-{ pkgs, host }:
+{
+  pkgs,
+  host,
+  staging,
+}:
 let
   cfg = host.config;
   disabled =
@@ -9,7 +13,31 @@ let
     (host.extendModules { modules = [ { services.readarr.enable = pkgs.lib.mkForce false; } ]; })
     .config;
   sab = cfg.nixflix.usenetClients.sabnzbd.settings.misc;
+  # Match actual upstream unit names, not a parallel spelling of those names.
+  setupUnits = [
+    "sonarr-metadata"
+    "sonarr-4k-metadata"
+    "radarr-metadata"
+    "radarr-4k-metadata"
+    "lidarr-metadata"
+    "prowlarr-indexer-proxies"
+  ];
 in
+# Restored-state setup is disabled in both appliance roles; production's
+# deliberate download-policy reconciliation remains a separate service.
+assert builtins.all
+  (
+    role:
+    builtins.all (
+      name: !role.systemd.services.${name}.enable && !role.systemd.units."${name}.service".enable
+    ) setupUnits
+  )
+  [
+    cfg
+    staging.config
+  ];
+assert cfg.systemd.services.fateflix-download-policy.enable;
+assert !(staging.config.systemd.services ? fateflix-download-policy);
 assert sab.download_free == "500G" && sab.complete_free == "500G";
 assert sab.fulldisk_autoresume == 0;
 assert
@@ -55,4 +83,18 @@ assert builtins.all
     "sonarr"
     "readarr"
   ];
-pkgs.runCommand "operations-eval" { } "touch $out"
+pkgs.runCommand "operations-eval" { } ''
+  ${pkgs.lib.concatMapStringsSep "\n"
+    (
+      role:
+      pkgs.lib.concatMapStringsSep "\n" (name: ''
+        test "$(readlink ${role.systemd.units."${name}.service".unit}/${name}.service)" = /dev/null
+      '') setupUnits
+    )
+    [
+      cfg
+      staging.config
+    ]
+  }
+  touch $out
+''
