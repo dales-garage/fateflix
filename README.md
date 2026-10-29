@@ -87,8 +87,8 @@ FateFlix's host and capability composition.
 - [Operations](docs/operations.md): playback, storage and maintenance.
 - [Dependency updates](docs/dependency-updates.md): Renovate and supplemental
   dependency ownership.
-- [Migration runbook](docs/migration/nixflix.md): deployment history and detailed
-  operator procedures.
+- [Completed Ubuntu migration](docs/migration/nixflix.md): historical record;
+  old tools are isolated behind the explicitly manual `legacy-ubuntu-migration` app.
 
 The [upstream NixFlix documentation](https://kiriwalawren.github.io/nixflix/)
 explains the original project's modules and configuration. FateFlix's docs

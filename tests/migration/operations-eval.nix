@@ -2,6 +2,7 @@
   pkgs,
   host,
   staging,
+  legacyApp,
 }:
 let
   cfg = host.config;
@@ -134,6 +135,9 @@ pkgs.runCommand "operations-eval" { } ''
       exit 1
     fi
   '') roles}
+  # Exercise the packaged archive entry point without invoking any operation.
+  ${legacyApp.program} --help > /dev/null
+  ${legacyApp.program} > /dev/null
   ${pkgs.lib.concatMapStringsSep "\n"
     (
       role:
