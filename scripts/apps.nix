@@ -36,7 +36,9 @@ in
     pkgs.jujutsu
     pkgs.openssh
   ];
-  snapshot = script "snapshot" [ ];
+  snapshot = (script "snapshot" [ ]) // {
+    meta.description = "Migration-only Ubuntu state snapshot; all declared source directories are required";
+  };
   cutover-source = script "cutover-source" [ pkgs.openssh ];
   migrate-native = script "migrate-native" [ pkgs.systemd ];
   route-seerr = script "route-seerr" [ pkgs.openssh ];
