@@ -1,7 +1,21 @@
-# nixflix migration and operations
+# Completed Ubuntu migration (historical record)
+
+> The one-time Ubuntu migration is complete. This page records that work, not an
+> active migration plan or routine VM maintenance procedure. Its former top-level
+> migration apps are removed; the scripts are isolated in
+> `legacy/ubuntu-migration/` behind `nix run .#legacy-ubuntu-migration -- --help`.
+> Reuse requires an explicit acknowledgement and review of the old hosts/paths.
+> No Ubuntu migration jobs are declared by the current host or workflows. Existing
+> readiness markers remain necessary for current NixOS service startup.
+> Xen Orchestra VM snapshots are outside this tooling's scope.
+>
+> Use [current operations](../operations.md) and [GitOps](../gitops.md) for the
+> running NixOS VM. Ordinary credential provisioning remains unchanged.
 
 The organization repository `dales-garage/fateflix` manages `marty@10.69.0.18`.
-`kiriwalawren/nixflix` is an upstream remote. A push never deploys the VM.
+`kiriwalawren/nixflix` is an upstream remote. Current `main` is watched by Comin;
+a later merge can deploy the VM. Historical bookmark instructions below are not
+the current deployment workflow.
 The host uses locked NixOS 26.05; the project's original unstable input is retained.
 
 ## HTTPS, DNS and remote access
@@ -166,8 +180,8 @@ on Podman, disabled until its Discord and Matrix credentials are provided.
 Native state lives at `/var/lib/NAME`; Audiobookshelf has `config` and `metadata`
 subdirectories and service-specific mappings for its old absolute paths. Original
 staged container state remains under `/var/lib/nixflix-containers` for rollback.
-`nix run .#migrate-native` copies inactive staged state without deleting it.
-`nix run .#restore -- SNAPSHOT SERVICE` now restores these services natively.
+`nix run .#legacy-ubuntu-migration -- --confirm-legacy-operation migrate-native` copies inactive staged state without deleting it.
+`nix run .#legacy-ubuntu-migration -- --confirm-legacy-operation restore SNAPSHOT SERVICE` now restores these services natively.
 
 All media ports retain their previous numbers at `10.69.0.18`. Firewall rules
 allow them from the server LAN `10.69.0.0/24` and the routed client LAN
@@ -182,7 +196,7 @@ The existing Ubuntu Cloudflare tunnel remains running. A temporary
 `nixflix-seerr-relay` container on its `arrproxy` network forwards the old
 `overseerr:5055` origin to `.18:5055`. It uses Node from the exact already-installed
 Overseerr image, no application state, a read-only filesystem and no capabilities.
-`nix run .#route-seerr` manages its initial creation from the workstation.
+`nix run .#legacy-ubuntu-migration -- --confirm-legacy-operation route-seerr` manages its initial creation from the workstation.
 `https://seeme.dalebox.pw` remains the request address, now using direct WAN HTTPS
 through router Caddy. Its former tunnel DNS record is backed up. Keep the relay
 for rollback until remote access is confirmed, then retire only the relay. Other Ubuntu
@@ -313,7 +327,7 @@ slice has a 10 GiB memory-high threshold and 12 GiB maximum on the 16 GiB VM.
 Automatic Arr reconciliation is disabled on this host to preserve restored
 roots, monitored status, history and paths. The reusable modules still integrate
 all four instances with Prowlarr, download clients, SAB categories and Recyclarr.
-Profiles must exist before running `scripts/reassign-profiles.py` inside the
+Profiles must exist before running `legacy/ubuntu-migration/reassign-profiles.py` inside the
 namespace as root. It updates only qualityProfileId, requests no file moves,
 checks paths/monitored status after all updates, updates import-list and Radarr
 collection profile references, then deletes obsolete profiles. Individual collection
@@ -337,8 +351,8 @@ A cloned identity must remain isolated until the final cutover.
 
 SecretSpec declares required credentials in `capabilities/secrets/secretspec.toml`. Following the
 [pass provider convention](https://secretspec.dev/providers/pass/), entries are
-`secretspec/nixflix/default/NAME`. `scripts/extract-source-secrets.py` runs as root
-on Ubuntu and streams its output directly to `scripts/import-pass.py` on .18.
+`secretspec/nixflix/default/NAME`. `legacy/ubuntu-migration/extract-source-secrets.py` runs as root
+on Ubuntu and streams its output directly to `legacy/ubuntu-migration/import-pass.py` on .18.
 No private SSH key is transferred. The target has a locally generated GPG identity;
 its bootstrap key has no passphrase and is protected by the marty account's file
 permissions. Add a passphrase/re-encrypt to your preferred key when convenient.
@@ -358,7 +372,7 @@ application configuration; enter replacements through pass rather than Nix liter
 ## Backups and cutover
 
 Protected snapshots live under `/var/lib/nixflix-migration` on both hosts, outside
-the repository. `scripts/snapshot.py` uses SQLite's backup API for live databases,
+the repository. `legacy/ubuntu-migration/snapshot.py` uses SQLite's backup API for live databases,
 records timestamps, and copies Plex's latest dated library backups. Plex metadata
 and preferences are copied while production runs: this is a staging snapshot,
 not a final consistent cutover backup. SAB's queue and non-SQLite settings are
@@ -424,7 +438,7 @@ Useful operations on .18:
 ```sh
 sudo systemctl status nixflix-staging.target
 sudo ip netns exec nixflix-staging curl http://127.0.0.1:5055/api/v1/status
-sudo nix run .#validate-state -- /var/lib/nixflix-migration/snapshot-2026-09-07
+sudo nix run .#legacy-ubuntu-migration -- --confirm-legacy-operation validate-state /var/lib/nixflix-migration/snapshot-2026-09-07
 # Temporarily interrupts ONLY staged services and restores them:
 sudo nix run .#test-isolation
 ```
@@ -565,10 +579,11 @@ restricted read-only configuration in an isolated test container. Locked config
 read, write and delete APIs returned HTTP 403. No real notifications were sent.
 Real Discord/Matrix credentials and end-to-end delivery remain pending.
 
-Use `nix develop -c python3` for ad hoc Python. Packaged migration commands use
-their pinned Python and tool dependencies through `nix run .#APP`; `just` recipes
-remain shortcuts. `deploy`, `snapshot`, `restore`, `configure-staging`,
-`reassign-profiles`, `validate-state`, `test-isolation`, `provision`, and
-`provision-notifications` are available. Run source snapshot tools on Ubuntu;
-target state/provisioning tools on `.18`; deployment from the workstation's jj
-checkout. API-based migration tools must execute inside the staging namespace.
+The packaged migration aliases in this historical record have been retired.
+Only the explicitly manual `legacy-ubuntu-migration` dispatcher remains; see its
+`--help` and `legacy/ubuntu-migration/README.md` before considering reuse. Its
+synthetic tests are manually runnable with
+`nix develop -c python3 -m unittest discover -s legacy/ubuntu-migration/tests -p 'test_*.py'`.
+Routine CI continues to validate current NixOS operations and credentials without
+invoking these archived migration operations. `deploy`, `test-isolation`,
+`provision`, and `provision-notifications` remain current operator tools.

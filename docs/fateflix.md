@@ -82,6 +82,9 @@ These are NixOS options, available in a composed aspect's `nixos` configuration:
 
 | Owner | Option | Default |
 | --- | --- | --- |
+| Machine | `fateflix.resources.memoryMiB` | `16384` (declared VM RAM, not detected) |
+| Machine | `fateflix.resources.systemReserveMiB` | `2048` outside the workload ceiling |
+| Machine | `fateflix.resources.workloadHighMiB` | `12288` aggregate reclaim watermark |
 | Storage | `fateflix.storage.root` | `/data` |
 | Storage | `fateflix.storage.mediaRoot` | `${root}/media` |
 | Storage | `fateflix.storage.downloadsRoot` | `${root}/usenet` |

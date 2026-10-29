@@ -96,9 +96,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           # Renovate 44 supports Node ^24.11.0; update this pair together.
-          node-version: '24.22.1'
+          node-version: '24.22.2'
       # renovate: datasource=npm depName=renovate
-      - run: npx --yes --package renovate@44.188.2 renovate-config-validator --strict renovate.json
+      - run: npx --yes --package renovate@44.195.0 renovate-config-validator --strict renovate.json
 
   checks:
     name: ${{ matrix.name }}

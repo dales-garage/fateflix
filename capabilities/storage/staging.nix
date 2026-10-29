@@ -167,7 +167,8 @@ in
         serviceConfig.NetworkNamespacePath = lib.mkIf (!production) "/run/netns/nixflix-staging";
       });
   systemd.slices.nixflix-staging.sliceConfig = {
-    # 16 GiB VM: leave room for the OS and target-side Nix builds.
+    # Keep the existing media limits. The machine's nixflix.slice parent also
+    # accounts for processing and target-side builds within its VM-wide budget.
     MemoryHigh = "10G";
     MemoryMax = "12G";
   };

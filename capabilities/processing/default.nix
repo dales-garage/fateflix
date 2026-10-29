@@ -24,6 +24,7 @@ let
     "!/var/lib/nixflix-gitops/holds/podman-stash"
   ];
   common = {
+    Slice = "nixflix-processing.slice";
     Type = "oneshot";
     StateDirectory = "nixflix-imports";
     StateDirectoryMode = "0700";

@@ -28,6 +28,11 @@
         };
         capabilities-eval = import ../../tests/migration/capabilities-eval.nix { inherit inputs pkgs; };
         settings-eval = import ../../tests/migration/settings-eval.nix { inherit inputs pkgs; };
+        resources-eval = import ../../tests/migration/resources-eval.nix {
+          inherit pkgs;
+          host = self.nixosConfigurations.nixflix-production;
+          staging = self.nixosConfigurations.nixflix-staging;
+        };
         torrent-policy-eval = import ../../tests/migration/torrent-policy-eval.nix {
           inherit pkgs;
           host = self.nixosConfigurations.nixflix-production;
@@ -40,6 +45,7 @@
         };
         operations-eval = import ../../tests/migration/operations-eval.nix {
           inherit pkgs;
+          legacyApp = self.apps.${system}.legacy-ubuntu-migration;
           host = self.nixosConfigurations.nixflix-production;
           staging = self.nixosConfigurations.nixflix-staging;
         };

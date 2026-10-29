@@ -14,6 +14,109 @@ they do not restore application databases or reverse database migrations.
 Readarr stays enabled with its existing library pending a separate replacement
 assessment. This batch enables no media deletion or database migrations.
 
+## Guest time synchronization
+
+Both appliance roles configure the native NixOS `chronyd.service` as the only
+NTP client. The Xen guest module disables timesyncd because it assumes dom0
+supplies time, but [XCP-ng recommends a time client inside each guest](https://docs.xcp-ng.org/vms/advanced/#time-in-vms)
+as well as correctly synchronized hosts.
+
+The guest policy is **slew-only**, including daemon startup and leap seconds:
+`services.chrony.makestep.enable` and `initstepslew.enabled` are false, no
+clock-setting command-line flags are added, and `extraConfig` sets
+`leapsecmode slew`. RTC trimming is disabled for the virtual RTC. This explicitly
+overrides NixOS's default Chrony startup stepping; see the
+[Chrony directives](https://chrony-project.org/doc/4.8/chrony.conf.html#makestep).
+Large offsets can therefore take time to converge. Do not use `chronyc makestep`,
+`date --set`, or similar commands as a rollout shortcut. This daemon policy
+cannot prevent a hypervisor restore or an administrator from changing time.
+
+Time sources remain configurable through native NixOS options:
+`networking.timeServers` supplies the default list, or set
+`services.chrony.servers` for this client specifically. The checked-in host uses
+the NixOS default servers; replace the list with approved, reachable servers if
+the network restricts outbound NTP. The native NetworkManager dispatcher handles
+connectivity changes. No inbound NTP firewall port is opened.
+
+Repository evaluation verifies the declared policy, not the running VM's clock.
+After an authorized deployment, use read-only checks:
+
+```sh
+systemctl status chronyd --no-pager
+chronyc tracking
+chronyc sources -v
+journalctl -u chronyd --since '-30 minutes' --no-pager
+```
+
+Confirm a selected reachable source, a recent reference time, normal leap status,
+and a small/converging system-time offset; an active unit alone does not prove
+synchronization. Repeat after a network outage or VM lifecycle event as needed.
+If sources are unreachable or the offset does not converge, investigate the
+host clock, DNS and outbound NTP reachability without stepping the guest clock.
+The `/health` endpoint rejects future-dated reports as well as reports at least
+15 minutes old. A backward time change that puts a cached report in the future
+therefore makes it unhealthy until a new check completes or time catches up.
+
+## VM resource budget
+
+`hosts/nixflix/resources.nix` carries forward the existing **16 GiB declared VM
+assumption**; it does not detect the VM's RAM. Confirm its actual XCP-ng memory
+allocation (including any dynamic-memory minimum) before rollout, and configure
+`fateflix.resources.memoryMiB` to the guaranteed allocation.
+The default 2 GiB `systemReserveMiB` leaves a 14 GiB aggregate workload ceiling
+(`MemoryMax`) and a 12 GiB `workloadHighMiB` reclaim/throttling watermark
+(`MemoryHigh`). This leaves headroom for the OS and services outside the workload
+tree, not a guarantee that their combined usage fits that headroom. No swap or
+new generation-deletion policy is implied.
+
+All large managed workloads share `nixflix.slice`:
+
+| Child slice | Workloads | Existing child limits |
+| --- | --- | --- |
+| `nixflix-staging.slice` | Media services and OCI container payloads | 10 GiB high, 12 GiB max |
+| `nixflix-processing.slice` | Import/policy workers and manual remux | Conversion worker 3 GiB, remux 768 MiB |
+| `nixflix-build.slice` | Comin evaluation, Nix daemon/build children, native manual/automatic GC unit | Shared parent ceiling |
+
+The historical `nixflix-staging.slice` name applies to both roles; it is not a
+second VM. Slice ancestry is encoded by systemd's hyphenated names. Child maxima
+are **not additive allocations**: simultaneous processing, playback and builds
+share the parent's envelope. Under pressure, reclaim can slow them; exceeding
+the hard ceiling can OOM-kill workload processes rather than letting these
+workloads consume the OS headroom. The processing/build slices use lower CPU and
+I/O weights than media, not new hard CPU/I/O quotas. Existing conversion/remux
+limits and Nix build concurrency are unchanged. Limits are not a substitute for
+observing peak usage during representative playback and an ordinary rebuild.
+See systemd's [hierarchical resource controls](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html).
+
+Configure the three typed `fateflix.resources` options rather than overriding
+the parent cgroup limits. Assertions reject an invalid reserve/watermark, a
+parent ceiling below the established 12 GiB media ceiling, and workloads or
+containers configured outside their expected slices. Smaller-VM support needs
+an explicit media-capacity redesign, not a silent reduction during this rollout.
+
+**Activation:** changing a unit's `Slice` does not move an already running
+process. Comin deliberately retains upstream `restartIfChanged = false`; do not
+restart the deployment controller from within its own deployment. A controlled
+restart after deployment has finished, or a planned reboot, is needed before
+claiming its running evaluator is contained. Check the Nix daemon, processing
+units and container payloads too; daemon-side builders do not inherit Comin's
+cgroup. The native daemon's `stopIfChanged = false` is also preserved: existing
+connection/build children can survive its restart, so inspect those children or
+use a planned reboot after builds finish rather than assuming a daemon restart
+moved them. After an operator-approved rollout, inspect actual membership and limits:
+
+```sh
+systemctl show nixflix.slice -p MemoryCurrent -p MemoryHigh -p MemoryMax
+systemctl show comin nix-daemon nixflix-import-worker nixflix-remux -p Slice -p ControlGroup
+systemd-cgls /nixflix.slice
+systemd-cgtop
+```
+
+Confirm OCI payload cgroups are below `nixflix-staging.slice`, and ordinary
+target-side build children are below `nixflix-build.slice`; check for memory/OOM
+events in the journal. Repository evaluation establishes configuration only,
+not live placement, available RAM or acceptable performance.
+
 ## Storage and advisories
 
 SABnzbd has `download_free = 500G`, `complete_free = 500G`, and
