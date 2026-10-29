@@ -43,6 +43,7 @@ in
       ];
       restartIfChanged = false;
       serviceConfig = {
+        Slice = "nixflix-processing.slice";
         Type = "exec";
         ExecStart = "${command}/bin/nixflix-remux run";
         StateDirectory = "nixflix-remux";

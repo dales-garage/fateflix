@@ -14,6 +14,66 @@ they do not restore application databases or reverse database migrations.
 Readarr stays enabled with its existing library pending a separate replacement
 assessment. This batch enables no media deletion or database migrations.
 
+## VM resource budget
+
+`hosts/nixflix/resources.nix` carries forward the existing **16 GiB declared VM
+assumption**; it does not detect the VM's RAM. Confirm its actual XCP-ng memory
+allocation (including any dynamic-memory minimum) before rollout, and configure
+`fateflix.resources.memoryMiB` to the guaranteed allocation.
+The default 2 GiB `systemReserveMiB` leaves a 14 GiB aggregate workload ceiling
+(`MemoryMax`) and a 12 GiB `workloadHighMiB` reclaim/throttling watermark
+(`MemoryHigh`). This leaves headroom for the OS and services outside the workload
+tree, not a guarantee that their combined usage fits that headroom. No swap or
+new generation-deletion policy is implied.
+
+All large managed workloads share `nixflix.slice`:
+
+| Child slice | Workloads | Existing child limits |
+| --- | --- | --- |
+| `nixflix-staging.slice` | Media services and OCI container payloads | 10 GiB high, 12 GiB max |
+| `nixflix-processing.slice` | Import/policy workers and manual remux | Conversion worker 3 GiB, remux 768 MiB |
+| `nixflix-build.slice` | Comin evaluation, Nix daemon/build children, native manual/automatic GC unit | Shared parent ceiling |
+
+The historical `nixflix-staging.slice` name applies to both roles; it is not a
+second VM. Slice ancestry is encoded by systemd's hyphenated names. Child maxima
+are **not additive allocations**: simultaneous processing, playback and builds
+share the parent's envelope. Under pressure, reclaim can slow them; exceeding
+the hard ceiling can OOM-kill workload processes rather than letting these
+workloads consume the OS headroom. The processing/build slices use lower CPU and
+I/O weights than media, not new hard CPU/I/O quotas. Existing conversion/remux
+limits and Nix build concurrency are unchanged. Limits are not a substitute for
+observing peak usage during representative playback and an ordinary rebuild.
+See systemd's [hierarchical resource controls](https://www.freedesktop.org/software/systemd/man/latest/systemd.resource-control.html).
+
+Configure the three typed `fateflix.resources` options rather than overriding
+the parent cgroup limits. Assertions reject an invalid reserve/watermark, a
+parent ceiling below the established 12 GiB media ceiling, and workloads or
+containers configured outside their expected slices. Smaller-VM support needs
+an explicit media-capacity redesign, not a silent reduction during this rollout.
+
+**Activation:** changing a unit's `Slice` does not move an already running
+process. Comin deliberately retains upstream `restartIfChanged = false`; do not
+restart the deployment controller from within its own deployment. A controlled
+restart after deployment has finished, or a planned reboot, is needed before
+claiming its running evaluator is contained. Check the Nix daemon, processing
+units and container payloads too; daemon-side builders do not inherit Comin's
+cgroup. The native daemon's `stopIfChanged = false` is also preserved: existing
+connection/build children can survive its restart, so inspect those children or
+use a planned reboot after builds finish rather than assuming a daemon restart
+moved them. After an operator-approved rollout, inspect actual membership and limits:
+
+```sh
+systemctl show nixflix.slice -p MemoryCurrent -p MemoryHigh -p MemoryMax
+systemctl show comin nix-daemon nixflix-import-worker nixflix-remux -p Slice -p ControlGroup
+systemd-cgls /nixflix.slice
+systemd-cgtop
+```
+
+Confirm OCI payload cgroups are below `nixflix-staging.slice`, and ordinary
+target-side build children are below `nixflix-build.slice`; check for memory/OOM
+events in the journal. Repository evaluation establishes configuration only,
+not live placement, available RAM or acceptable performance.
+
 ## Storage and advisories
 
 SABnzbd has `download_free = 500G`, `complete_free = 500G`, and
