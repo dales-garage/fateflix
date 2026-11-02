@@ -29,7 +29,7 @@ in
       # No public listener: callers share the staging namespace. Production must
       # preserve loopback-only access to this API when networking is changed.
       virtualisation.oci-containers.containers.apprise = {
-        image = "docker.io/caronc/apprise@sha256:c5ea17408c10fd84c8fdb05a421114a1a677b16343c274bf9b1a55701b530829";
+        image = "docker.io/caronc/apprise@sha256:6ae97e24b3447f85f725a03ba73c6dc3a5f4b99f4273ac126de2d9b5ed6205d5";
         autoStart = false;
         environment = {
           PUID = "1101";
