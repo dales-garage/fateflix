@@ -826,6 +826,15 @@
     "owner": "NeptuneHub",
     "versions": [
       {
+        "changelog": "- added song alchemy for randomness (5065eb6)\n- ci: Update manifest.json for release v0.3.6 (5027aef)",
+        "checksum": "029dd8fbb35037d4e08fef44e679b8fb",
+        "hash": "sha256-YF0yxts0zXVuf0Fqj32J0QnbGofzJs64lSeSFrc1qWY=",
+        "sourceUrl": "https://github.com/NeptuneHub/audiomuse-ai-plugin/releases/download/v12.0.0/audiomuse-ai_12.0.0.0.zip",
+        "targetAbi": "12.0.0.0",
+        "timestamp": "2026-11-06T09:01:57Z",
+        "version": "12.0.0.0"
+      },
+      {
         "changelog": "- InstantMix provider - adding DCLAP (556efc8)\n- screen update (baf7e7b)\n- Merge branch 'master' of https://github.com/NeptuneHub/audiomuse-ai-plugin (e2d093d)\n- readme.md example fix (7a9de11)\n- ci: Update manifest.json for release v0.3.5 (d03ef66)",
         "checksum": "ba05d3c1b09a910113395e53b4aa79f6",
         "hash": "sha256-23Bsd7kRoNqARoPzWhThZx5NfsaHk4TrhqT2oR0zQFE=",
@@ -2091,6 +2100,15 @@
     "overview": "Stremio addons as Jellyfin library items: search, catalogs and on-demand streams through AIOStreams.",
     "owner": "lstb1t",
     "versions": [
+      {
+        "changelog": "## [0.26.30.2] - 2026-11-06\n\n### 🐛 Bug Fixes\n\n- Find subtitles in more language variants (#364)\n\n### 🚜 Refactor\n\n- One client per outside service (#361)\n- Keep every memo in one size-limited cache (#362)\n",
+        "checksum": "0527e38f1b0f24d4e2eb3fe85b945637",
+        "hash": "sha256-FQAk6jAmm7C3ZYYadR1qnEO44lnBwzcgL0o13/7F6oA=",
+        "sourceUrl": "https://github.com/lostb1t/Gelato/releases/download/v0.26.30.2/gelato_0.26.30.2.zip",
+        "targetAbi": "12.1.0.0",
+        "timestamp": "2026-11-06T21:02:41Z",
+        "version": "0.26.30.2"
+      },
       {
         "changelog": "## [0.26.30.1] - 2026-11-02\n\n### 🐛 Bug Fixes\n\n- Remove the unauthenticated subtitles route (#358)\n- Stop the server fetching streams from link-local hosts (#359)\n\n### 📚 Documentation\n\n- Explain RemuxDB and how to turn it off (#357)\n",
         "checksum": "45299dce1a8a6ac9b2550db68e930446",
@@ -4944,6 +4962,24 @@
       }
     ]
   },
+  "Mediathek Downloader": {
+    "category": "General",
+    "description": "Mit dem Plugin kann man die Mediatheken der öffentlich-rechtlichen Sender in Deutschland durchsuchen und Inhalte herunterladen. Für die suche wird die MediathekViewWeb-API verwendet. Der Videos werden direkt über die Original-URLs der Sender heruntergeladen. Es können Abos anglegt werden um z.B. Serien automatisch herunterzuladen.\n",
+    "guid": "a31b415a-5264-419d-b152-8c8192a54994",
+    "overview": "Sucht und lädt Inhalte aus den Mediatheken über die MediathekViewWeb-API.",
+    "owner": "CatNoir2006",
+    "versions": [
+      {
+        "changelog": "## Neue Funktionen\r\n### Virtuelle Abos\r\nEs können Abos erstellte werden welche keine Medien herunterladen sondern sie in Jellyfin mittels dem `Channels` Feature bereitstellen\r\n### Download Qualität Festlegen\r\nDie Download Qualität kann jetzt festgelegt werden. Dafür  kann die Minimale und Maximale Bildqualität die für den Download zulässig ist eingestellt werden. Sowie ob höhere oder niedrigere Auflösung bevorzugt wird.\r\n<img width=\"821\" height=\"350\" alt=\"image\" src=\"https://github.com/user-attachments/assets/4adceb5f-4c3e-4389-b077-8117e96b5032\" />\r\n### Parallele Downloads\r\nDas Update erlaubt außerdem Parallele Downloads. Standermässig sind diese Deaktiviert aber es kann auf bis zu 10 gleichzeitige Downloads gesetzt werden.\r\n<img width=\"836\" height=\"458\" alt=\"image\" src=\"https://github.com/user-attachments/assets/b35bf784-a08a-435e-b7b6-4702bbe4a11b\" />\r\n\r\n\r\n## What's Changed\r\n* Restrict release trigger types to 'published' only by @CatNoir2006 in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/173\r\n* Feldbeschreibungen für Abonnement-Einstellungen auf der Seite \"Abo-Standardwerte\" anzeigen by @CuriousApe2020 in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/175\r\n* Fix download history deduplication for re-published/non-series items by @CatNoirBot in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/177\r\n* Feature: Virtuelle Abos via Jellyfin Kanal (ohne Download) by @CatNoirBot in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/179\r\n* build(deps): bump @vitest/mocker from 4.1.10 to 4.1.11 in /Jellyfin.Plugin.MediathekViewDL/Configuration/Web/VueJS in the npm_and_yarn group across 1 directory by @dependabot[bot] in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/189\r\n* Cleanup Things by @CatNoir2006 in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/196\r\n* build(deps): bump the npm_and_yarn group across 1 directory with 3 updates by @dependabot[bot] in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/198\r\n* build(deps-dev): bump vite from 8.1.5 to 8.3.5 in /Jellyfin.Plugin.MediathekViewDL/Configuration/Web/VueJS in the npm_and_yarn group across 1 directory by @dependabot[bot] in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/203\r\n* Refactor MediathekView API into standalone project MediathekView.Api by @CatNoir2006 in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/204\r\n* build(deps): bump the npm_and_yarn group across 1 directory with 2 updates by @dependabot[bot] in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/205\r\n* #202 improvement downloadqualitaet festlegen by @CatNoir2006 in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/206\r\n* feat: Parallele Downloads by @CatNoir2006 in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/210\r\n* Bump version to 0.8.4.0 in build.yaml by @CatNoir2006 in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/212\r\n\r\n## New Contributors\r\n* @CuriousApe2020 made their first contribution in https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/pull/175\r\n\r\n**Full Changelog**: https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/compare/v0.8.3.0...v0.8.4.0",
+        "checksum": "42eb23a6d39a104c5817a1a735cd688d",
+        "hash": "sha256-2dssohPlvQdNGKrjwf/QddE3Y+NGzLWde3MrqGCyJUA=",
+        "sourceUrl": "https://github.com/CatNoir2006/jellyfin-plugin-MediathekViewDL/releases/download/v0.8.4.0/mediathek-downloader_0.8.4.0.zip",
+        "targetAbi": "12.0.0.0",
+        "timestamp": "2026-11-06T15:15:32Z",
+        "version": "0.8.4.0"
+      }
+    ]
+  },
   "Meilisearch": {
     "category": "General",
     "description": "This is a plugin that try to use Meilisearch to speedup the search of jellyfin. Inspired by Jellysearch\n",
@@ -7491,6 +7527,15 @@
     "overview": "Enables creation of Smart Collections based on Tag",
     "owner": "johnpc",
     "versions": [
+      {
+        "changelog": "https://github.com/johnpc/jellyfin-plugin-smart-collections/releases/tag/0.0.0.26",
+        "checksum": "21547926a01e92cfd09f8f0c5b3c2389",
+        "hash": "sha256-gXhSvhh8Wx80/IRP06xjfyeKYtdRyzuwNTQ+2IwiEsw=",
+        "sourceUrl": "https://github.com/johnpc/jellyfin-plugin-smart-collections/releases/download/0.0.0.26/jellyfin-plugin-smart-collections-0.0.0.26.zip",
+        "targetAbi": "12.0.0.0",
+        "timestamp": "2026-11-07T14:10:25Z",
+        "version": "0.0.0.26"
+      },
       {
         "changelog": "https://github.com/johnpc/jellyfin-plugin-smart-collections/releases/tag/0.0.0.25",
         "checksum": "1cbcd5756722a17328b90188c60fafc5",
