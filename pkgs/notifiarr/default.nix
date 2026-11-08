@@ -8,18 +8,18 @@ let
   releases = {
     x86_64-linux = {
       arch = "amd64";
-      hash = "sha256-ZesEX032YKUeDbqztHG0cYGDjUxTfj7/M1Y//QnQXXE=";
+      hash = "sha256-cF+I7ZwAK8nMfkKbI3e8VjZYiZpnWXCQLBUR/ANb4mA=";
     };
     aarch64-linux = {
       arch = "arm64";
-      hash = "sha256-dnrejl9gfGfLglxPrK9wxN9rtPqHGz6Rd/rwxsN58Wo=";
+      hash = "sha256-Zdo4IPQv1XNjxMjRak3GUxfrvvvB3q4DIiBfCWo5Qw0=";
     };
   };
   release = releases.${stdenvNoCC.hostPlatform.system};
 in
 stdenvNoCC.mkDerivation rec {
   pname = "notifiarr";
-  version = "0.9.7";
+  version = "0.10.0";
   src = fetchurl {
     url = "https://github.com/Notifiarr/notifiarr/releases/download/v${version}/notifiarr.${release.arch}.linux.gz";
     inherit (release) hash;
