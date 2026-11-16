@@ -765,12 +765,20 @@ in
               };
             };
 
-            notif.jellyfin.triggers.sonarr = [
-              "onDownload"
-              "onHealthIssue"
-            ];
-
-            notif.jellyfin.includeHealthWarnings = true;
+            notif.jellyfin.sonarr = {
+              onGrab = false;
+              onDownload = true;
+              onUpgrade = false;
+              onImportComplete = false;
+              onRename = false;
+              onSeriesAdd = false;
+              onSeriesDelete = false;
+              onEpisodeFileDelete = false;
+              onEpisodeFileDeleteForUpgrade = false;
+              onHealthIssue = true;
+              onApplicationUpdate = false;
+              includeHealthWarnings = true;
+            };
           };
         }
       ];
@@ -788,7 +796,7 @@ in
         lib.hasInfix ''"includeHealthWarnings":true'' sonarrNotifications.script
       )}
       ${check "apply_field_overrides merges top-level overrides (name, enable, freeform properties)" (
-        lib.hasInfix ". + \$overrides" sonarrNotifications.script
+        lib.hasInfix ". + (\$overrides | with_entries" sonarrNotifications.script
       )}
       ${check "notification overrides do not include the nested triggers attrset" (
         !lib.hasInfix "\"triggers\":" sonarrNotifications.script

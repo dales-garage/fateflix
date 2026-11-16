@@ -1,10 +1,15 @@
 # How FateFlix consumes NixFlix
 
 FateFlix is a downstream appliance flake. Its `nixflix` input points to
-`github:kiriwalawren/nixflix` with `flake = false`, so the integration consumes
-locked source rather than upstream flake outputs. NixFlix supplies the media
+`github:kiriwalawren/nixflix/main` as a full flake input with shared dependencies
+following FateFlix inputs. The adapter consumes its locked `outPath` so the
+existing patches remain applied; upstream outputs are also available. NixFlix supplies the media
 configuration modules; FateFlix adapts them and builds its own host composition
 on top.
+
+`nix flake update nixflix` advances only this input to the latest upstream main;
+Renovate lock maintenance performs the same reviewed update automatically.
+A lock update still needs source-patch, evaluation and CI validation before merge.
 
 `default.nix` assembles the source-only IFD from the upstream revision pinned in
 `flake.lock`, in this order:

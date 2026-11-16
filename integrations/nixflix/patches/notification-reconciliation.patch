@@ -1,45 +1,12 @@
-diff --git a/modules/notif/default.nix b/modules/notif/default.nix
-index 6880783..395327e 100644
 --- a/modules/notif/default.nix
 +++ b/modules/notif/default.nix
-@@ -15,6 +15,7 @@ let
-       builtins.removeAttrs cfg [
-         "extraNotifications"
-         "enable"
+@@ -18,0 +19 @@
 +        "pruneUnmanaged"
-       ]
-     )
-     ++ cfg.extraNotifications
-@@ -22,12 +23,24 @@ let
- 
-   arrServices = [
-     "sonarr"
+@@ -25,0 +27 @@
 +    "sonarr-4k"
-     "sonarr-anime"
-     "radarr"
+@@ -27,0 +30 @@
 +    "radarr-4k"
-     "lidarr"
-   ];
- 
--  triggerServiceKey = serviceName: if serviceName == "sonarr-anime" then "sonarr" else serviceName;
-+  triggerServiceKey =
-+    serviceName:
-+    if
-+      elem serviceName [
-+        "sonarr-anime"
-+        "sonarr-4k"
-+      ]
-+    then
-+      "sonarr"
-+    else
-+      removeSuffix "-4k" serviceName;
- 
-   notifTriggers = import ./triggers.nix;
- 
-@@ -112,51 +125,38 @@ let
-           )
- 
-           # Delete notifications that are not in the configuration
+@@ -147,16 +150,18 @@
 -          echo "Removing notifications not in configuration..."
 -          echo "$NOTIFICATIONS" | ${pkgs.jq}/bin/jq -r '.[] | @json' | while IFS= read -r notification; do
 -            NOTIFICATION_NAME=$(echo "$notification" | ${pkgs.jq}/bin/jq -r '.name')
@@ -74,98 +41,41 @@ index 6880783..395327e 100644
 +              fi
 +            done
 +          ''}
- 
-           ${concatMapStringsSep "\n" (
-             notificationConfig:
-             let
-               notificationName = notificationConfig.name;
-               inherit (notificationConfig) implementationName;
--              apiKey = notificationConfig.apiKey or null;
--              username = notificationConfig.username or null;
--              password = notificationConfig.password or null;
--              accessToken = notificationConfig.accessToken or null;
-               allOverrides = builtins.removeAttrs notificationConfig [
-                 "implementationName"
--                "apiKey"
--                "username"
--                "password"
--                "accessToken"
-                 "triggers"
-               ];
-               fieldOverrides = filterAttrs (name: value: value != null && !hasPrefix "_" name) allOverrides;
--              fieldOverridesJson = builtins.toJSON fieldOverrides;
--
-+              fieldOverridesJson = builtins.toJSON (secrets.stripSecretRefs fieldOverrides);
-+              jqSecrets = secrets.mkNestedJqSecretArgs fieldOverrides;
-               enabledTriggers = notificationConfig.triggers.${triggerServiceKey serviceName} or [ ];
--
--              jqSecrets = secrets.mkJqSecretArgs {
--                apiKey = if apiKey == null then "" else apiKey;
--                username = if username == null then "" else username;
--                password = if password == null then "" else password;
--                accessToken = if accessToken == null then "" else accessToken;
--              };
-             in
-             ''
-               echo "Processing notification: ${notificationName}"
-@@ -166,18 +166,10 @@ let
-                 local overrides="$2"
- 
-                 echo "$notification_json" | ${pkgs.jq}/bin/jq \
--                  ${jqSecrets.flagsString} \
+@@ -208 +213 @@
 -                  --argjson overrides "$overrides" \
 +                  --slurpfile overrides <(printf '%s' "$overrides") \
-                   --argjson triggerKeys ${escapeShellArg (builtins.toJSON allTriggerKeys)} \
-                   --argjson enabledTriggers ${escapeShellArg (builtins.toJSON enabledTriggers)} '
--                    .fields[] |= (
--                      if .name == "apiKey" and ${jqSecrets.refs.apiKey} != "" then .value = ${jqSecrets.refs.apiKey}
--                      elif .name == "username" and ${jqSecrets.refs.username} != "" then .value = ${jqSecrets.refs.username}
--                      elif .name == "password" and ${jqSecrets.refs.password} != "" then .value = ${jqSecrets.refs.password}
--                      elif .name == "accessToken" and ${jqSecrets.refs.accessToken} != "" then .value = ${jqSecrets.refs.accessToken}
--                      else .
--                      end
--                    )
+@@ -211 +216,2 @@
+-                    ${optionalString jqSecrets.hasSecrets "($overrides | ${concatStringsSep " | " jqSecrets.assignments}) as $overrides |"}
 +                    $overrides[0] as $overrides
-                     | . + $overrides
-                     | reduce $triggerKeys[] as $t (.; .[$t] = ($enabledTriggers | index($t) != null))
-                     | .fields[] |= (
-@@ -191,7 +183,10 @@ let
-                   '
-               }
- 
--              FIELD_OVERRIDES=${escapeShellArg fieldOverridesJson}
-+              FIELD_OVERRIDES=$(${pkgs.jq}/bin/jq -cn \
-+                ${jqSecrets.flagsString} \
-+                --argjson overrides ${escapeShellArg fieldOverridesJson} \
-+                '$overrides ${concatMapStrings (assignment: " | " + assignment) jqSecrets.assignments}')
- 
-               EXISTING_NOTIFICATION=$(echo "$NOTIFICATIONS" | ${pkgs.jq}/bin/jq -r --arg name ${escapeShellArg notificationName} '.[] | select(.name == $name) | @json' || echo "")
- 
-diff --git a/modules/notif/options.nix b/modules/notif/options.nix
-index e8eaa58..c6b5e16 100644
++                    | ${optionalString jqSecrets.hasSecrets "($overrides | ${concatStringsSep " | " jqSecrets.assignments}) as $overrides |"}
+@@ -371,0 +378 @@
++        "pruneUnmanaged"
 --- a/modules/notif/options.nix
 +++ b/modules/notif/options.nix
-@@ -203,8 +203,10 @@ let
- 
-     services.default = [
-       "sonarr"
-+      "sonarr-4k"
-       "sonarr-anime"
-       "radarr"
-+      "radarr-4k"
-       "lidarr"
-     ];
- 
-@@ -277,6 +279,12 @@ in
-           description = "Whether to enable Notif.";
-         };
- 
+@@ -31,0 +32,6 @@
++        };
++
 +        pruneUnmanaged = mkOption {
 +          type = types.bool;
 +          default = true;
 +          description = "Delete notifications not declared here. Disable while migrating preserved application state.";
-+        };
-+
-         jellyfin = mkOption {
-           type = jellyfinType;
-           default = { };
+--- a/modules/notif/lib.nix
++++ b/modules/notif/lib.nix
+@@ -4,0 +5 @@
++    "sonarr-4k"
+@@ -6,0 +8 @@
++    "radarr-4k"
+@@ -158 +160 @@
+-  baseService = svc: if svc == "sonarr-anime" then "sonarr" else svc;
++  baseService = svc: if svc == "sonarr-anime" then "sonarr" else removeSuffix "-4k" svc;
+@@ -164,0 +167,6 @@
++    }
++    // optionalAttrs (perService ? sonarr && !(perService ? "sonarr-4k")) {
++      sonarr-4k = perService.sonarr;
++    }
++    // optionalAttrs (perService ? radarr && !(perService ? "radarr-4k")) {
++      radarr-4k = perService.radarr;
+--- a/modules/notif/seerr.nix
++++ b/modules/notif/seerr.nix
+@@ -22,0 +23 @@
++        "pruneUnmanaged"

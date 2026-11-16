@@ -90,9 +90,11 @@ For unadapted upstream NixFlix, follow the
 
 ## How the dependency is consumed
 
-FateFlix declares `inputs.nixflix` with the upstream GitHub URL and
-`flake = false`. `flake.lock` pins the source revision. The integration assembles
-that source with local patches and overlays before exposing its NixOS modules.
+FateFlix declares `inputs.nixflix` as a full flake input tracking
+`github:kiriwalawren/nixflix/main`. `flake.lock` pins the revision, and
+`nix flake update nixflix` refreshes it from upstream main. Shared dependencies
+follow FateFlix inputs. The integration assembles its `outPath` with local
+patches and overlays before exposing its NixOS modules.
 
 See [Architecture and configuration](../fateflix.md#how-nixflix-becomes-the-appliance)
 for the path from upstream input to appliance output, and

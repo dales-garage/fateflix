@@ -33,8 +33,13 @@
     };
     import-tree.url = "github:vic/import-tree";
     nixflix = {
-      url = "github:kiriwalawren/nixflix";
-      flake = false;
+      url = "github:kiriwalawren/nixflix/main";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        treefmt-nix.follows = "treefmt-nix";
+        mkdocs-catppuccin.follows = "mkdocs-catppuccin";
+        vpn-confinement.follows = "vpn-confinement";
+      };
     };
   };
 }

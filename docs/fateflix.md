@@ -9,8 +9,9 @@ production deployment are composed here, alongside the upstream integration.
 ## How NixFlix becomes the appliance
 
 1. `modules/flake/inputs.nix` declares `inputs.nixflix` with
-   `url = "github:kiriwalawren/nixflix"` and `flake = false`. `flake.lock` pins
-   the fetched source; upstream flake outputs are not evaluated.
+   `url = "github:kiriwalawren/nixflix/main"` as a full flake input. `flake.lock`
+   pins its revision; `nix flake update nixflix` advances it to upstream main.
+   Shared dependencies follow FateFlix inputs; the adapter uses its `outPath`.
 1. `integrations/nixflix/default.nix` assembles that source with reviewed
    patches, vendored modules, compatibility modules, plugins and packages.
 1. `modules/integrations/nixflix.nix` exports the assembled NixOS modules as

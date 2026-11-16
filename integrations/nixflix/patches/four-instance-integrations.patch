@@ -1,8 +1,6 @@
-diff --git a/modules/default.nix b/modules/default.nix
-index 98e1f80..2d72f47 100644
 --- a/modules/default.nix
 +++ b/modules/default.nix
-@@ -15,19 +15,23 @@ in
+@@ -15,21 +15,25 @@
      ./downloadarr
      ./flaresolverr.nix
      ./globals.nix
@@ -11,9 +9,11 @@ index 98e1f80..2d72f47 100644
      ./lidarr
      ./maintainerr
      ./navidrome
+     ./nginx.nix
      ./notif
 +    ./notifiarr
      ./options.nix
+     ./pinchflat
      ./postgres.nix
      ./prowlarr
 +    ./radarr-4k.nix
