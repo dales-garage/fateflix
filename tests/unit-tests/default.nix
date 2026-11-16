@@ -75,7 +75,9 @@ in
       hasAllServices =
         systemdUnits ? sonarr && systemdUnits ? sonarr-config && systemdUnits ? sonarr-rootfolders;
     in
-    assertTest "sonarr-service-generation" hasAllServices;
+    assertTest "sonarr-service-generation" (
+      hasAllServices && config.config.nixflix.sonarr.config.hostConfig.bindAddress == "127.0.0.1"
+    );
 
   # Test that nixflix.sonarr-anime options generate correct systemd units
   sonarr-anime-service-generation =
@@ -593,6 +595,8 @@ in
               enable = true;
               config = {
                 hostConfig = {
+                  # Exercise connectionAddress normalization with an explicit wildcard bind.
+                  bindAddress = "0.0.0.0";
                   port = 7878;
                   username = "admin";
                   password._secret = "/run/secrets/radarr-pass";
@@ -625,7 +629,7 @@ in
       downloadClientsService = config.config.systemd.services."radarr-downloadclients";
     in
     pkgs.runCommand "unit-test-download-clients-no-reverse-proxy" { } ''
-      ${check "radarr bindAddress is 0.0.0.0 when nginx is disabled" (
+      ${check "radarr explicit wildcard bindAddress is preserved" (
         radarrCfg.config.hostConfig.bindAddress == "0.0.0.0"
       )}
       ${check "radarr connectionAddress is 127.0.0.1 (not 0.0.0.0)" (
@@ -1234,3 +1238,4 @@ in
       && enabled { override.services.navidrome.settings.Plugins.Enabled = true; }
     );
 }
+// import ./lidarr-delayprofiles.nix { inherit pkgs lib evalConfig assertTest; }
