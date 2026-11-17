@@ -1238,4 +1238,11 @@ in
       && enabled { override.services.navidrome.settings.Plugins.Enabled = true; }
     );
 }
-// import ./lidarr-delayprofiles.nix { inherit pkgs lib evalConfig assertTest; }
+// import ./lidarr-delayprofiles.nix {
+  inherit
+    pkgs
+    lib
+    evalConfig
+    assertTest
+    ;
+}

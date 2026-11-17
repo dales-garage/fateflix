@@ -101,6 +101,8 @@ pkgs.testers.runNixOSTest {
     machine.wait_for_unit("jellyfin-system-config.service", timeout=180)
     machine.wait_for_unit("jellyfin-plugins.service", timeout=360)
     machine.wait_for_unit("jellyfin-libraries.service", timeout=300)
+    # The preseed login needs the configured admin, not just a listening API.
+    machine.wait_for_unit("jellyfin-users-config.service", timeout=300)
     machine.wait_for_unit("seerr.service", timeout=300)
     machine.wait_for_open_port(port, timeout=300)
 
@@ -122,7 +124,7 @@ pkgs.testers.runNixOSTest {
         "serverType": 2,
     })
     machine.succeed(
-        f"curl -sf -X POST -H 'Content-Type: application/json' -d '{preseed_payload}' "
+        f"curl --fail-with-body -sS -X POST -H 'Content-Type: application/json' -d '{preseed_payload}' "
         f"{base_url}/auth/jellyfin"
     )
 
