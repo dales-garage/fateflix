@@ -25,8 +25,13 @@
       flake = false;
     };
     nixflix = {
-      url = "github:kiriwalawren/nixflix";
-      flake = false;
+      url = "github:kiriwalawren/nixflix/main";
+      inputs = {
+        mkdocs-catppuccin.follows = "mkdocs-catppuccin";
+        nixpkgs.follows = "nixpkgs";
+        treefmt-nix.follows = "treefmt-nix";
+        vpn-confinement.follows = "vpn-confinement";
+      };
     };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-host.url = "github:NixOS/nixpkgs/nixos-26.05";

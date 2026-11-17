@@ -16,6 +16,7 @@ pkgs.applyPatches {
   name = "fateflix-nixflix-source";
   inherit src;
   patches = [
+    ./patches/lidarr-delayprofile-version.patch
     ./patches/arr-runtime-credentials.patch
     ./patches/four-instance-integrations.patch
     ./patches/notification-reconciliation.patch

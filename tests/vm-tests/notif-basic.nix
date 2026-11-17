@@ -75,7 +75,7 @@ pkgsUnfree.testers.runNixOSTest {
         };
       };
 
-      notif.jellyfin.includeHealthWarnings = true;
+      notif.jellyfin.sonarr.includeHealthWarnings = true;
 
       navidrome = {
         enable = true;

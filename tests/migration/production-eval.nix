@@ -21,6 +21,25 @@ let
   ];
 in
 assert cfg.fateflix.host.role == "production";
+assert !cfg.nixflix.notif.pruneUnmanaged;
+assert builtins.all
+  (
+    name:
+    let
+      script = cfg.systemd.services."${name}-notifications".script;
+    in
+    pkgs.lib.hasInfix "Nixflix Discord and Matrix" script
+    && pkgs.lib.hasInfix ''"tags":"media"'' script
+    && !(pkgs.lib.hasInfix "Deleting notification not in config:" script)
+    && pkgs.lib.hasInfix "--slurpfile overrides" script
+  )
+  [
+    "sonarr"
+    "sonarr-4k"
+    "radarr"
+    "radarr-4k"
+    "lidarr"
+  ];
 assert !cfg.services.flaresolverr.enable;
 assert !cfg.services.qbittorrent.enable;
 assert cfg.nixflix.usenetClients.sabnzbd.enable;

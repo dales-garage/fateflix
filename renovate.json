@@ -13,7 +13,9 @@
   ],
   "prConcurrentLimit": 1,
   "automerge": false,
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true
+  },
   "baseBranchPatterns": [
     "main"
   ],

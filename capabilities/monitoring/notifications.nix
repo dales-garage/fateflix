@@ -56,35 +56,35 @@ in
       nixflix.notif = {
         pruneUnmanaged = false;
         extraNotifications = [
-          {
-            enable = true;
-            name = "Nixflix Discord and Matrix";
-            implementationName = "Apprise";
-            services = arr;
-            dependencies = [ "podman-apprise.service" ];
-            serverUrl = "http://127.0.0.1:8000";
-            configurationKey = "media";
-            tags = "media";
-            triggers = {
-              sonarr = [
-                "onDownload"
-                "onHealthIssue"
-                "onHealthRestored"
-                "onManualInteractionRequired"
-              ];
-              radarr = [
-                "onDownload"
-                "onHealthIssue"
-                "onHealthRestored"
-                "onManualInteractionRequired"
-              ];
-              lidarr = [
-                "onReleaseImport"
-                "onHealthIssue"
-                "onHealthRestored"
-              ];
-            };
-          }
+          (
+            {
+              name = "Nixflix Discord and Matrix";
+              implementationName = "Apprise";
+              dependencies = [ "podman-apprise.service" ];
+              serverUrl = "http://127.0.0.1:8000";
+              configurationKey = "media";
+              # Apprise's tags is a notification field, not Starr's item-tag filter.
+              appriseTags = "media";
+              _fieldRenames.appriseTags = "tags";
+            }
+            // lib.genAttrs arr (
+              service:
+              {
+                enable = true;
+                onHealthIssue = true;
+                onHealthRestored = true;
+              }
+              // (
+                if service == "lidarr" then
+                  { onReleaseImport = true; }
+                else
+                  {
+                    onDownload = true;
+                    onManualInteractionRequired = true;
+                  }
+              )
+            )
+          )
         ];
       };
       # Configuration is a deliberate migration operation, never implicit deletion
