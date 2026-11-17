@@ -168,7 +168,11 @@ pkgsUnfree.testers.runNixOSTest {
     machine.wait_for_unit("lidarr-qualityprofiles.service", timeout=60)
     machine.wait_for_unit("lidarr-metadataprofiles.service", timeout=60)
     machine.wait_for_unit("lidarr-rootfolders.service", timeout=60)
-    machine.wait_for_unit("lidarr-delayprofiles.service", timeout=60)
+    try:
+        machine.wait_for_unit("lidarr-delayprofiles.service", timeout=60)
+    except Exception:
+        print(machine.succeed("journalctl -u lidarr-delayprofiles.service --no-pager -n 100"))
+        raise
     machine.wait_for_unit("lidarr-downloadclients.service", timeout=60)
 
     # Check root folder

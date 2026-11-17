@@ -16,8 +16,9 @@ and production deployment.
 
 NixFlix supplies the declarative media configuration. FateFlix turns that
 foundation into an opinionated system with its own operating policy and update
-workflow. The input is declared with `flake = false`, so FateFlix imports modules
-from an assembled source tree rather than consuming upstream flake outputs.
+workflow. NixFlix is a full flake input tracking upstream main through the lock
+file. FateFlix adapts its `outPath` and imports the assembled modules while
+retaining its own host composition.
 
 ## Choose a starting point
 

@@ -23,14 +23,16 @@ The relationship is explicit in the flake inputs:
 
 ```nix
 nixflix = {
-  url = "github:kiriwalawren/nixflix";
-  flake = false;
+  url = "github:kiriwalawren/nixflix/main";
+  inputs.nixpkgs.follows = "nixpkgs";
+  # The remaining shared dependencies also follow FateFlix's inputs.
 };
 ```
 
-NixFlix is an input to FateFlix's flake, pinned by `flake.lock`. The
-`flake = false` setting fetches upstream's source rather than evaluating its
-flake outputs. FateFlix assembles that source with reviewed patches,
+NixFlix is a full flake input tracking upstream `main`, pinned by `flake.lock`.
+`nix flake update nixflix` selects the latest upstream main revision; evaluation
+continues to use the reviewed lock until it is updated. Its shared dependencies
+follow FateFlix's inputs. FateFlix assembles `inputs.nixflix.outPath` with reviewed patches,
 compatibility modules, plugin support and package definitions, then imports the
 resulting NixOS modules into its own host composition.
 

@@ -1,0 +1,11 @@
+--- a/modules/arr-common/delayProfiles.nix
++++ b/modules/arr-common/delayProfiles.nix
+@@ -135,5 +135,7 @@
+         toApiBody =
+           p:
+-          if serviceName == "lidarr" then
++          # Lidarr 3.1.6 introduced protocol items. Older pinned packages still
++          # require the flat Servarr payload, even with current module sources.
++          if serviceName == "lidarr" && versionAtLeast (getVersion cfg.package) "3.1.6" then
+             let
+               usenet = {

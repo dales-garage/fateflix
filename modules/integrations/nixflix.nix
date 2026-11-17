@@ -9,7 +9,7 @@ let
   };
   source = import ../../integrations/nixflix/default.nix {
     inherit pkgs;
-    src = inputs.nixflix;
+    src = inputs.nixflix.outPath;
   };
 in
 {

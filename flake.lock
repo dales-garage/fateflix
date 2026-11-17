@@ -122,17 +122,31 @@
       }
     },
     "nixflix": {
-      "flake": false,
+      "inputs": {
+        "mkdocs-catppuccin": [
+          "mkdocs-catppuccin"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "treefmt-nix": [
+          "treefmt-nix"
+        ],
+        "vpn-confinement": [
+          "vpn-confinement"
+        ]
+      },
       "locked": {
-        "lastModified": 1793143235,
-        "narHash": "sha256-oE2g7bMkpSF7WsPqKOapL95poEQ3m8OHD3rVEey4jAQ=",
+        "lastModified": 1794863310,
+        "narHash": "sha256-BYovzV1SdWUewVi/LqEUpi0AnH+dmaoC/fvPnt1Jf9A=",
         "owner": "kiriwalawren",
         "repo": "nixflix",
-        "rev": "cc110d5f838bd96a7eb2cabe6a67ac4b490317e7",
+        "rev": "cc2df50159c756a0f3fde0bbebc7af55535cc919",
         "type": "github"
       },
       "original": {
         "owner": "kiriwalawren",
+        "ref": "main",
         "repo": "nixflix",
         "type": "github"
       }
@@ -259,11 +273,11 @@
     },
     "vpn-confinement": {
       "locked": {
-        "lastModified": 1791310298,
-        "narHash": "sha256-SpqEEuyrkzTqjIHwHrZE+Rs6ez2tzIeYkSY67zp6fcQ=",
+        "lastModified": 1794523109,
+        "narHash": "sha256-AwEm7+NWkEgyZsKLlR3a0qU/V0uIirwCuxSLpmAiufA=",
         "owner": "Maroka-chan",
         "repo": "VPN-Confinement",
-        "rev": "cc37bcf5000e237709e725a9cda010a5cbce3111",
+        "rev": "eeab5446fdbba273905da915805db665524abda6",
         "type": "github"
       },
       "original": {
