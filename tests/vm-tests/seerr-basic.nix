@@ -89,6 +89,8 @@ pkgs.testers.runNixOSTest {
     systemd.services.seerr-libraries.wantedBy = lib.mkForce [ ];
     systemd.services.seerr-radarr.wantedBy = lib.mkForce [ ];
     systemd.services.seerr-sonarr.wantedBy = lib.mkForce [ ];
+    # Upstream Notif now also pulls in seerr-setup; keep the preseed sequence manual.
+    systemd.services.seerr-notifications.wantedBy = lib.mkForce [ ];
   };
 
   testScript = ''
