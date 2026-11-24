@@ -1,6 +1,36 @@
 # Credential generation recovery
 
-Run provisioning through the existing SecretSpec/pass workflow. The installer
+Run provisioning through SecretSpec and age-backed Passage. The provider is still
+named `pass`: FateFlix supplies a `pass` CLI bridge to Passage in the host,
+development shell, and provisioning apps. It is not SecretSpec's native `age`
+provider and does not require changing the pinned SecretSpec version.
+
+To migrate every entry on the VM as marty:
+
+```sh
+nix run .#migrate-secrets-to-passage
+```
+
+The migration generates a private age identity at `~/.passage/identities`, encrypts
+to a temporary store, and compares every decrypted value byte for byte before
+publishing `~/.passage/store`. Entry paths and multiline contents are preserved.
+An existing destination must already match; it is never overwritten. Errors
+suppress credential values. The original `~/.password-store` and GPG identity are
+retained for rollback. Keep a protected recovery copy of the age identity before
+retiring those backups. Only the migration command needs GPG.
+
+Use `passage show ENTRY`, `passage insert ENTRY`, or the compatible `pass` command.
+Continue to use `secretspec set NAME --provider pass` and `nix run .#provision`.
+Secrets live outside the repository and Nix store. Service runtime credential
+paths and namespace separation remain unchanged.
+
+The dedicated `capabilities/secrets/secretspec-indexers.toml` manifest declares
+an `indexers` profile for DOGnzb primary and secondary, Tabula Rasa, and NZBPlanet.
+Use that file and profile explicitly when managing those keys. Keeping the
+manifest separate avoids inheriting default application credentials into the
+indexer profile. Migration does not change application-side indexer settings.
+
+The installer
 validates the complete input before creating a new generation. Missing credential
 files and file/directory ownership or permission drift cause a complete private
 replacement generation; an unchanged valid generation remains selected without

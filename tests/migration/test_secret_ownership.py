@@ -40,6 +40,7 @@ class SecretOwnership(unittest.TestCase):
         )
         for filename, profiles in [
             ("secretspec-notifiarr.toml", {"notifiarr"}),
+            ("secretspec-indexers.toml", {"indexers"}),
             ("secretspec-router.toml", {"router_web", "public_tls"}),
         ]:
             manifest = tomllib.loads((DIRECTORY / filename).read_text())

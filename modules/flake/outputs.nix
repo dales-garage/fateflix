@@ -23,6 +23,7 @@
         // {
           default = self.packages.${system}.docs;
           inherit (pkgs) maintainerr notifiarr;
+          passage-pass = import ../../capabilities/secrets/pass.nix { inherit pkgs; };
         };
       apps = {
         docs-serve = {
@@ -56,8 +57,9 @@
           pkgs.dnsutils
           pkgs.just
           pkgs.shellcheck
-          pkgs.pass
-          pkgs.gnupg
+          self.packages.${system}.passage-pass
+          pkgs.passage
+          pkgs.age
           pkgs.secretspec
           pkgs.skopeo
         ]

@@ -21,6 +21,11 @@ let
   ];
 in
 assert cfg.fateflix.host.role == "production";
+assert builtins.elem (import ../../capabilities/secrets/pass.nix {
+  inherit (host) pkgs;
+}) cfg.environment.systemPackages;
+assert builtins.elem host.pkgs.passage cfg.environment.systemPackages;
+assert !(builtins.elem host.pkgs.pass cfg.environment.systemPackages);
 assert !cfg.nixflix.notif.pruneUnmanaged;
 assert builtins.all
   (

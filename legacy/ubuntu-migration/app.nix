@@ -14,8 +14,9 @@ in
       runtimeInputs = [
         pkgs.openssh
         pkgs.systemd
-        pkgs.pass
-        pkgs.gnupg
+        (import ../../capabilities/secrets/pass.nix { inherit pkgs; })
+        pkgs.passage
+        pkgs.age
       ];
       text = ''
         exec ${python}/bin/python3 ${self}/legacy/ubuntu-migration/run.py "$@"

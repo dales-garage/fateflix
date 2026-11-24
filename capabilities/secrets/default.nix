@@ -28,8 +28,9 @@ in
   };
   config = {
     environment.systemPackages = [
-      pkgs.pass
-      pkgs.gnupg
+      (import ./pass.nix { inherit pkgs; })
+      pkgs.passage
+      pkgs.age
       pkgs.secretspec
     ];
     environment.etc."nixflix/secretspec.toml".source = manifest;
