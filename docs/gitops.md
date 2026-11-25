@@ -33,8 +33,9 @@ the derivation identity, so tool updates only invalidate the jobs that use
 them. An unchanged pair of host closures also needs an unchanged secret
 canary and host build recipe.
 
-The gate links the earlier run and accounts for every candidate. Full flake
-evaluation, Python tests, and selected CI-tool validators are fresh.
+The gate links the earlier run and accounts for every candidate. A fresh full
+flake evaluation runs alongside build planning. Python tests and selected
+CI-tool validators are also fresh.
 Network-dependent VM checks are always fresh when selected. Changes to the
 PR's CI policy, forks, missing evidence, and explicit full runs use fresh
 builds. Evidence expires after seven days and records only jobs that

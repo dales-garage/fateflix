@@ -261,6 +261,7 @@ class RequiredCheckTests(unittest.TestCase):
                 },
             },
             "evaluate": {"result": "success"},
+            "graph": {"result": "success"},
             "checks": {"result": "success"},
             "production": {"result": "skipped"},
             "gitops": {"result": "skipped"},
@@ -273,7 +274,7 @@ class RequiredCheckTests(unittest.TestCase):
         self, result, fresh, reused=(), production=False, reused_production=False
     ):
         reused = list(reused)
-        result["evaluate"]["outputs"] = {
+        result["graph"]["outputs"] = {
             "has_checks": str(bool(fresh)).lower(),
             "production": str(production).lower(),
             "matrix": json.dumps(ci.matrix(ROOT, fresh)),
@@ -302,7 +303,7 @@ class RequiredCheckTests(unittest.TestCase):
         result["gitops"]["result"] = "success"
         result["renovate"]["result"] = "success"
         ci.verify(result)
-        for job in ("evaluate", "gitops", "renovate"):
+        for job in ("evaluate", "graph", "gitops", "renovate"):
             with self.subTest(job=job):
                 result[job]["result"] = "skipped"
                 with self.assertRaises(ValueError):
@@ -315,7 +316,7 @@ class RequiredCheckTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ci.verify(result)
         self.graph(result, ["navidrome-basic"])
-        result["evaluate"]["outputs"]["matrix"] = '{"include":[]}'
+        result["graph"]["outputs"]["matrix"] = '{"include":[]}'
         with self.assertRaises(ValueError):
             ci.verify(result)
 
@@ -409,6 +410,12 @@ class WorkflowTests(unittest.TestCase):
             self.assertIn(target + ".drvPath", commands)
             self.assertIn(target, builds)
         self.assertIn("check-secret-canary.py", builds)
+
+    def test_graph_planning_does_not_hold_up_full_evaluation(self):
+        self.assertNotIn("needs", self.jobs["evaluate"])
+        self.assertEqual(self.jobs["graph"]["needs"], "prepare")
+        for job in ("checks", "production"):
+            self.assertEqual(self.jobs[job]["needs"], "graph")
 
     def test_renovate_is_separate_from_python_tests(self):
         self.assertFalse(

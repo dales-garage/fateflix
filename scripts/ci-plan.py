@@ -218,9 +218,12 @@ def verify(results):
     for flag in ("production", "gitops", "renovate"):
         if outputs.get(flag) not in {"true", "false"}:
             raise ValueError(f"Missing or invalid selection for {flag}")
-    evaluated = evaluate["outputs"]
-    builds = json.loads(evaluated["builds"])
-    verify_builds(checks, outputs["production"] == "true", evaluated, builds)
+    graph = results.get("graph", {})
+    if graph.get("result") != "success":
+        raise ValueError("Nix build planning did not succeed")
+    selection = graph["outputs"]
+    builds = json.loads(selection["builds"])
+    verify_builds(checks, outputs["production"] == "true", selection, builds)
     for job, selected in (
         ("checks", bool(builds["fresh"])),
         ("production", builds["production"]),

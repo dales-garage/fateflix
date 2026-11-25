@@ -106,14 +106,14 @@ jobs:
 
   checks:
     name: ${{ matrix.name }}
-    needs: evaluate
-    if: needs.evaluate.outputs.has_checks == 'true'
+    needs: graph
+    if: needs.graph.outputs.has_checks == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix: ${{ fromJSON(needs.evaluate.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.graph.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -143,22 +143,12 @@ jobs:
 
   evaluate:
     name: Full flake evaluation
-    needs: prepare
-    permissions:
-      actions: read
-      contents: read
-    outputs:
-      has_checks: ${{ steps.graph.outputs.has_checks }}
-      production: ${{ steps.graph.outputs.production }}
-      matrix: ${{ steps.graph.outputs.matrix }}
-      builds: ${{ steps.graph.outputs.builds }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-          fetch-depth: 0
       - uses: DeterminateSystems/determinate-nix-action@v3.24.3
         with:
           kvm: false
@@ -168,6 +158,39 @@ jobs:
       - run: nix eval --no-write-lock-file .#nixosConfigurations.fateflix.config.system.build.toplevel.drvPath
       - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-production.config.system.build.toplevel.drvPath
       - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-staging.config.system.build.toplevel.drvPath
+
+  graph:
+    name: Plan Nix builds
+    needs: prepare
+    permissions:
+      actions: read
+      contents: read
+    env:
+      CI_RECORD_GRAPH: >-
+        ${{ github.event_name == 'pull_request' &&
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            github.event.pull_request.base.ref == github.event.repository.default_branch }}
+    outputs:
+      has_checks: ${{ steps.graph.outputs.has_checks }}
+      production: ${{ steps.graph.outputs.production }}
+      matrix: ${{ steps.graph.outputs.matrix }}
+      builds: ${{ steps.graph.outputs.builds }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: DeterminateSystems/determinate-nix-action@v3.24.3
+        if: env.CI_RECORD_GRAPH == 'true'
+        with:
+          kvm: false
+      - name: Prepare Nix graph fixtures
+        if: env.CI_RECORD_GRAPH == 'true'
+        run: |
+          nix build --no-write-lock-file --no-link .#lib.nixflixSource
+          nix eval --impure --json --file tests/fixture-paths.nix
       - name: Select Nix builds from the evaluated dependency graph
         id: graph
         env:
@@ -176,7 +199,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python=python3
-          if [ "$GITHUB_EVENT_NAME" = pull_request ] &&
+          if [ "$CI_RECORD_GRAPH" = true ] &&
              python3 -m venv "$RUNNER_TEMP/ci-graph" &&
              "$RUNNER_TEMP/ci-graph/bin/pip" install --disable-pip-version-check -r .github/requirements-ci.txt; then
             python="$RUNNER_TEMP/ci-graph/bin/python"
@@ -187,8 +210,8 @@ jobs:
 
   production:
     name: Both host systems
-    needs: evaluate
-    if: needs.evaluate.outputs.production == 'true'
+    needs: graph
+    if: needs.graph.outputs.production == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -206,7 +229,7 @@ jobs:
   required:
     name: CI required
     if: always()
-    needs: [prepare, evaluate, checks, production, gitops, renovate]
+    needs: [prepare, evaluate, graph, checks, production, gitops, renovate]
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
