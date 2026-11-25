@@ -303,8 +303,8 @@ pkgsUnfree.testers.runNixOSTest {
     assert len(profiles_list) == 1, f"Expected 1 delay profile, found {len(profiles_list)}"
     assert profiles_list[0]['id'] == 1, "Expected default delay profile with id=1"
     # Lidarr 3.1.6 represents preference by the order of its protocol items.
-    # Keep the legacy assertions for older pins supported by the source adapter.
-    if ${if pkgs.lib.versionAtLeast pkgsUnfree.lidarr.version "3.1.6" then "True" else "False"}:
+    # Use the running version, which can override the default test package set.
+    if tuple(map(int, status["version"].split("."))) >= (3, 1, 6):
         items = [
             {key: item[key] for key in ('protocol', 'allowed', 'delay')}
             for item in profiles_list[0]['items']
