@@ -61,22 +61,31 @@ in
       autoStart = false;
     }) legacy;
 
+    virtualisation.quadlet.enable = quadlet != { };
+    # All FateFlix containers already have explicit rootful user identities.
+    virtualisation.quadlet.containersUser.enable = false;
     virtualisation.quadlet.containers = lib.mapAttrs' (
       name: c:
       lib.nameValuePair "podman-${name}" {
         # The NAS recovery unit starts containers only after its readiness checks.
         autoStart = false;
         containerConfig = {
-          inherit name;
-          inherit (c) image volumes;
-          environments = c.environment;
-          publishPorts = c.ports;
-          podmanArgs = c.extraOptions;
+          ContainerName = name;
+          Image = c.image;
+          Volume = c.volumes;
+          Environment = c.environment;
+          PublishPort = c.ports;
+          PodmanArgs = c.extraOptions;
           # Preserve the existing explicit cgroup parent for the Podman workload.
-          cgroupsMode = "enabled";
+          CgroupsMode = "enabled";
+        };
+        unitConfig = {
+          StartLimitIntervalSec = "10s";
+          StartLimitBurst = 5;
         };
         serviceConfig = {
           Restart = "on-failure";
+          RestartSec = "100ms";
           TimeoutStartSec = "infinity";
         };
       }

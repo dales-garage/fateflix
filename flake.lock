@@ -200,16 +200,22 @@
       }
     },
     "quadlet-nix": {
+      "inputs": {
+        "flake-parts": [
+          "flake-parts"
+        ]
+      },
       "locked": {
-        "lastModified": 1793557434,
-        "narHash": "sha256-+MfKGbBtZ2Khe6qx1ePVxtDdh190sM25U64pBXRDXOM=",
-        "owner": "SEIAROTg",
+        "lastModified": 1795374828,
+        "narHash": "sha256-IiIwOVT3g8+8O7IsKr7eGfs7agwhC0TX6nFlwqnBKWA=",
+        "owner": "mirkolenz",
         "repo": "quadlet-nix",
-        "rev": "07e4bc60fa9a5872da69f86d1d57b474a086d6dd",
+        "rev": "bbfa3d412322edda07106500ed2cdf54190dc306",
         "type": "github"
       },
       "original": {
-        "owner": "SEIAROTg",
+        "owner": "mirkolenz",
+        "ref": "v1",
         "repo": "quadlet-nix",
         "type": "github"
       }
