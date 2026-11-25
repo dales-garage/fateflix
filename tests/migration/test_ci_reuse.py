@@ -242,6 +242,7 @@ class ReuseTests(unittest.TestCase):
             {
                 "reused_run": "0",
                 "production": "true",
+                "has_checks": "true",
                 "checks": json.dumps(self.plan["checks"]),
             },
             proof,
@@ -255,6 +256,7 @@ class ReuseTests(unittest.TestCase):
         outputs = {
             "reused_run": "42",
             "production": "true",
+            "has_checks": "true",
             "checks": json.dumps(self.plan["checks"]),
         }
         reuse.write_evidence(outputs, path)

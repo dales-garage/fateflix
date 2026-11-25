@@ -209,11 +209,12 @@ def find_reusable_run(plan):
 
 
 def write_evidence(outputs, path):
-    """Publish fresh full-build evidence after the gate has accepted the results."""
+    """Publish fresh build evidence after the gate has accepted the results."""
     if (
         os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
         or outputs["reused_run"] != "0"
         or outputs["production"] != "true"
+        or outputs["has_checks"] != "true"
     ):
         return
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())

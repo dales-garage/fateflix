@@ -205,7 +205,8 @@ def verify(results):
     if reused < 0 or (
         reused
         and (
-            set(checks) != catalog(Path.cwd())["all"]
+            not checks
+            or not set(checks) <= catalog(Path.cwd())["all"]
             or any(
                 outputs.get(flag) != "true"
                 for flag in ("production", "gitops", "renovate")
@@ -243,8 +244,7 @@ def main():
         if args.command == "record":
             if args.evidence is None:
                 parser.error("record requires --evidence")
-            if set(json.loads(outputs["checks"])) == catalog(Path.cwd())["all"]:
-                ci_reuse.write_evidence(outputs, args.evidence)
+            ci_reuse.write_evidence(outputs, args.evidence)
         elif outputs["reused_run"] != "0":
             print(
                 f"Fresh jobs passed. Nix builds reuse successful run {outputs['reused_run']}."
@@ -256,13 +256,12 @@ def main():
     started = time.monotonic()
     plan = make_plan(args.base, args.full)
     reused = 0
-    if (
-        not args.full
-        and plan["production"]
-        and plan["renovate"]
-        and set(plan["checks"]) == catalog(Path.cwd())["all"]
-    ):
+    if not args.full and plan["production"] and plan["checks"]:
         reused = ci_reuse.find_reusable_run(plan)
+    if reused:
+        # The base merge absorbed the version bump, so the PR diff may no
+        # longer select Renovate. Validate the new version regardless.
+        plan["renovate"] = True
     outputs = {
         "checks": plan["checks"],
         "reused_run": reused,

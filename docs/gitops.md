@@ -27,8 +27,9 @@ Merge only after the required CI check passes. Do not enable Comin against the o
 When a same-repository pull request merges the default branch and the only
 tracked change is a patch or minor bump of the Renovate validator in CI, the
 planner can reuse that pull request's previous successful Nix checks and host
-builds. The previous run must have run the full suite, and its checkpoint must
-match the current checked-out tree with only that validator pin masked.
+builds. The previous run must cover the same selected checks and both host builds.
+Its checkpoint must match the current checked-out tree with only that validator
+pin masked.
 Full flake evaluation, Python tests, and Renovate validation still run fresh.
 
 The plan links the source run when it reuses results. Checkpoints expire after

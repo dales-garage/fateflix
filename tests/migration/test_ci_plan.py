@@ -233,7 +233,7 @@ class RequiredCheckTests(unittest.TestCase):
         result = self.results()
         result["prepare"]["outputs"].update(
             reused_run="42",
-            checks=json.dumps(sorted(ci.catalog(ROOT)["all"])),
+            checks=json.dumps(["formatting", "navidrome-basic"]),
             production="true",
             gitops="true",
             renovate="true",
