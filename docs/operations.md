@@ -300,6 +300,20 @@ These small synthetic tests do not establish HDR tone mapping, 4K throughput,
 client compatibility, or end-to-end AV1 fallback. Keep the existing stable Plex
 package, local transcode paths, memory limits and CIFS layout.
 
+## FateFlix Podman containers
+
+Mylar3, Stash, and Apprise use the `fateflix.containers` inventory and Podman's
+Quadlet generator. Inspect a unit with `sudo systemctl cat podman-mylar3` or
+`sudo podman inspect mylar3`. The stable `podman-*.service` names let NAS
+recovery, maintenance holds, health checks, and monitoring track the same services
+across generations. Apprise starts only when its runtime credential file is
+present. Its listener is limited to loopback.
+
+Change image digests through Git and let Comin activate the reviewed generation.
+Keep the existing app configuration directories and NAS mounts when rolling back
+through the GitOps procedure. Verify the unit's generated source, existing data
+mounts, and `sudo nixflix-health check` after a backend or image change.
+
 ## Read-only retention report
 
 ```sh

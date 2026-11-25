@@ -22,7 +22,7 @@ in
               "oci"
               "quadlet"
             ];
-            default = "oci";
+            default = "quadlet";
             description = "Systemd unit provider for this container.";
           };
           image = mkOption {

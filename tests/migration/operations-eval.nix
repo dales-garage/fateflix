@@ -107,11 +107,32 @@ assert pkgs.lib.hasInfix "enabled" cfg.systemd.services.podman-stash.preStart;
 assert pkgs.lib.hasInfix "/usr/bin/ffmpeg /usr/bin/ffprobe disabled"
   disabled.systemd.services.podman-stash.preStart;
 assert disabled.services.plex.accelerationDevices == [ ];
-assert !(disabled.virtualisation.oci-containers.containers.stash.environment ? LIBVA_DRIVER_NAME);
+assert !(staging.config.fateflix.containers ? apprise);
+assert builtins.all
+  (
+    name:
+    builtins.elem "--network=ns:/run/netns/nixflix-staging"
+      staging.config.virtualisation.quadlet.containers."podman-${name}".containerConfig.podmanArgs
+  )
+  [
+    "mylar3"
+    "stash"
+  ];
+assert builtins.elem "${staging.config.fateflix.storage.root}:/data:ro"
+  staging.config.virtualisation.quadlet.containers.podman-mylar3.containerConfig.volumes;
+assert builtins.elem "--device=/dev/dri:/dev/dri"
+  cfg.virtualisation.quadlet.containers.podman-stash.containerConfig.podmanArgs;
+assert builtins.elem "/nix/store:/nix/store:ro"
+  cfg.virtualisation.quadlet.containers.podman-stash.containerConfig.volumes;
 assert
-  !(builtins.elem "--device=/dev/dri:/dev/dri" disabled.virtualisation.oci-containers.containers.stash.extraOptions);
+  !(
+    disabled.virtualisation.quadlet.containers.podman-stash.containerConfig.environments
+      ? LIBVA_DRIVER_NAME
+  );
 assert
-  !(builtins.elem "/nix/store:/nix/store:ro" disabled.virtualisation.oci-containers.containers.stash.volumes);
+  !(builtins.elem "--device=/dev/dri:/dev/dri" disabled.virtualisation.quadlet.containers.podman-stash.containerConfig.podmanArgs);
+assert
+  !(builtins.elem "/nix/store:/nix/store:ro" disabled.virtualisation.quadlet.containers.podman-stash.containerConfig.volumes);
 assert builtins.all
   (
     path:

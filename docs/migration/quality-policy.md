@@ -17,13 +17,25 @@ The policy is declared in `capabilities/media/hd-codec-policy.json` and applied 
 `scripts/nixflix_hd_profiles.py`. Recyclarr's pre-start hook adds profile-specific
 guide score overrides and preserves the two local formats; its post-start hook
 restores their definitions and scores. The helper is idempotent and targets only
-the named HD profiles. On the current VM, the same hooks are installed in
-`/etc/systemd/system.control/recyclarr.service.d/90-fateflix-hd-codecs.conf` so they
-survive reboot before the next Nix deployment. No recurring sync was enabled.
+the named HD profiles. Both hooks are part of the deployed Nix configuration.
 
 MP4 detection before download depends on the release title identifying the
 container. An AV1 release without an MP4 marker still receives the AV1 score;
 these rules do not inspect remote payloads or transcode files.
+
+## Running a reviewed Recyclarr sync
+
+Run a manual sync after intentionally changing the pinned guides, templates, or
+FateFlix profile policy, or when the live profile scores drift. On production,
+run `sudo systemctl start recyclarr.service` and inspect
+`sudo journalctl -u recyclarr.service -n 80 --no-pager` for successful sync and
+post-start reconciliation. The scheduled timer is disabled.
+
+In Sonarr HD and Radarr HD, open Settings → Profiles and check the active
+`WEB-1080p (Alternative)` and `[SQP] SQP-1 (1080p)` profiles, respectively.
+Verify AV1 **3000**, the AV1 MP4 bonus **500**, x265 (HD) **2000**, and the
+FateFlix H264 format **1000**. The minimum is **0** and the upgrade score is
+**3500**. Check these values without starting a library search.
 
 ## Tool choice
 
