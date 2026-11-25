@@ -28,7 +28,7 @@ let
           };
         }
         // lib.optionalAttrs (file == "lidarr-basic.nix") { inherit nixflixSource; }
-        // lib.optionalAttrs (file == "quadlet-transition.nix") { inherit quadletModule; }
+        // lib.optionalAttrs (file == "container-transition.nix") { inherit quadletModule; }
       );
       fileContents = builtins.readFile (./. + "/${file}");
     in
