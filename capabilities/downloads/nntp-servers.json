@@ -1,0 +1,88 @@
+{
+  "credentials": [
+    "NGD_USERNAME",
+    "NGD_PASSWORD",
+    "USENET_FARM_USERNAME",
+    "USENET_FARM_PASSWORD",
+    "VIPERNEWS_USERNAME",
+    "VIPERNEWS_PASSWORD",
+    "SUPERNEWS_USERNAME",
+    "SUPERNEWS_PASSWORD",
+    "EWEKA_USERNAME",
+    "EWEKA_PASSWORD"
+  ],
+  "servers": [
+    {
+      "name": "news.newsgroupdirect.com",
+      "host": "news.newsgroupdirect.com",
+      "port": 563,
+      "connections": 25,
+      "ssl": 1,
+      "ssl_verify": 3,
+      "enable": 1,
+      "username_key": "NGD_USERNAME",
+      "password_key": "NGD_PASSWORD"
+    },
+    {
+      "name": "eu-tst.newsgroupdirect.com",
+      "host": "eu-tst.newsgroupdirect.com",
+      "port": 563,
+      "connections": 12,
+      "ssl": 1,
+      "ssl_verify": 3,
+      "enable": 1,
+      "username_key": "NGD_USERNAME",
+      "password_key": "NGD_PASSWORD"
+    },
+    {
+      "name": "farm.newsgroupdirect.com",
+      "host": "farm.newsgroupdirect.com",
+      "port": 563,
+      "connections": 20,
+      "ssl": 1,
+      "ssl_verify": 3,
+      "enable": 1,
+      "username_key": "USENET_FARM_USERNAME",
+      "password_key": "USENET_FARM_PASSWORD"
+    },
+    {
+      "name": "viper.newsgroupdirect.com",
+      "host": "viper.newsgroupdirect.com",
+      "port": 563,
+      "connections": 10,
+      "ssl": 1,
+      "ssl_verify": 3,
+      "enable": 1,
+      "username_key": "VIPERNEWS_USERNAME",
+      "password_key": "VIPERNEWS_PASSWORD"
+    },
+    {
+      "name": "super.newsgroupdirect.com",
+      "host": "super.newsgroupdirect.com",
+      "port": 563,
+      "connections": 12,
+      "ssl": 1,
+      "ssl_verify": 3,
+      "enable": 1,
+      "username_key": "SUPERNEWS_USERNAME",
+      "password_key": "SUPERNEWS_PASSWORD"
+    },
+    {
+      "name": "news.eweka.nl",
+      "host": "news.eweka.nl",
+      "port": 563,
+      "connections": 50,
+      "ssl": 1,
+      "ssl_verify": 3,
+      "enable": 1,
+      "username_key": "EWEKA_USERNAME",
+      "password_key": "EWEKA_PASSWORD"
+    }
+  ],
+  "rename": {
+    "news.vipernews.com": "viper.newsgroupdirect.com"
+  },
+  "disabled_aliases": {
+    "news.newsgroupdirect.com@1": "news.newsgroupdirect.com"
+  }
+}

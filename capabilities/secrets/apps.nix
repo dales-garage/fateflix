@@ -34,6 +34,7 @@ builtins.listToAttrs (
       "provision"
       "provision-notifications"
       "provision-notifiarr"
+      "provision-nntp"
     ]
 )
 // {

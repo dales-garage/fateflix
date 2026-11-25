@@ -9,6 +9,7 @@ import sys
 from role import installed_role
 
 OPERATIONS = {
+    "provision-nntp": ("secretspec-nntp.toml", "nntp", "provision-nntp.py"),
     "provision": ("secretspec.toml", "default", "provision-secrets.py"),
     "provision-notifications": (
         "secretspec.toml",

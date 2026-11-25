@@ -62,3 +62,36 @@ and build `checks.x86_64-linux.unit-tests`.
 Nix generations restore software/configuration, not application databases.
 Application backup automation remains deferred to the planned Xen Orchestra
 work. No database migrations or automatic data rollback are part of this change.
+
+## NNTP accounts
+
+All SAB NNTP usernames and passwords are stored in the age-backed Passage vault
+under `secretspec/nixflix/nntp/`. The dedicated `secretspec-nntp.toml` manifest has
+only the `nntp` profile, avoiding default-profile inheritance. It contains the
+username/password pairs for NGD, Usenet Farm, Viper, Supernews and Eweka.
+
+On the production VM, resolve and install them without printing values:
+
+```sh
+nix run .#provision-nntp
+```
+
+This publishes an atomic root-owned generation beneath
+`/var/lib/nixflix-nntp-secrets/current` (directories 0700, files 0600). It does not
+replace the existing application/SMB secret generation. SAB receives these files
+through systemd `LoadCredential`; its startup helper applies the public endpoint
+policy in `capabilities/downloads/nntp-servers.json` to the existing configuration.
+Credential values are never embedded in Nix expressions or stored in Git.
+
+After rotating values and provisioning, restart SAB during an appropriate queue
+window so systemd loads the new generation. Current endpoint policy uses strict
+TLS on port 563, moves Viper to `viper.newsgroupdirect.com`, disables the duplicate
+US NGD entry, and limits Farm/Viper to 20/10 connections. Other queue, path,
+category, retention and priority settings are preserved. Existing Supernews and
+Eweka values are also managed through this profile.
+
+The installed VM has an equivalent persistent bootstrap override at
+`/etc/systemd/system.control/sabnzbd.service.d/90-fateflix-nntp.conf`; the flake
+contains the same integration for future deployments. It can be removed after a
+flake deployment includes the NNTP hooks, to avoid duplicate idempotent startup
+application. Staging cannot provision these production credentials.

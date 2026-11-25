@@ -46,8 +46,9 @@ def validate(values):
             raise ValueError("API credentials must be single-line values")
 
 
-def install(values, root):
-    validate(values)
+def install(values, root, *, keys=None, validator=None):
+    keys = KEYS if keys is None else keys
+    (validate if validator is None else validator)(values)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     if root.is_symlink() or root.stat().st_uid != os.geteuid():
         raise ValueError("Credential directory has unsafe ownership")
@@ -55,13 +56,13 @@ def install(values, root):
     with (root / ".lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         current = root / "current"
-        if valid_generation(current, root, values):
+        if valid_generation(current, root, values, keys=keys):
             return
         previous = os.readlink(current) if current.is_symlink() else None
         generation = Path(tempfile.mkdtemp(prefix="generation-", dir=root))
         link = root / ".next"
         try:
-            for key, name in KEYS.items():
+            for key, name in keys.items():
                 path = generation / name
                 with path.open("x") as f:
                     os.chmod(path, 0o600)
@@ -96,8 +97,9 @@ def install(values, root):
             raise
 
 
-def valid_generation(current, root, values):
+def valid_generation(current, root, values, *, keys=None):
     """Permission drift and incomplete generations require atomic replacement."""
+    keys = KEYS if keys is None else keys
     try:
         target = current.resolve(strict=True)
         if not current.is_symlink() or target.parent != root.resolve():
@@ -110,9 +112,9 @@ def valid_generation(current, root, values):
             or stat.S_IMODE(info.st_mode) != 0o700
         ):
             return False
-        if set(p.name for p in target.iterdir()) != set(KEYS.values()):
+        if set(p.name for p in target.iterdir()) != set(keys.values()):
             return False
-        for key, name in KEYS.items():
+        for key, name in keys.items():
             path = target / name
             info = path.lstat()
             if (
