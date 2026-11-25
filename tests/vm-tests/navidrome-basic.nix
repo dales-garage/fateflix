@@ -115,7 +115,13 @@ pkgs.testers.runNixOSTest {
 
     print("All Navidrome lyrics plugin assertions passed!")
 
-    machine.wait_for_unit("navidrome-plugins-config.service", timeout=180)
+    try:
+        machine.wait_for_unit("navidrome-plugins-config.service", timeout=180)
+    except Exception:
+        print(machine.succeed(
+            "journalctl -u navidrome-plugins-config.service -u navidrome.service --no-pager -n 120"
+        ))
+        raise
 
     print("Checking nd-lyrics plugin config round-trip...")
     lyrics_plugin_json = machine.succeed(
