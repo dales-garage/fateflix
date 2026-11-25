@@ -21,7 +21,10 @@ pkgs.testers.runNixOSTest {
         enable = true;
 
         plugins = {
-          "lyrics".enable = true;
+          "lyrics" = {
+            enable = true;
+            allUsers = true;
+          };
           "apple-music" = {
             enable = true;
             config = {
@@ -129,6 +132,7 @@ pkgs.testers.runNixOSTest {
     )
     lyrics_plugin = json.loads(lyrics_plugin_json)
     assert lyrics_plugin["enabled"] == True, f"Expected nd-lyrics enabled, got {lyrics_plugin['enabled']}"
+    assert lyrics_plugin["allUsers"] == True, "Expected explicitly granted lyrics user access"
 
     print("Checking apple-music plugin config round-trip...")
     apple_music_json = machine.succeed(
@@ -136,6 +140,7 @@ pkgs.testers.runNixOSTest {
     )
     apple_music = json.loads(apple_music_json)
     assert apple_music["enabled"] == True, f"Expected apple-music enabled, got {apple_music['enabled']}"
+    assert apple_music.get("allUsers", False) == False, "Unexpected blanket user access for apple-music"
     apple_music_config = json.loads(apple_music["config"])
     assert apple_music_config["cache_ttl_days"] == 14, \
         f"Expected cache_ttl_days=14, got {apple_music_config['cache_ttl_days']}"

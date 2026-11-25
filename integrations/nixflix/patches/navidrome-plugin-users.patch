@@ -1,0 +1,57 @@
+--- a/modules/navidrome/plugins/lib/navidrome-plugins.nix
++++ b/modules/navidrome/plugins/lib/navidrome-plugins.nix
+@@ -57,6 +57,18 @@
+         '';
+       };
+ 
++      allUsers = lib.mkOption {
++        type = lib.types.bool;
++        default = false;
++        description = "Allow this plugin to access every Navidrome user.";
++      };
++
++      users = lib.mkOption {
++        type = lib.types.listOf lib.types.str;
++        default = [ ];
++        description = "Navidrome user IDs this plugin may access when allUsers is false.";
++      };
++
+       allLibraries = lib.mkOption {
+         type = lib.types.bool;
+         default = false;
+--- a/modules/navidrome/plugins/pluginsService.nix
++++ b/modules/navidrome/plugins/pluginsService.nix
+@@ -21,9 +21,10 @@
+       jqConfigSecrets = secrets.mkNestedJqSecretArgs pluginCfg.config;
+     in
+     {
+-      inherit (pluginCfg) apiId allLibraries allowWriteAccess;
++      inherit (pluginCfg) apiId allLibraries allowWriteAccess allUsers;
+       inherit plainConfigFile jqConfigSecrets;
+       librariesJson = builtins.toJSON pluginCfg.libraries;
++      usersJson = builtins.toJSON pluginCfg.users;
+     }
+   ) enabledPlugins;
+ in
+@@ -64,9 +65,12 @@
+               PUT_BODY=$(${pkgs.jq}/bin/jq -n \
+                 --arg config "$CONFIG_OBJECT" \
+                 --arg libraries ${lib.escapeShellArg data.librariesJson} \
++                --arg users ${lib.escapeShellArg data.usersJson} \
+                 '{
+                   config: $config,
+                   libraries: $libraries,
++                  users: $users,
++                  allUsers: ${lib.boolToString data.allUsers},
+                   allLibraries: ${lib.boolToString data.allLibraries},
+                   allowWriteAccess: ${lib.boolToString data.allowWriteAccess},
+                   enabled: true
+@@ -74,7 +78,7 @@
+ 
+               nd_request PUT "/api/plugin/${data.apiId}" "$PUT_BODY"
+               if [ "$ND_HTTP_CODE" -lt 200 ] || [ "$ND_HTTP_CODE" -ge 300 ]; then
+-                echo "Failed to configure plugin ${pluginName} (HTTP $ND_HTTP_CODE): $ND_BODY" >&2
++                echo "Failed to configure plugin ${pluginName} (HTTP $ND_HTTP_CODE)" >&2
+                 exit 1
+               fi
+               echo "Configured plugin: ${pluginName}"
