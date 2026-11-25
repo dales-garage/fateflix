@@ -154,7 +154,6 @@ in
   };
   fateflix.containers = lib.mapAttrs (name: _c: {
     image = images.${name};
-    backend = if name == "mylar3" then "quadlet" else "oci";
     environment = {
       PUID = "1100";
       PGID = "169";

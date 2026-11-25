@@ -104,12 +104,32 @@ assert builtins.all
 assert pkgs.lib.hasInfix "-s 10.42.0.0/24 -p tcp --dport 32400 -j nixos-fw-accept"
   cfg.networking.firewall.extraCommands;
 assert cfg.virtualisation.oci-containers.backend == "podman";
-assert !(cfg.virtualisation.oci-containers.containers ? mylar3);
-assert cfg.virtualisation.quadlet.containers.podman-mylar3.containerConfig.name == "mylar3";
+assert builtins.all
+  (
+    name:
+    let
+      unit = "podman-${name}";
+    in
+    !(builtins.hasAttr name cfg.virtualisation.oci-containers.containers)
+    && cfg.virtualisation.quadlet.containers.${unit}.containerConfig.name == name
+    && cfg.systemd.services.${unit}.unitConfig ? X-QuadletNixConfigHash
+    && builtins.elem "data.mount" cfg.systemd.services.${unit}.bindsTo
+    &&
+      builtins.elem "!/var/lib/nixflix-gitops/holds/${unit}"
+        cfg.systemd.services.${unit}.unitConfig.ConditionPathExists
+  )
+  [
+    "apprise"
+    "mylar3"
+    "stash"
+  ];
 assert builtins.elem "--network=host"
   cfg.virtualisation.quadlet.containers.podman-mylar3.containerConfig.podmanArgs;
-assert cfg.systemd.services.podman-mylar3.unitConfig ? X-QuadletNixConfigHash;
-assert cfg.fateflix.containers.apprise.ports == [ "127.0.0.1:8000:8000" ];
+assert
+  cfg.virtualisation.quadlet.containers.podman-apprise.containerConfig.publishPorts
+  == [ "127.0.0.1:8000:8000" ];
+assert builtins.elem "/var/lib/nixflix-secrets/notifications.json"
+  cfg.systemd.services.podman-apprise.unitConfig.ConditionPathExists;
 assert builtins.all (
   name: !(cfg.systemd.services.${name}.serviceConfig ? NetworkNamespacePath)
 ) native;
