@@ -2082,15 +2082,6 @@
         "version": "0.26.30.4"
       },
       {
-        "changelog": "## [0.26.30.3] - 2026-11-12\n\n### 🐛 Bug Fixes\n\n- Open local series pages without loading every episode (#366)\n",
-        "checksum": "",
-        "hash": "sha256-gOt3TmCpPqW7fBzrYa7cgthLhvnWnklS6RUsxOzX8vY=",
-        "sourceUrl": "",
-        "targetAbi": "12.1.0.0",
-        "timestamp": "2026-11-12T22:16:52Z",
-        "version": "0.26.30.3"
-      },
-      {
         "changelog": "## [0.26.30.2] - 2026-11-06\n\n### 🐛 Bug Fixes\n\n- Find subtitles in more language variants (#364)\n\n### 🚜 Refactor\n\n- One client per outside service (#361)\n- Keep every memo in one size-limited cache (#362)\n",
         "checksum": "0527e38f1b0f24d4e2eb3fe85b945637",
         "hash": "sha256-FQAk6jAmm7C3ZYYadR1qnEO44lnBwzcgL0o13/7F6oA=",
