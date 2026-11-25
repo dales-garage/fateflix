@@ -1,4 +1,4 @@
-{ den, ... }: {
+{ den, inputs, ... }: {
   den.aspects.media = {
     includes = [
       den.aspects.storage
@@ -7,6 +7,8 @@
     ];
     nixos.imports = [
       ../../capabilities/media/packages.nix
+      inputs.quadlet-nix.nixosModules.quadlet
+      ../../capabilities/media/containers.nix
       ../../capabilities/media/services.nix
       ../../capabilities/media/native-media.nix
       ../../capabilities/media/homepage.nix

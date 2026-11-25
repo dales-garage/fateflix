@@ -14,7 +14,7 @@
     '';
     services.plex.accelerationDevices =
       if (config.fateflix.playback.acceleration == "intel") then [ "/dev/dri/renderD128" ] else [ ];
-    virtualisation.oci-containers.containers.stash.extraOptions =
+    fateflix.containers.stash.extraOptions =
       lib.mkIf (config.fateflix.playback.acceleration == "intel")
         [
           "--device=/dev/dri:/dev/dri"
@@ -23,13 +23,11 @@
         ];
     # The preserved Alpine image has FFmpeg but no Intel VA-API driver. Use the
     # host's pinned FFmpeg and driver closure, without modifying the image.
-    virtualisation.oci-containers.containers.stash.volumes =
-      lib.mkIf (config.fateflix.playback.acceleration == "intel")
-        [
-          "/nix/store:/nix/store:ro"
-          "/run/opengl-driver:/run/opengl-driver:ro"
-        ];
-    virtualisation.oci-containers.containers.stash.environment =
+    fateflix.containers.stash.volumes = lib.mkIf (config.fateflix.playback.acceleration == "intel") [
+      "/nix/store:/nix/store:ro"
+      "/run/opengl-driver:/run/opengl-driver:ro"
+    ];
+    fateflix.containers.stash.environment =
       lib.mkIf (config.fateflix.playback.acceleration == "intel")
         {
           LIBVA_DRIVER_NAME = "iHD";
@@ -54,7 +52,7 @@
         "${config.hardware.firmware}"
         "${config.hardware.graphics.package}"
         "${pkgs.ffmpeg}"
-        config.virtualisation.oci-containers.containers.stash.image
+        config.fateflix.containers.stash.image
         (if (config.fateflix.playback.acceleration == "intel") then "gpu" else "software")
       ]
       ++ map toString config.hardware.graphics.extraPackages;

@@ -96,6 +96,6 @@ in
         lib.filter (lib.hasPrefix "--cgroup-parent") container.extraOptions
         == [ "--cgroup-parent=nixflix-staging.slice" ];
       message = "FateFlix resource budget requires container ${name} in nixflix-staging.slice";
-    }) config.virtualisation.oci-containers.containers;
+    }) ((config.fateflix.containers or { }) // config.virtualisation.oci-containers.containers);
   };
 }

@@ -2,6 +2,7 @@
   lib,
   nixosModules,
   nixflixSource,
+  quadletModule,
   pkgs ? import <nixpkgs> { inherit system; },
   system ? builtins.currentSystem,
 }:
@@ -13,6 +14,7 @@
       pkgs
       nixosModules
       nixflixSource
+      quadletModule
       lib
       ;
   };
