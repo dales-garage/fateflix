@@ -199,6 +199,21 @@
         "type": "github"
       }
     },
+    "quadlet-nix": {
+      "locked": {
+        "lastModified": 1793557434,
+        "narHash": "sha256-+MfKGbBtZ2Khe6qx1ePVxtDdh190sM25U64pBXRDXOM=",
+        "owner": "SEIAROTg",
+        "repo": "quadlet-nix",
+        "rev": "07e4bc60fa9a5872da69f86d1d57b474a086d6dd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "SEIAROTg",
+        "repo": "quadlet-nix",
+        "type": "github"
+      }
+    },
     "recyclarr-templates": {
       "flake": false,
       "locked": {
@@ -228,6 +243,7 @@
         "nixpkgs": "nixpkgs",
         "nixpkgs-host": "nixpkgs-host",
         "nixpkgs-media": "nixpkgs-media",
+        "quadlet-nix": "quadlet-nix",
         "recyclarr-templates": "recyclarr-templates",
         "trash-guides": "trash-guides",
         "treefmt-nix": "treefmt-nix",

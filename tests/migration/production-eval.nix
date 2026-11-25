@@ -104,7 +104,12 @@ assert builtins.all
 assert pkgs.lib.hasInfix "-s 10.42.0.0/24 -p tcp --dport 32400 -j nixos-fw-accept"
   cfg.networking.firewall.extraCommands;
 assert cfg.virtualisation.oci-containers.backend == "podman";
-assert cfg.virtualisation.oci-containers.containers.apprise.ports == [ "127.0.0.1:8000:8000" ];
+assert !(cfg.virtualisation.oci-containers.containers ? mylar3);
+assert cfg.virtualisation.quadlet.containers.podman-mylar3.containerConfig.name == "mylar3";
+assert builtins.elem "--network=host"
+  cfg.virtualisation.quadlet.containers.podman-mylar3.containerConfig.podmanArgs;
+assert cfg.systemd.services.podman-mylar3.unitConfig ? X-QuadletNixConfigHash;
+assert cfg.fateflix.containers.apprise.ports == [ "127.0.0.1:8000:8000" ];
 assert builtins.all (
   name: !(cfg.systemd.services.${name}.serviceConfig ? NetworkNamespacePath)
 ) native;
@@ -118,7 +123,7 @@ assert builtins.all (
   ]
 ) native;
 assert
-  builtins.attrNames cfg.virtualisation.oci-containers.containers == [
+  builtins.attrNames cfg.fateflix.containers == [
     "apprise"
     "mylar3"
     "stash"

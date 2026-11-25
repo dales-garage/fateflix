@@ -24,6 +24,7 @@
         inherit system pkgs lib;
         nixosModules = testedModules;
         nixflixSource = self.lib.nixflixSource;
+        quadletModule = inputs.quadlet-nix.nixosModules.quadlet;
       };
     in
     {

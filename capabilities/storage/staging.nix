@@ -21,7 +21,9 @@ let
           "transmission"
         ];
   containers = map (n: "podman-${n}") (
-    builtins.attrNames config.virtualisation.oci-containers.containers
+    builtins.attrNames (
+      config.virtualisation.oci-containers.containers // (config.fateflix.containers or { })
+    )
   );
   operations = "${pkgs.python3}/bin/python3 ${../../scripts/nixflix_ops.py}";
   # Upstream setup jobs may reconcile/delete restored state. Keep them disabled

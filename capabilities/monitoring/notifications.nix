@@ -28,9 +28,8 @@ in
     (lib.mkIf production {
       # No public listener: callers share the staging namespace. Production must
       # preserve loopback-only access to this API when networking is changed.
-      virtualisation.oci-containers.containers.apprise = {
+      fateflix.containers.apprise = {
         image = "docker.io/caronc/apprise@sha256:8a7654c329ce3821848b8052ba915bcf5a3e02dd3ce817c8fa1427fb60bdeae7";
-        autoStart = false;
         environment = {
           PUID = "1101";
           PGID = "1101";

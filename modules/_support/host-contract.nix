@@ -61,7 +61,11 @@ in
     unitConfig = field [ "RequiresMountsFor" "ConditionPathExists" ] service.unitConfig;
   }) cfg.systemd.services;
   timers = lib.mapAttrs (_: timer: { inherit (timer) wantedBy timerConfig; }) cfg.systemd.timers;
-  containers = cfg.virtualisation.oci-containers.containers;
+  containers =
+    lib.mapAttrs (
+      _: container: (builtins.removeAttrs container [ "backend" ]) // { autoStart = false; }
+    ) (cfg.fateflix.containers or { })
+    // cfg.virtualisation.oci-containers.containers;
   arr = lib.genAttrs native (name: {
     inherit (cfg.nixflix.${name}) dataDir user group;
     version = cfg.nixflix.${name}.package.version;
