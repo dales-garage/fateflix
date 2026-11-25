@@ -409,25 +409,14 @@ Python 3.13 interpreter for both instances. Whisparr's verified package version,
 all existing image pins and the current kernel selection are preserved during
 the refactored rollout; merging the architecture must not downgrade applications.
 
-## Experimental nested test builder
+## Integration test builders
 
-The owner authorized nested virtualization on the production VM for remote
-NixOS integration tests. XCP-ng 8.3's restored nesting remains experimental and
-unsupported; this is not a guarantee of production isolation or stability.
-Keep a current application backup and hypervisor snapshot before changing it.
+Run NixOS VM integration checks on hosted CI. The production configuration does
+not automatically load KVM modules or advertise `kvm`/`nixos-test` build features.
+Keep application builds and checks that do not start VMs on the production guest
+when using it as the remote build machine.
 
-On the XCP-ng host, stop the guest cleanly, set
-`xe vm-param-set uuid=<vm-uuid> platform:nested-virt=true`, and start it again.
-A guest-only reboot does not replace the required power cycle. Preserve existing
-PCI/passthrough settings, including `hvm-pirq=false`.
-
-The production flake loads `kvm-intel` and grants marty membership in `kvm`.
-After a fresh login verify exposed `vmx`/`ept` flags, `/dev/kvm`, and a real
-Nix builder's ability to open KVM before running integration tests. Do not treat
-an advertised `kvm` feature as proof that the device works. The guest's existing
-Nix feature list already includes `kvm` and `nixos-test`.
-
-Invoke Nix over SSH to keep both evaluation and builds on the VM. Native Nix
-remote-builder mode leaves evaluation on the caller; `--max-jobs 0` disables
+Invoke Nix over SSH to keep both evaluation and builds on that machine. Native
+Nix remote-builder mode leaves evaluation on the caller; `--max-jobs 0` disables
 local builds but does not move evaluation. Do not store GitHub write credentials
 on the builder; the existing SSH forwarding transport can be used for publishing.
