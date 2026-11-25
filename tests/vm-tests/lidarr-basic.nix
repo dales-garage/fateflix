@@ -143,6 +143,7 @@ pkgsUnfree.testers.runNixOSTest {
   testScript = ''
     import json
 
+
     start_all()
 
     # Wait for services to start (longer timeout for initial DB migrations)
@@ -158,11 +159,12 @@ pkgsUnfree.testers.runNixOSTest {
     machine.wait_for_unit("lidarr.service", timeout=60)
     machine.wait_for_open_port(8686, timeout=60)
 
-    # Test API connectivity
-    machine.succeed(
-        "curl -f -H 'X-Api-Key: 5678efgh5678efgh5678efgh5678efgh' "
+    # Assert the running API uses the selected upstream release, including DB startup.
+    status = json.loads(machine.succeed(
+        "curl -fsS -H 'X-Api-Key: 5678efgh5678efgh5678efgh5678efgh' "
         "http://127.0.0.1:8686/api/v1/system/status"
-    )
+    ))
+    assert tuple(map(int, status["version"].split("."))) >= (3, 1, 6, 5079), status["version"]
 
     # Wait for root folders, delay profiles, quality profiles, metadata profiles, and download clients services
     machine.wait_for_unit("lidarr-qualityprofiles.service", timeout=60)
@@ -301,8 +303,8 @@ pkgsUnfree.testers.runNixOSTest {
     assert len(profiles_list) == 1, f"Expected 1 delay profile, found {len(profiles_list)}"
     assert profiles_list[0]['id'] == 1, "Expected default delay profile with id=1"
     # Lidarr 3.1.6 represents preference by the order of its protocol items.
-    # Keep the legacy assertions for older pins supported by the source adapter.
-    if ${if pkgs.lib.versionAtLeast pkgsUnfree.lidarr.version "3.1.6" then "True" else "False"}:
+    # Use the running version, which can override the default test package set.
+    if tuple(map(int, status["version"].split("."))) >= (3, 1, 6):
         items = [
             {key: item[key] for key in ('protocol', 'allowed', 'delay')}
             for item in profiles_list[0]['items']

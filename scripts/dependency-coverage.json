@@ -1,5 +1,6 @@
 {
   "nixPins": [
+    {"paths": ["pkgs/prowlarr-upstream/default.nix", "lib/arr-packages.nix"], "owner": "manual-compatibility", "reason": "Official stable Prowlarr fallback until nixpkgs-media catches up; scripts/update-prowlarr.py verifies upstream asset digests before refreshing sources.json."},
     {"paths": ["capabilities/monitoring/notifications.nix"], "owner": "supplemental", "reason": "Apprise's digest is refreshed by update-extra-dependencies."},
     {"paths": ["capabilities/media/packages.nix"], "owner": "manual-compatibility", "reason": "Seerr 3.5.1 is a minimum-version fallback, superseded by newer nixpkgs-media packages; Bazarr's Python and the kernel series need compatibility review."},
     {"paths": ["pkgs/notifiarr/default.nix", "pkgs/whisparr/default.nix", "pkgs/maintainerr/default.nix", "integrations/nixflix/compatibility/caddy/default.nix"], "owner": "renovate-artifacts", "reason": "Renovate discovers releases; the trusted artifact helper regenerates source and dependency hashes."},

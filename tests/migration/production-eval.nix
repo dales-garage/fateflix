@@ -21,6 +21,10 @@ let
   ];
 in
 assert cfg.fateflix.host.role == "production";
+assert pkgs.lib.versionAtLeast cfg.nixflix.prowlarr.package.version "3.1.0.5799";
+assert pkgs.lib.versionAtLeast cfg.nixflix.radarr.package.version "7.0.3.10918";
+assert cfg.nixflix.radarr-4k.package == cfg.nixflix.radarr.package;
+assert pkgs.lib.versionAtLeast cfg.nixflix.lidarr.package.version "3.1.6.5079";
 assert builtins.elem (import ../../capabilities/secrets/pass.nix {
   inherit (host) pkgs;
 }) cfg.environment.systemPackages;

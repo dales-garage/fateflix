@@ -55,6 +55,8 @@ pkgsUnfree.testers.runNixOSTest {
   };
 
   testScript = ''
+    import json
+
     start_all()
 
     # Wait for services to start (longer timeout for initial DB migrations)
@@ -70,17 +72,17 @@ pkgsUnfree.testers.runNixOSTest {
     machine.wait_for_unit("prowlarr.service", timeout=60)
     machine.wait_for_open_port(9696, timeout=60)
 
-    # Test API connectivity
-    machine.succeed(
-        "curl -f -H 'X-Api-Key: fedcba9876543210fedcba9876543210' "
+    # Assert the running API uses the selected upstream release, including DB startup.
+    status = json.loads(machine.succeed(
+        "curl -fsS -H 'X-Api-Key: fedcba9876543210fedcba9876543210' "
         "http://127.0.0.1:9696/api/v1/system/status"
-    )
+    ))
+    assert tuple(map(int, status["version"].split("."))) >= (3, 1, 0, 5799), status["version"]
 
     # Wait for download clients service
     machine.wait_for_unit("prowlarr-downloadclients.service", timeout=60)
 
     # Check that SABnzbd download client was configured
-    import json
     clients = machine.succeed(
         "curl -s -H 'X-Api-Key: fedcba9876543210fedcba9876543210' "
         "http://127.0.0.1:9696/api/v1/downloadclient"
