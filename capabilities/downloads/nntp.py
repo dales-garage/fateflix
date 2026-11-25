@@ -41,6 +41,15 @@ def configure(config, credentials, policy):
             servers[alias]["username"] = servers[canonical]["username"]
             servers[alias]["password"] = servers[canonical]["password"]
             servers[alias]["enable"] = "0"
+    for section in servers.values():
+        if "retention" in policy:
+            section["retention"] = str(policy["retention"])
+    misc = result.setdefault("misc", {})
+    for key, value in policy.get("misc", {}).items():
+        misc[key] = str(value)
+    categories = result.setdefault("categories", {})
+    for name, category in policy.get("categories", {}).items():
+        categories[name] = {key: str(value) for key, value in category.items()}
     return result
 
 

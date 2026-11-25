@@ -26,6 +26,7 @@ in
       download_free = "500G";
       complete_free = "500G";
       fulldisk_autoresume = 0;
+      inherit (nntpPolicy.misc) bandwidth_max bandwidth_perc;
     };
   };
   systemd.services.sabnzbd.serviceConfig.LoadCredential = lib.mkIf production (

@@ -16,7 +16,7 @@
       "name": "news.newsgroupdirect.com",
       "host": "news.newsgroupdirect.com",
       "port": 563,
-      "connections": 25,
+      "connections": 10,
       "ssl": 1,
       "ssl_verify": 3,
       "enable": 1,
@@ -27,7 +27,7 @@
       "name": "eu-tst.newsgroupdirect.com",
       "host": "eu-tst.newsgroupdirect.com",
       "port": 563,
-      "connections": 12,
+      "connections": 4,
       "ssl": 1,
       "ssl_verify": 3,
       "enable": 1,
@@ -38,7 +38,7 @@
       "name": "farm.newsgroupdirect.com",
       "host": "farm.newsgroupdirect.com",
       "port": 563,
-      "connections": 20,
+      "connections": 6,
       "ssl": 1,
       "ssl_verify": 3,
       "enable": 1,
@@ -49,7 +49,7 @@
       "name": "viper.newsgroupdirect.com",
       "host": "viper.newsgroupdirect.com",
       "port": 563,
-      "connections": 10,
+      "connections": 4,
       "ssl": 1,
       "ssl_verify": 3,
       "enable": 1,
@@ -60,7 +60,7 @@
       "name": "super.newsgroupdirect.com",
       "host": "super.newsgroupdirect.com",
       "port": 563,
-      "connections": 12,
+      "connections": 6,
       "ssl": 1,
       "ssl_verify": 3,
       "enable": 1,
@@ -71,7 +71,7 @@
       "name": "news.eweka.nl",
       "host": "news.eweka.nl",
       "port": 563,
-      "connections": 50,
+      "connections": 10,
       "ssl": 1,
       "ssl_verify": 3,
       "enable": 1,
@@ -84,5 +84,19 @@
   },
   "disabled_aliases": {
     "news.newsgroupdirect.com@1": "news.newsgroupdirect.com"
+  },
+  "retention": 0,
+  "misc": {
+    "bandwidth_max": "30000000",
+    "bandwidth_perc": 100
+  },
+  "categories": {
+    "prowlarr": {
+      "name": "prowlarr",
+      "dir": "prowlarr",
+      "priority": 0,
+      "pp": 3,
+      "script": "None"
+    }
   }
 }

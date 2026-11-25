@@ -86,8 +86,9 @@ Credential values are never embedded in Nix expressions or stored in Git.
 After rotating values and provisioning, restart SAB during an appropriate queue
 window so systemd loads the new generation. Current endpoint policy uses strict
 TLS on port 563, moves Viper to `viper.newsgroupdirect.com`, disables the duplicate
-US NGD entry, and limits Farm/Viper to 20/10 connections. Other queue, path,
-category, retention and priority settings are preserved. Existing Supernews and
+US NGD entry, and uses a 40-connection pool for the 250 Mbps link. Client retention caps are 0;
+SAB uses a 30,000,000 bytes/s cap at 100%, and a dedicated prowlarr category.
+Other queue, path and priority settings are preserved. Existing Supernews and
 Eweka values are also managed through this profile.
 
 The installed VM has an equivalent persistent bootstrap override at
@@ -95,3 +96,23 @@ The installed VM has an equivalent persistent bootstrap override at
 contains the same integration for future deployments. It can be removed after a
 flake deployment includes the NNTP hooks, to avoid duplicate idempotent startup
 application. Staging cannot provision these production credentials.
+
+## Indexer quota and downloader guardrails
+
+`capabilities/downloads/usenet-policy.json` declares conservative paid-account
+query/grab limits per rolling 24 hours. These are local operating budgets, not
+claims about the exact purchased subscription tier. Tabula Rasa uses 1800 queries
+and 100 grabs against the owner's upcoming 2000-request daily allowance; provider
+429 backoff remains authoritative until the upgraded allowance is active.
+
+The existing `fateflix-download-policy` service applies this public policy after
+its protocol checks. The updater keeps provider keys intact, writes only changed
+quota fields, and tests the direct SAB client before repairing its localhost
+route and dedicated `prowlarr` category. It does not trigger upstream indexer
+tests or searches. The VM has an equivalent persistent bootstrap post-start hook.
+
+SAB's public NNTP policy sets every server's client-side retention to 0 and uses
+40 total enabled connections: NGD US 10, NGD EU 4, Supernews 6, Farm 6, Viper 4,
+Eweka 10. Existing server priorities are retained. The 30,000,000 bytes/s cap is
+240 Mbps, giving the confirmed 250 Mbps connection modest headroom. No synthetic
+bulk downloads were launched to benchmark it.

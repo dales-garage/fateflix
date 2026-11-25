@@ -1,0 +1,34 @@
+{
+  "indexers": {
+    "altHUB": {
+      "queries": 4000,
+      "grabs": 500
+    },
+    "DOGnzb": {
+      "queries": 900,
+      "grabs": 90
+    },
+    "DrunkenSlug": {
+      "queries": 900,
+      "grabs": 90
+    },
+    "Nzb.su": {
+      "queries": 4000,
+      "grabs": 500
+    },
+    "NzbPlanet": {
+      "queries": 4000,
+      "grabs": 500
+    },
+    "Tabula Rasa": {
+      "queries": 1800,
+      "grabs": 100
+    }
+  },
+  "sab_client": {
+    "host": "127.0.0.1",
+    "port": 8080,
+    "useSsl": false,
+    "category": "prowlarr"
+  }
+}
