@@ -1,0 +1,286 @@
+{
+  "version": 1,
+  "positive_score_budget": 499,
+  "codec_scores": {
+    "AV1": 3000,
+    "HEVC": 2000,
+    "H264": 1000,
+    "AV1_MP4_bonus": 500
+  },
+  "profiles": {
+    "sonarr": {
+      "trash_id": "9d142234e45d6143785ac55f5a9e8dc9",
+      "profile_name": "WEB-1080p (Alternative)",
+      "guide_scores": [
+        {
+          "name": "Repack/Proper",
+          "trash_id": "ec8fa7296b64e8cd390a1600981f3923",
+          "score": 1
+        },
+        {
+          "name": "Repack2",
+          "trash_id": "eb3d5cc0a2be0db205fb823640db6a3c",
+          "score": 1
+        },
+        {
+          "name": "Repack3",
+          "trash_id": "44e7c4de10ae50265753082e5dc76047",
+          "score": 1
+        },
+        {
+          "name": "WEB Tier 01",
+          "trash_id": "e6258996055b9fbab7e9cb2f75819294",
+          "score": 83
+        },
+        {
+          "name": "WEB Tier 02",
+          "trash_id": "58790d4e2fdcd9733aa7ae68ba2bb503",
+          "score": 81
+        },
+        {
+          "name": "WEB Tier 03",
+          "trash_id": "d84935abd3f8556dcd51d4f27e22d0a6",
+          "score": 78
+        },
+        {
+          "name": "WEB Scene",
+          "trash_id": "d0c516558625b04b363fa6c5c2c7cfd4",
+          "score": 78
+        },
+        {
+          "name": "AMZN",
+          "trash_id": "d660701077794679fd59e8bdf4ce3a29",
+          "score": 3
+        },
+        {
+          "name": "ATV",
+          "trash_id": "d9e511921c8cedc7282e291b0209cdc5",
+          "score": 3
+        },
+        {
+          "name": "ATVP",
+          "trash_id": "f67c9ca88f463a48346062e8ad07713f",
+          "score": 3
+        },
+        {
+          "name": "CC",
+          "trash_id": "77a7b25585c18af08f60b1547bb9b4fb",
+          "score": 3
+        },
+        {
+          "name": "DCU",
+          "trash_id": "36b72f59f4ea20aad9316f475f2d9fbb",
+          "score": 3
+        },
+        {
+          "name": "DSNP",
+          "trash_id": "89358767a60cc28783cdc3d0be9388a4",
+          "score": 3
+        },
+        {
+          "name": "HBO",
+          "trash_id": "7a235133c87f7da4c8cccceca7e3c7a6",
+          "score": 3
+        },
+        {
+          "name": "HMAX",
+          "trash_id": "a880d6abc21e7c16884f3ae393f84179",
+          "score": 3
+        },
+        {
+          "name": "HULU",
+          "trash_id": "f6cce30f1733d5c8194222a7507909bb",
+          "score": 3
+        },
+        {
+          "name": "iT",
+          "trash_id": "0ac24a2a68a9700bcb7eeca8e5cd644c",
+          "score": 3
+        },
+        {
+          "name": "MAX",
+          "trash_id": "81d1fbf600e2540cee87f3a23f9d3c1c",
+          "score": 3
+        },
+        {
+          "name": "NF",
+          "trash_id": "d34870697c9db575f17700212167be23",
+          "score": 3
+        },
+        {
+          "name": "PCOK",
+          "trash_id": "1656adc6d7bb2c8cca6acfb6592db421",
+          "score": 3
+        },
+        {
+          "name": "PMTP",
+          "trash_id": "c67a75ae4a1715f2bb4d492755ba4195",
+          "score": 3
+        },
+        {
+          "name": "PLAY",
+          "trash_id": "6eb71887a8db6e783dd398446eb0e65d",
+          "score": 3
+        },
+        {
+          "name": "ROKU",
+          "trash_id": "da393fd4e2c0cce7c9dc2669c43e0593",
+          "score": 3
+        },
+        {
+          "name": "SHO",
+          "trash_id": "ae58039e1319178e6be73caab5c42166",
+          "score": 3
+        },
+        {
+          "name": "STAN",
+          "trash_id": "1efe8da11bfd74fbbcd4d8117ddb9213",
+          "score": 3
+        },
+        {
+          "name": "SYFY",
+          "trash_id": "9623c5c9cac8e939c1b9aedd32f640bf",
+          "score": 3
+        },
+        {
+          "name": "AV1",
+          "trash_id": "15a05bc7c1a36e2b57fd628f8977e2fc",
+          "score": 3000
+        },
+        {
+          "name": "HD Streaming Boost",
+          "trash_id": "218e93e5702f44a68ad9e3c6ba87d2f0",
+          "score": 3
+        },
+        {
+          "name": "UHD Streaming Boost",
+          "trash_id": "43b3cf48cb385cd3eac608ee6bca7f09",
+          "score": 3
+        },
+        {
+          "name": "x265 (HD)",
+          "trash_id": "47435ece6b99a0b477caf360e79ba0bb",
+          "score": 2000
+        }
+      ],
+      "extra_scores": {
+        "[FateFlix] H264": 1000,
+        "[FateFlix] AV1 MP4": 500
+      },
+      "min_format_score": 0,
+      "cutoff_format_score": 3500
+    },
+    "radarr": {
+      "trash_id": "0896c29d74de619df168d23b98104b22",
+      "profile_name": "[SQP] SQP-1 (1080p)",
+      "guide_scores": [
+        {
+          "name": "DD+ ATMOS",
+          "trash_id": "1af239278386be2919e1bcee0bde047e",
+          "score": 5
+        },
+        {
+          "name": "DD+",
+          "trash_id": "185f1dd7264c4562b9022d963ac37424",
+          "score": 4
+        },
+        {
+          "name": "DD",
+          "trash_id": "c2998bd0d90ed5621d8df281e839436e",
+          "score": 4
+        },
+        {
+          "name": "BHDStudio",
+          "trash_id": "5153ec7413d9dae44e24275589b5e944",
+          "score": 39
+        },
+        {
+          "name": "hallowed",
+          "trash_id": "7a0d1ad358fee9f5b074af3ef3f9d9ef",
+          "score": 23
+        },
+        {
+          "name": "WEB Tier 01",
+          "trash_id": "c20f169ef63c5f40c2def54abaf4438e",
+          "score": 66
+        },
+        {
+          "name": "WEB Tier 02",
+          "trash_id": "403816d65392c79236dcb6dd591aeda4",
+          "score": 64
+        },
+        {
+          "name": "WEB Tier 03",
+          "trash_id": "af94e0fe497124d1f9ce732069ec8c3b",
+          "score": 62
+        },
+        {
+          "name": "HD Bluray Tier 01",
+          "trash_id": "ed27ebfef2f323e964fb1f61391bcb35",
+          "score": 43
+        },
+        {
+          "name": "HD Bluray Tier 02",
+          "trash_id": "c20c8647f2746a1f4c4262b0fbbeeeae",
+          "score": 41
+        },
+        {
+          "name": "HD Bluray Tier 03",
+          "trash_id": "5608c71bcebba0a5e666223bae8c9227",
+          "score": 39
+        },
+        {
+          "name": "Repack/Proper",
+          "trash_id": "e7718d7a3ce595f289bfee26adc178f5",
+          "score": 1
+        },
+        {
+          "name": "Repack2",
+          "trash_id": "ae43b294509409a6a13919dedd4764c4",
+          "score": 1
+        },
+        {
+          "name": "Repack3",
+          "trash_id": "5caaaa1c08c1742aa4342d8c4cc463f2",
+          "score": 1
+        },
+        {
+          "name": "x265 (HD)",
+          "trash_id": "dc98083864ea246d05a42df0d05f81cc",
+          "score": 2000
+        },
+        {
+          "name": "AV1",
+          "trash_id": "cae4ca30163749b891686f95532519bd",
+          "score": 3000
+        },
+        {
+          "name": "1080p",
+          "trash_id": "820b09bb9acbfde9c35c71e0e565dad8",
+          "score": 1
+        },
+        {
+          "name": "720p",
+          "trash_id": "b2be17d608fc88818940cd1833b0b24c",
+          "score": 1
+        },
+        {
+          "name": "CRiT",
+          "trash_id": "16622a6911d1ab5d5b8b713d5b0036d4",
+          "score": 1
+        },
+        {
+          "name": "MA",
+          "trash_id": "2a6039655313bf5dab1e43523b62c374",
+          "score": 1
+        }
+      ],
+      "extra_scores": {
+        "[FateFlix] H264": 1000,
+        "[FateFlix] AV1 MP4": 500
+      },
+      "min_format_score": 0,
+      "cutoff_format_score": 3500
+    }
+  }
+}

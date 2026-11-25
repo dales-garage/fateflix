@@ -115,7 +115,19 @@ in
       "radarr.service"
       "radarr-4k.service"
     ];
-    preStart = lib.mkBefore "install -m 600 /etc/nixflix/recyclarr-settings.yml /var/lib/recyclarr/settings.yml";
+    preStart = lib.mkMerge [
+      (lib.mkBefore "install -m 600 /etc/nixflix/recyclarr-settings.yml /var/lib/recyclarr/settings.yml")
+      (lib.mkAfter ''
+        ${pkgs.python3}/bin/python3 ${../../scripts/nixflix_hd_profiles.py} \
+          --config /var/lib/recyclarr/config.yml \
+          --policy ${./hd-codec-policy.json} --configure
+      '')
+    ];
+    postStart = ''
+      ${pkgs.python3}/bin/python3 ${../../scripts/nixflix_hd_profiles.py} \
+        --config /var/lib/recyclarr/config.yml \
+        --policy ${./hd-codec-policy.json} --apply
+    '';
   };
   services.plex = {
     enable = true;
