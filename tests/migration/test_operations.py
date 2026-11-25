@@ -329,9 +329,13 @@ class Advisory(unittest.TestCase):
             },
         }
         report["serviceCatalog"] = {"sonarr": {"apiVersion": "v3"}}
-        with patch.object(health, "read_json", return_value=report), patch.object(
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            health, "STATE", Path(directory)
+        ), patch.object(health, "read_json", return_value=report), patch.object(
             health, "healthy", return_value=True
-        ), patch.object(ops, "fresh", return_value=True), patch.object(
+        ), patch.object(
+            ops, "fresh", return_value=True
+        ), patch.object(
             health.os.path, "realpath", return_value="/current"
         ), patch.object(
             ops, "capacity_advisory", return_value=False

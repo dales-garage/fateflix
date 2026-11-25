@@ -40,6 +40,8 @@ class SecretOwnership(unittest.TestCase):
         )
         for filename, profiles in [
             ("secretspec-notifiarr.toml", {"notifiarr"}),
+            ("secretspec-indexers.toml", {"indexers"}),
+            ("secretspec-nntp.toml", {"nntp"}),
             ("secretspec-router.toml", {"router_web", "public_tls"}),
         ]:
             manifest = tomllib.loads((DIRECTORY / filename).read_text())
@@ -61,7 +63,11 @@ class SecretOwnership(unittest.TestCase):
                 role.installed_role(path, production_only=True)
 
     def test_production_only_commands_reject_staging_before_provider(self):
-        for operation in ["provision-notifications", "provision-notifiarr"]:
+        for operation in [
+            "provision-notifications",
+            "provision-notifiarr",
+            "provision-nntp",
+        ]:
             with patch.object(sys, "argv", ["provision.py", operation]), patch.object(
                 provision, "installed_role", side_effect=ValueError
             ), patch.object(provision.subprocess, "run") as run:

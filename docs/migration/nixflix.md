@@ -353,13 +353,14 @@ SecretSpec declares required credentials in `capabilities/secrets/secretspec.tom
 [pass provider convention](https://secretspec.dev/providers/pass/), entries are
 `secretspec/nixflix/default/NAME`. `legacy/ubuntu-migration/extract-source-secrets.py` runs as root
 on Ubuntu and streams its output directly to `legacy/ubuntu-migration/import-pass.py` on .18.
-No private SSH key is transferred. The target has a locally generated GPG identity;
-its bootstrap key has no passphrase and is protected by the marty account's file
-permissions. Add a passphrase/re-encrypt to your preferred key when convenient.
-Runtime services never invoke GPG or pass.
+No private SSH key is transferred. The target uses age-backed Passage with a
+private, locally generated identity at `~/.passage/identities`. The provider name
+remains `pass`, through FateFlix's CLI bridge. See
+[credential migration and recovery](../credential-recovery.md) for the verified
+GPG-to-age migration and rollback. Runtime services consume installed credentials.
 
 From a checkout on .18, use `nix run .#provision`. It resolves through
-pass, then atomically installs a generation under `/var/lib/nixflix-secrets`.
+the age-backed pass CLI bridge, then atomically installs a generation under `/var/lib/nixflix-secrets`.
 Root owns the directory (0700) and files (0600). The `current` symlink is switched
 only after all required values validate. Arr uses systemd `LoadCredential` for
 private runtime copies. Repeating provisioning with unchanged values is a no-op.

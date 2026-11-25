@@ -59,8 +59,18 @@ in
       lib.mkIf ((config.fateflix.host.role == "production") && (!cfg.torrents || !cfg.usenet))
         {
           description = "Enforce download protocol policy on restored applications";
+          postStart = lib.optionalString cfg.usenet ''
+            ${pkgs.python3}/bin/python3 ${./usenet_policy.py} \
+              --policy ${./usenet-policy.json} \
+              --sab-api-key-file ${config.fateflix.secrets.credentialDirectory}/sabnzbd
+          '';
           wantedBy = [ "multi-user.target" ];
-          after = map (name: "${name}.service") names;
+          after =
+            map (name: "${name}.service") names
+            ++ lib.optionals cfg.usenet [
+              "prowlarr.service"
+              "sabnzbd.service"
+            ];
           unitConfig.ConditionPathExists = [ "!/var/lib/nixflix-gitops/holds/all" ];
           serviceConfig = {
             Type = "oneshot";

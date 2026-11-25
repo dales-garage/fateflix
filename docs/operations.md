@@ -408,3 +408,15 @@ same locked `nixpkgs-media` revision as production. Bazarr retains its supported
 Python 3.13 interpreter for both instances. Whisparr's verified package version,
 all existing image pins and the current kernel selection are preserved during
 the refactored rollout; merging the architecture must not downgrade applications.
+
+## Integration test builders
+
+Run NixOS VM integration checks on hosted CI. The production configuration does
+not automatically load KVM modules or advertise `kvm`/`nixos-test` build features.
+Keep application builds and checks that do not start VMs on the production guest
+when using it as the remote build machine.
+
+Invoke Nix over SSH to keep both evaluation and builds on that machine. Native
+Nix remote-builder mode leaves evaluation on the caller; `--max-jobs 0` disables
+local builds but does not move evaluation. Do not store GitHub write credentials
+on the builder; the existing SSH forwarding transport can be used for publishing.

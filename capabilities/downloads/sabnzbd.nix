@@ -10,7 +10,9 @@ let
     inherit lib;
     local = localServices;
   };
-  bindAddress = if config.fateflix.host.role == "production" then "0.0.0.0" else "127.0.0.1";
+  production = config.fateflix.host.role == "production";
+  bindAddress = if production then "0.0.0.0" else "127.0.0.1";
+  nntpPolicy = builtins.fromJSON (builtins.readFile ./nntp-servers.json);
   secret = name: { _secret = "${config.fateflix.secrets.credentialDirectory}/${name}"; };
 in
 {
@@ -24,9 +26,15 @@ in
       download_free = "500G";
       complete_free = "500G";
       fulldisk_autoresume = 0;
+      inherit (nntpPolicy.misc) bandwidth_max bandwidth_perc;
     };
   };
-  # Preserve copied providers, paths and queues while managing access and categories.
+  systemd.services.sabnzbd.serviceConfig.LoadCredential = lib.mkIf production (
+    map (
+      name: "${name}:${config.fateflix.secrets.nntpCredentialDirectory}/${name}"
+    ) nntpPolicy.credentials
+  );
+  # Preserve paths/queues and inject scoped NNTP credentials only at service start.
   systemd.services.sabnzbd.serviceConfig.ExecStartPre =
     lib.mkIf config.nixflix.usenetClients.sabnzbd.enable
       (
@@ -60,6 +68,12 @@ in
                 c['categories'][name] = dict(name=name, dir=name, priority='0', pp='3', script='None')
             c.write()
             PY
+            ${lib.optionalString production ''
+              ${pkgs.python3.withPackages (p: [ p.configobj ])}/bin/python3 ${./nntp.py} \
+                --config /var/lib/sabnzbd/sabnzbd.ini \
+                --policy ${./nntp-servers.json} \
+                --credential-directory "$CREDENTIALS_DIRECTORY"
+            ''}
             chown sabnzbd:media /var/lib/sabnzbd/sabnzbd.ini
             chmod 600 /var/lib/sabnzbd/sabnzbd.ini
           ''

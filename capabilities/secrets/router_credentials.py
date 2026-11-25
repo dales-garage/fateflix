@@ -1,4 +1,4 @@
-"""Resolve the scoped DNS token through SecretSpec/pass without logging it."""
+"""Resolve scoped credentials through SecretSpec's age-backed pass CLI bridge."""
 
 import os
 import re
@@ -52,8 +52,9 @@ def dashboard_password():
     # Create once; never overwrite an existing password during provisioning.
     remote = """set -eu
 test "$(cat /etc/nixflix/mode)" = production || exit 1
-if ! test -f "$HOME/.password-store/secretspec/nixflix/router_web/BASIC_AUTH_PASSWORD.gpg"; then
-  pass insert -m secretspec/nixflix/router_web/BASIC_AUTH_PASSWORD >/dev/null
+store="${PASSAGE_DIR:-$HOME/.passage/store}"
+if ! test -f "$store/secretspec/nixflix/router_web/BASIC_AUTH_PASSWORD.age"; then
+  passage insert -m secretspec/nixflix/router_web/BASIC_AUTH_PASSWORD >/dev/null
 fi
 """
     result = subprocess.run(

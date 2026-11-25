@@ -20,6 +20,11 @@ in
       readOnly = true;
       default = manifest;
     };
+    nntpCredentialDirectory = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      default = "/var/lib/nixflix-nntp-secrets/current";
+    };
     credentialDirectory = lib.mkOption {
       type = lib.types.str;
       readOnly = true;
@@ -28,10 +33,12 @@ in
   };
   config = {
     environment.systemPackages = [
-      pkgs.pass
-      pkgs.gnupg
+      (import ./pass.nix { inherit pkgs; })
+      pkgs.passage
+      pkgs.age
       pkgs.secretspec
     ];
     environment.etc."nixflix/secretspec.toml".source = manifest;
+    environment.etc."nixflix/secretspec-nntp.toml".source = ./secretspec-nntp.toml;
   };
 }
