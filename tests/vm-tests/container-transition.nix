@@ -66,7 +66,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("podman load -i ${image}")
     machine.succeed("mkdir -p /var/lib/mylar3 && echo existing-state > /var/lib/mylar3/index.html")
     machine.succeed("touch /var/lib/ready && systemctl start podman-mylar3")
-    machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -qx existing-state")
+    machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -x existing-state")
     machine.fail("systemctl cat podman-mylar3 | grep -E 'SourcePath=.*/podman-mylar3[.]container$'")
 
     def switch(variant, recover=False):
@@ -79,17 +79,17 @@ pkgs.testers.runNixOSTest {
             # starts them again through the NAS recovery service.
             machine.succeed("systemctl start podman-mylar3")
         machine.wait_for_unit("podman-mylar3.service")
-        machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -qx existing-state")
+        machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -x existing-state")
         machine.succeed("test \"$(podman ps --format '{{.Names}}' | grep -xc mylar3)\" = 1")
         machine.succeed("systemctl show -p ControlGroup --value podman-mylar3 | grep -F /nixflix-staging.slice/")
 
     switch("quadlet", recover=True)
     machine.succeed("systemctl cat podman-mylar3 | grep -E 'SourcePath=.*/podman-mylar3[.]container$'")
-    machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -qx FATEFLIX_REVISION=initial")
+    machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -x FATEFLIX_REVISION=initial")
     switch("changed")
-    machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -qx FATEFLIX_REVISION=updated")
+    machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -x FATEFLIX_REVISION=updated")
     switch("", recover=True)
-    machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -qx FATEFLIX_REVISION=initial")
+    machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -x FATEFLIX_REVISION=initial")
 
     switch("quadlet", recover=True)
     machine.succeed("systemctl stop srv-media.mount")
@@ -100,6 +100,6 @@ pkgs.testers.runNixOSTest {
     machine.succeed("touch /var/lib/hold && systemctl start podman-mylar3")
     machine.fail("systemctl is-active --quiet podman-mylar3")
     machine.succeed("rm /var/lib/hold && systemctl start podman-mylar3")
-    machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -qx existing-state")
+    machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -x existing-state")
   '';
 }
