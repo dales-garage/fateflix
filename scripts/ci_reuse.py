@@ -1,4 +1,4 @@
-"""Reuse a successful build only across an otherwise identical Renovate base merge."""
+"""Compute and reuse CI coverage per Nix derivation and runner recipe."""
 
 import hashlib
 import io
@@ -13,80 +13,117 @@ WORKFLOW = ".github/workflows/ci.yml"
 ARTIFACT = "ci-build-evidence"
 MAX_EVIDENCE_BYTES = 16_384
 SHA = re.compile(r"[a-f0-9]{40}")
-VALIDATOR = re.compile(
-    rb"^(      - run: npx --yes --package renovate@)"
-    rb"([0-9]+\.[0-9]+\.[0-9]+)( renovate-config-validator --strict renovate\.json)$",
-    re.M,
-)
+DRV = re.compile(r"/nix/store/[0-9a-z]{32}-[^/\s]+\.drv")
+POLICY = [WORKFLOW, ".github/requirements-ci.txt", "scripts/"]
+POLICY_CODE = ["scripts/ci-plan.py", "scripts/ci_reuse.py"]
+HOST_TARGETS = [
+    f".#nixosConfigurations.nixflix-{role}.config.system.build.toplevel.drvPath"
+    for role in ("production", "staging")
+]
 
 
 def git(*args):
     return subprocess.check_output(["git", *args], timeout=15)
 
 
-def normalize(workflow):
-    matches = list(VALIDATOR.finditer(workflow))
-    if len(matches) != 1:
-        raise ValueError("Expected one Renovate validator command")
-    match = matches[0]
-    return match[2], VALIDATOR.sub(rb"\g<1><version>\g<3>", workflow)
+def digest(value):
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
-def fingerprint(commit):
-    """Digest all tracked paths, modes and objects, masking just the validator pin."""
-    entries = git("ls-tree", "-rz", "--full-tree", commit).split(b"\0")
-    for i, entry in enumerate(entries):
-        if entry.split(b"\t", 1)[-1] == WORKFLOW.encode():
-            mode, kind, _ = entry.split(b"\t", 1)[0].split()
-            if mode != b"100644" or kind != b"blob":
-                raise ValueError("Unexpected CI workflow mode")
-            _, normalized = normalize(git("show", f"{commit}:{WORKFLOW}"))
-            entries[i] = (
-                mode
-                + b" "
-                + kind
-                + b" "
-                + hashlib.sha256(normalized).hexdigest().encode()
-                + b"\t"
-                + WORKFLOW.encode()
-            )
-            break
-    else:
-        raise ValueError("Missing CI workflow")
-    return hashlib.sha256(b"\0".join(entries)).hexdigest()
+def nix(*args):
+    return subprocess.check_output(
+        ["nix", "eval", "--no-write-lock-file", *args], text=True, timeout=180
+    ).strip()
 
 
-def previous_head(head, base, before=None):
-    """Accept a two-parent branch update merging the current default branch."""
-    if not (SHA.fullmatch(head) and SHA.fullmatch(base)):
+def recipe(workflow, job):
+    """Exclude job scheduling. Commands, actions, environment and runner still count."""
+    scheduler = {"name", "needs", "if", "strategy"}
+    runner = {k: v for k, v in workflow["jobs"][job].items() if k not in scheduler}
+    return digest([workflow.get("env", {}), workflow.get("permissions", {}), runner])
+
+
+def build_ids(roots, options, hosts):
+    import yaml
+
+    workflow = yaml.safe_load(Path(WORKFLOW).read_text())
+    check_recipe = recipe(workflow, "checks")
+    checks = {}
+    # Evict the evaluator between groups so the full suite fits on hosted runners.
+    for start in range(0, len(roots), 6):
+        names = roots[start : start + 6]
+        names_expr = "[ " + " ".join(map(json.dumps, names)) + " ]"
+        selected = (
+            "checks: builtins.listToAttrs (map (name: { inherit name; "
+            "value = checks.${name}.drvPath; }) " + names_expr + ")"
+        )
+        paths = json.loads(nix("--json", ".#checks.x86_64-linux", "--apply", selected))
+        if set(paths) != set(names) or not all(
+            DRV.fullmatch(v) for v in paths.values()
+        ):
+            raise ValueError("Nix did not return the requested check derivations")
+        for name, path in paths.items():
+            checks[name] = digest([path, check_recipe, options[name]])
+    host_id = None
+    if hosts:
+        paths = [nix("--raw", target) for target in HOST_TARGETS]
+        if not all(DRV.fullmatch(p) for p in paths):
+            raise ValueError("Nix did not return both host derivations")
+        canary = git(
+            "ls-tree",
+            "-rz",
+            "HEAD",
+            "--",
+            "scripts/check-secret-canary.py",
+            "capabilities/secrets",
+        )
+        host_id = digest(
+            [paths, recipe(workflow, "production"), hashlib.sha256(canary).hexdigest()]
+        )
+    return {"checks": checks, "production": host_id}
+
+
+def pr_context():
+    if os.environ.get("GITHUB_EVENT_NAME") != "pull_request":
         return None
-    parents = git("rev-list", "--parents", "-n", "1", head).decode().split()
-    if len(parents) != 3 or parents[2] != base or (before and parents[1] != before):
-        return None
-    previous = parents[1]
-    changed = git("diff", "--no-renames", "--name-only", "-z", previous, head)
-    if changed != WORKFLOW.encode() + b"\0":
-        return None
-    old_version, old = normalize(git("show", f"{previous}:{WORKFLOW}"))
-    new_version, new = normalize(git("show", f"{head}:{WORKFLOW}"))
-    if old != new or old_version == new_version:
-        return None
-    old_parts = tuple(map(int, old_version.split(b".")))
-    new_parts = tuple(map(int, new_version.split(b".")))
-    if old_parts[0] != new_parts[0] or new_parts <= old_parts:
-        return None
-    return previous
-
-
-def pr_context(event):
+    event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
     repo, pr = event["repository"], event["pull_request"]
     if (
-        pr["head"]["repo"]["id"] != repo["id"]
+        not pr["head"].get("repo")
+        or pr["head"]["repo"]["id"] != repo["id"]
         or pr["base"]["repo"]["id"] != repo["id"]
         or pr["base"]["ref"] != repo["default_branch"]
+        or repo["full_name"] != os.environ["GITHUB_REPOSITORY"]
     ):
         return None
-    return repo, pr
+    checkout = os.environ["GITHUB_SHA"]
+    if (
+        not SHA.fullmatch(checkout)
+        or git("rev-parse", "HEAD").decode().strip() != checkout
+    ):
+        return None
+    # The required job uses a shallow checkout. The commit header still has
+    # both parent IDs even when the parent objects were not downloaded.
+    headers = git("cat-file", "-p", checkout).split(b"\n\n", 1)[0]
+    parents = [
+        line[7:].decode()
+        for line in headers.splitlines()
+        if line.startswith(b"parent ")
+    ]
+    if parents != [pr["base"]["sha"], pr["head"]["sha"]] or not all(
+        SHA.fullmatch(p) for p in parents
+    ):
+        return None
+    return event, repo, pr
+
+
+def policy_matches(base, head, paths=POLICY):
+    return (
+        git("diff", "--no-renames", "--name-only", "-z", base, head, "--", *paths)
+        == b""
+    )
 
 
 def api(path):
@@ -122,44 +159,37 @@ def read_evidence(repo, run_id, attempt):
         return json.loads(archive.read(files[0]))
 
 
-def checkout_matches_event(pr):
-    checkout = os.environ["GITHUB_SHA"]
-    if not SHA.fullmatch(checkout):
-        return False
-    if git("rev-parse", "HEAD").decode().strip() != checkout:
-        return False
-    # The gate uses a shallow checkout. Read the commit header so missing
-    # parent objects do not hide the recorded parent IDs.
-    headers = git("cat-file", "-p", checkout).split(b"\n\n", 1)[0]
-    parents = [
-        line[7:].decode()
-        for line in headers.splitlines()
-        if line.startswith(b"parent ")
-    ]
-    return parents == [pr["base"]["sha"], pr["head"]["sha"]]
-
-
-def find_reusable_run(plan):
-    """Return a workflow run ID, or zero when fresh checks are needed."""
-    if os.environ.get("GITHUB_EVENT_NAME") != "pull_request":
-        return 0
-    try:
-        event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
-        ctx = pr_context(event)
-        if event.get("action") != "synchronize" or not ctx:
-            return 0
-        repo, pr = ctx
-        if not checkout_matches_event(pr):
-            return 0
-        previous = previous_head(
-            pr["head"]["sha"], pr["base"]["sha"], event.get("before")
+def pr_previous(event, pr):
+    previous = event.get("before")
+    if previous is None:
+        parents = (
+            git("rev-list", "--parents", "-n", "1", pr["head"]["sha"]).decode().split()
         )
-        if not previous:
-            return 0
-        digest = fingerprint("HEAD")
-        name = os.environ["GITHUB_REPOSITORY"]
-        if name != repo["full_name"]:
-            return 0
+        if len(parents) == 3 and parents[2] == pr["base"]["sha"]:
+            previous = parents[1]
+    return previous if isinstance(previous, str) and SHA.fullmatch(previous) else None
+
+
+def previous_builds():
+    """Load direct successful builds from a previous trusted same-PR run."""
+    try:
+        ctx = pr_context()
+        if not ctx:
+            return None
+        event, repo, pr = ctx
+        previous = pr_previous(event, pr)
+        head, base = pr["head"]["sha"], pr["base"]["sha"]
+        if (
+            event["action"] != "synchronize"
+            or not isinstance(previous, str)
+            or not SHA.fullmatch(previous)
+            or previous == head
+            or not policy_matches(base, head)
+            or not policy_matches(base, "HEAD")
+            or not policy_matches(previous, head, POLICY_CODE)
+        ):
+            return None
+        name = repo["full_name"]
         runs = json.loads(
             api(
                 f"repos/{name}/actions/workflows/ci.yml/runs"
@@ -180,19 +210,28 @@ def find_reusable_run(plan):
                 or not any(p["number"] == pr["number"] for p in run["pull_requests"])
             ):
                 continue
-            expected = {
-                "schema": 1,
+            proof = read_evidence(name, run_id, attempt)
+            if not isinstance(proof, dict):
+                continue
+            identity = {
+                "schema": 2,
                 "repo": name,
                 "pr": pr["number"],
                 "head": previous,
                 "run": run_id,
                 "attempt": attempt,
-                "fingerprint": digest,
-                "checks": plan["checks"],
-                "production": True,
             }
-            if read_evidence(name, run_id, attempt) == expected:
-                return run_id
+            if any(proof.get(k) != v for k, v in identity.items()):
+                continue
+            old_base = proof.get("base")
+            if not isinstance(old_base, str) or not SHA.fullmatch(old_base):
+                continue
+            ancestral = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", old_base, base], timeout=15
+            )
+            if ancestral.returncode or not policy_matches(old_base, previous):
+                continue
+            return proof
     except (
         KeyError,
         TypeError,
@@ -201,38 +240,59 @@ def find_reusable_run(plan):
         subprocess.SubprocessError,
         zipfile.BadZipFile,
     ):
-        # Missing or malformed evidence never changes the normal test plan.
         print(
-            "CI build evidence could not be verified. Running fresh checks.", flush=True
+            "Prior CI evidence could not be verified. Running fresh checks.", flush=True
         )
-    return 0
+    return None
 
 
-def write_evidence(outputs, path):
-    """Publish fresh build evidence after the gate has accepted the results."""
-    if (
-        os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
-        or outputs["reused_run"] != "0"
-        or outputs["production"] != "true"
-        or outputs["has_checks"] != "true"
-    ):
-        return
-    event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
-    ctx = pr_context(event)
+def select_builds(checks, hosts, identities, previous, options):
+    prior_checks = (previous or {}).get("checks")
+    if not isinstance(prior_checks, dict):
+        prior_checks = {}
+    repeated = [
+        n
+        for n in checks
+        if not options[n]["network"]
+        and identities["checks"].get(n)
+        and identities["checks"][n] == prior_checks.get(n)
+    ]
+    reuse_hosts = bool(
+        hosts
+        and identities["production"]
+        and identities["production"] == (previous or {}).get("production")
+    )
+    return {
+        "fresh": [n for n in checks if n not in repeated],
+        "reused": repeated,
+        "production": hosts and not reuse_hosts,
+        "reused_production": reuse_hosts,
+        "source_run": previous["run"] if repeated or reuse_hosts else 0,
+        "identities": identities,
+    }
+
+
+def write_evidence(builds, path):
+    ctx = pr_context()
     if not ctx:
         return
-    repo, pr = ctx
-    if not checkout_matches_event(pr):
+    _, repo, pr = ctx
+    identities = builds["identities"]
+    checks = {
+        n: identities["checks"][n] for n in builds["fresh"] if n in identities["checks"]
+    }
+    production = identities["production"] if builds["production"] else None
+    if not checks and not production:
         return
-    evidence = {
-        "schema": 1,
+    proof = {
+        "schema": 2,
         "repo": repo["full_name"],
         "pr": pr["number"],
         "head": pr["head"]["sha"],
+        "base": pr["base"]["sha"],
         "run": int(os.environ["GITHUB_RUN_ID"]),
         "attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
-        "fingerprint": fingerprint("HEAD"),
-        "checks": json.loads(outputs["checks"]),
-        "production": True,
+        "checks": checks,
+        "production": production,
     }
-    Path(path).write_text(json.dumps(evidence) + "\n")
+    Path(path).write_text(json.dumps(proof) + "\n")

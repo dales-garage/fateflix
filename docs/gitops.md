@@ -22,20 +22,22 @@ FateFlix consumes upstream through the locked NixFlix source input. See
 Merge only after the required CI check passes. Do not enable Comin against the old
 `main`, which does not contain the production host configuration.
 
-### Reusing checks after a Renovate-only base merge
+### Choosing builds from the Nix dependency graph
 
-When a same-repository pull request merges the default branch and the only
-tracked change is a patch or minor bump of the Renovate validator in CI, the
-planner can reuse that pull request's previous successful Nix checks and host
-builds. The previous run must cover the same selected checks and both host builds.
-Its checkpoint must match the current checked-out tree with only that validator
-pin masked.
-Full flake evaluation, Python tests, and Renovate validation still run fresh.
+CI selects candidate checks from changed paths, then evaluates their Nix
+derivations. A same-repository pull request update can reuse an earlier
+successful build of the same derivation when its runner, workflow steps,
+and execution flags also match. Nix includes transitive dependencies in
+the derivation identity, so tool updates only invalidate the jobs that use
+them. An unchanged pair of host closures also needs an unchanged secret
+canary and host build recipe.
 
-The plan links the source run when it reuses results. Checkpoints expire after
-seven days. Missing or mismatched evidence falls back to fresh checks, as do
-forks, other changes, and explicitly requested full runs. A run that reused
-checks does not publish a new checkpoint.
+The gate links the earlier run and accounts for every candidate. Full flake
+evaluation, Python tests, and selected CI-tool validators are fresh.
+Network-dependent VM checks are always fresh when selected. Changes to the
+PR's CI policy, forks, missing evidence, and explicit full runs use fresh
+builds. Evidence expires after seven days and records only jobs that
+actually ran successfully.
 
 ## Update ownership
 

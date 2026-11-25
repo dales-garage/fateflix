@@ -190,114 +190,183 @@ def matrix(root, checks):
 
 def verify(results):
     prepare = results.get("prepare", {})
+    evaluate = results.get("evaluate", {})
     if prepare.get("result") != "success":
         raise ValueError("CI planning did not succeed")
-    if results.get("evaluate", {}).get("result") != "success":
+    if evaluate.get("result") != "success":
         raise ValueError("Full flake evaluation did not succeed")
-    outputs = prepare.get("outputs", {})
+    outputs = prepare["outputs"]
     checks = json.loads(outputs["checks"])
     if (
         not isinstance(checks, list)
+        or sorted(set(checks)) != checks
         or outputs.get("has_checks") != str(bool(checks)).lower()
     ):
         raise ValueError("Invalid check selection")
-    reused = int(outputs["reused_run"])
-    if reused < 0 or (
-        reused
-        and (
-            not checks
-            or not set(checks) <= catalog(Path.cwd())["all"]
-            or any(
-                outputs.get(flag) != "true"
-                for flag in ("production", "gitops", "renovate")
-            )
-        )
+    for flag in ("production", "gitops", "renovate"):
+        if outputs.get(flag) not in {"true", "false"}:
+            raise ValueError(f"Missing or invalid selection for {flag}")
+    evaluated = evaluate["outputs"]
+    builds = json.loads(evaluated["builds"])
+    verify_builds(checks, outputs["production"] == "true", evaluated, builds)
+    for job, selected in (
+        ("checks", bool(builds["fresh"])),
+        ("production", builds["production"]),
+        ("gitops", outputs["gitops"] == "true"),
+        ("renovate", outputs["renovate"] == "true"),
     ):
-        raise ValueError("Invalid reused CI coverage")
-    for job, flag in (
-        ("checks", "has_checks"),
-        ("production", "production"),
-        ("gitops", "gitops"),
-        ("renovate", "renovate"),
-    ):
-        value = outputs.get(flag)
-        if value not in {"true", "false"}:
-            raise ValueError(f"Missing or invalid selection for {job}")
-        reused_job = reused and job in {"checks", "production"}
-        expected = "success" if value == "true" and not reused_job else "skipped"
+        expected = "success" if selected else "skipped"
         actual = results.get(job, {}).get("result")
         if actual != expected:
             raise ValueError(f"{job}: expected {expected}, got {actual}")
+    return builds
+
+
+def verify_builds(checks, production, outputs, builds):
+    fresh, reused = builds["fresh"], builds["reused"]
+    identities = builds["identities"]
+    source = builds["source_run"]
+    if (
+        not isinstance(fresh, list)
+        or not isinstance(reused, list)
+        or sorted(fresh + reused) != checks
+        or type(builds["production"]) is not bool
+        or type(builds["reused_production"]) is not bool
+        or builds["production"] + builds["reused_production"] != int(production)
+        or outputs.get("has_checks") != str(bool(fresh)).lower()
+        or outputs.get("production") != str(builds["production"]).lower()
+        or json.loads(outputs["matrix"]) != matrix(Path.cwd(), fresh)
+        or type(source) is not int
+        or source < 0
+        or bool(source) != bool(reused or builds["reused_production"])
+        or not set(reused) <= set(identities["checks"])
+        or (builds["reused_production"] and not identities["production"])
+    ):
+        raise ValueError("Invalid build coverage")
+
+
+def graph_plan(planned, full=False):
+    checks = json.loads(planned["checks"])
+    hosts = planned["production"] == "true"
+    options = {
+        name: {"vm": entry["vm"], "network": entry["network"]}
+        for entry in matrix(Path.cwd(), checks)["include"]
+        for name in entry["checks"]
+    }
+    identities = {"checks": {}, "production": None}
+    # Pushes, forks, and other events already get the ordinary fresh plan.
+    try:
+        if ci_reuse.pr_context():
+            identities = ci_reuse.build_ids(checks, options, hosts)
+    except (
+        KeyError,
+        TypeError,
+        ValueError,
+        OSError,
+        ImportError,
+        subprocess.SubprocessError,
+    ):
+        print("Nix graph evidence unavailable. Running all selected jobs fresh.")
+    previous = (
+        ci_reuse.previous_builds()
+        if not full and identities != {"checks": {}, "production": None}
+        else None
+    )
+    builds = ci_reuse.select_builds(checks, hosts, identities, previous, options)
+    outputs = {
+        "has_checks": bool(builds["fresh"]),
+        "production": builds["production"],
+        "matrix": matrix(Path.cwd(), builds["fresh"]),
+        "builds": builds,
+    }
+    lines = [
+        "## Nix build selection",
+        "Fresh checks: " + (", ".join(builds["fresh"]) or "none"),
+        "Host builds: "
+        + (
+            "fresh"
+            if builds["production"]
+            else "reused" if builds["reused_production"] else "outside scope"
+        ),
+    ]
+    if builds["source_run"]:
+        source = builds["source_run"]
+        url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{source}"
+        lines.append(
+            f"Reused from [CI run {source}]({url}): "
+            + (", ".join(builds["reused"]) or "host builds only")
+        )
+    print("\n".join(lines), flush=True)
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as stream:
+            stream.write("\n\n".join(lines) + "\n")
+    write_outputs(outputs)
+
+
+def write_outputs(outputs):
+    if os.environ.get("GITHUB_OUTPUT"):
+        with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
+            for key, value in outputs.items():
+                stream.write(f"{key}={json.dumps(value, separators=(',', ':'))}\n")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["plan", "verify", "record"])
+    parser.add_argument("command", choices=["plan", "graph", "verify", "record"])
     parser.add_argument("--base")
     parser.add_argument("--full", action="store_true")
     parser.add_argument("--evidence", type=Path)
     args = parser.parse_args()
     if args.command in {"verify", "record"}:
-        results = json.loads(os.environ["CI_RESULTS"])
-        verify(results)
-        outputs = results["prepare"]["outputs"]
+        builds = verify(json.loads(os.environ["CI_RESULTS"]))
         if args.command == "record":
             if args.evidence is None:
                 parser.error("record requires --evidence")
-            ci_reuse.write_evidence(outputs, args.evidence)
-        elif outputs["reused_run"] != "0":
-            print(
-                f"Fresh jobs passed. Nix builds reuse successful run {outputs['reused_run']}."
-            )
+            ci_reuse.write_evidence(builds, args.evidence)
         else:
-            print("Every selected job passed; only unselected jobs were skipped.")
+            print(
+                "Fresh jobs passed. Each selected Nix target is covered by a fresh or verified earlier build."
+            )
+        return
+    if args.command == "graph":
+        graph_plan(json.loads(os.environ["CI_PLAN"]), args.full)
         return
 
     started = time.monotonic()
     plan = make_plan(args.base, args.full)
-    reused = 0
-    if not args.full and plan["production"] and plan["checks"]:
-        reused = ci_reuse.find_reusable_run(plan)
-    if reused:
-        # The base merge absorbed the version bump, so the PR diff may no
-        # longer select Renovate. Validate the new version regardless.
-        plan["renovate"] = True
+    if not plan["renovate"]:
+        try:
+            ctx = ci_reuse.pr_context()
+            if ctx and ctx[0]["action"] == "synchronize":
+                previous = ci_reuse.pr_previous(ctx[0], ctx[2])
+                if previous and not ci_reuse.policy_matches(
+                    previous, "HEAD", [ci_reuse.WORKFLOW]
+                ):
+                    plan["renovate"] = True
+        except (KeyError, OSError, ValueError, subprocess.SubprocessError):
+            plan["renovate"] = True
     outputs = {
         "checks": plan["checks"],
-        "reused_run": reused,
         "has_checks": bool(plan["checks"]),
         "production": plan["production"],
         "gitops": plan["gitops"],
         "renovate": plan["renovate"],
-        "matrix": matrix(Path.cwd(), [] if reused else plan["checks"]),
     }
     print(
-        f"Selected {len(plan['checks'])} checks in {time.monotonic() - started:.3f}s without Nix",
+        f"Selected {len(plan['checks'])} candidate checks in {time.monotonic() - started:.3f}s without Nix",
         flush=True,
     )
     print(json.dumps(plan, indent=2))
-    if reused:
-        print(f"Reusing Nix builds from successful CI run {reused}.")
-    if os.environ.get("GITHUB_OUTPUT"):
-        with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
-            for key, value in outputs.items():
-                stream.write(f"{key}={json.dumps(value, separators=(',', ':'))}\n")
+    write_outputs(outputs)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as stream:
             stream.write("## CI selection\n\n" + plan["reason"] + "\n\n")
             stream.write(
-                "Checks: " + (", ".join(plan["checks"]) or "none changed") + "\n\n"
+                "Candidates: " + (", ".join(plan["checks"]) or "none changed") + "\n\n"
             )
-            if reused:
-                url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{reused}"
-                stream.write(
-                    f"Nix checks and host builds reused from [CI run {reused}]({url}).\n\n"
-                )
             for job in ("production", "gitops", "renovate"):
-                if reused and job == "production":
-                    continue
                 stream.write(
-                    f"- {job}: {'run' if plan[job] else 'skip (outside scope)'}\n"
+                    f"- {job}: {'selected' if plan[job] else 'outside scope'}\n"
                 )
 
 

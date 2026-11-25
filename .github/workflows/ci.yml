@@ -34,16 +34,11 @@ env:
 jobs:
   prepare:
     name: Plan validation
-    permissions:
-      actions: read
-      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 3
     outputs:
       checks: ${{ steps.plan.outputs.checks }}
-      matrix: ${{ steps.plan.outputs.matrix }}
       has_checks: ${{ steps.plan.outputs.has_checks }}
-      reused_run: ${{ steps.plan.outputs.reused_run }}
       production: ${{ steps.plan.outputs.production }}
       gitops: ${{ steps.plan.outputs.gitops }}
       renovate: ${{ steps.plan.outputs.renovate }}
@@ -61,7 +56,6 @@ jobs:
         env:
           CI_BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}
           CI_EVENT: ${{ github.event_name }}
-          GH_TOKEN: ${{ github.token }}
           CI_FULL: ${{ inputs.full || false }}
         run: |
           if [ "$CI_FULL" = true ]; then
@@ -107,14 +101,14 @@ jobs:
 
   checks:
     name: ${{ matrix.name }}
-    needs: prepare
-    if: needs.prepare.outputs.has_checks == 'true' && needs.prepare.outputs.reused_run == '0'
+    needs: evaluate
+    if: needs.evaluate.outputs.has_checks == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.evaluate.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -144,12 +138,22 @@ jobs:
 
   evaluate:
     name: Full flake evaluation
+    needs: prepare
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      has_checks: ${{ steps.graph.outputs.has_checks }}
+      production: ${{ steps.graph.outputs.production }}
+      matrix: ${{ steps.graph.outputs.matrix }}
+      builds: ${{ steps.graph.outputs.builds }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: DeterminateSystems/determinate-nix-action@v3.24.3
         with:
           kvm: false
@@ -159,11 +163,27 @@ jobs:
       - run: nix eval --no-write-lock-file .#nixosConfigurations.fateflix.config.system.build.toplevel.drvPath
       - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-production.config.system.build.toplevel.drvPath
       - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-staging.config.system.build.toplevel.drvPath
+      - name: Select Nix builds from the evaluated dependency graph
+        id: graph
+        env:
+          CI_PLAN: ${{ toJSON(needs.prepare.outputs) }}
+          CI_FULL: ${{ inputs.full || false }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python=python3
+          if [ "$GITHUB_EVENT_NAME" = pull_request ] &&
+             python3 -m venv "$RUNNER_TEMP/ci-graph" &&
+             "$RUNNER_TEMP/ci-graph/bin/pip" install --disable-pip-version-check -r .github/requirements-ci.txt; then
+            python="$RUNNER_TEMP/ci-graph/bin/python"
+          fi
+          args=()
+          if [ "$CI_FULL" = true ]; then args+=(--full); fi
+          "$python" scripts/ci-plan.py graph "${args[@]}"
 
   production:
     name: Both host systems
-    needs: prepare
-    if: needs.prepare.outputs.production == 'true' && needs.prepare.outputs.reused_run == '0'
+    needs: evaluate
+    if: needs.evaluate.outputs.production == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -193,13 +213,13 @@ jobs:
           CI_RESULTS: ${{ toJSON(needs) }}
         run: python3 scripts/ci-plan.py verify
       - name: Record fresh Nix build evidence
-        if: github.event_name == 'pull_request' && needs.prepare.outputs.reused_run == '0'
+        if: github.event_name == 'pull_request'
         continue-on-error: true
         env:
           CI_RESULTS: ${{ toJSON(needs) }}
         run: python3 scripts/ci-plan.py record --evidence "$RUNNER_TEMP/ci-build-evidence.json"
       - uses: actions/upload-artifact@v7
-        if: github.event_name == 'pull_request' && needs.prepare.outputs.reused_run == '0'
+        if: github.event_name == 'pull_request'
         continue-on-error: true
         with:
           name: ci-build-evidence-${{ github.run_attempt }}

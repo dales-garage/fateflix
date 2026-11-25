@@ -210,13 +210,12 @@ class SelectionTests(unittest.TestCase):
 
 class RequiredCheckTests(unittest.TestCase):
     def results(self):
-        return {
+        result = {
             "prepare": {
                 "result": "success",
                 "outputs": {
                     "checks": json.dumps(["navidrome-basic"]),
                     "has_checks": "true",
-                    "reused_run": "0",
                     "production": "false",
                     "gitops": "false",
                     "renovate": "false",
@@ -228,16 +227,38 @@ class RequiredCheckTests(unittest.TestCase):
             "gitops": {"result": "skipped"},
             "renovate": {"result": "skipped"},
         }
+        self.graph(result, ["navidrome-basic"])
+        return result
+
+    def graph(
+        self, result, fresh, reused=(), production=False, reused_production=False
+    ):
+        reused = list(reused)
+        result["evaluate"]["outputs"] = {
+            "has_checks": str(bool(fresh)).lower(),
+            "production": str(production).lower(),
+            "matrix": json.dumps(ci.matrix(ROOT, fresh)),
+            "builds": json.dumps(
+                {
+                    "fresh": fresh,
+                    "reused": reused,
+                    "production": production,
+                    "reused_production": reused_production,
+                    "source_run": 42 if reused or reused_production else 0,
+                    "identities": {
+                        "checks": dict.fromkeys(reused, "id"),
+                        "production": "host" if reused_production else None,
+                    },
+                }
+            ),
+        }
 
     def test_reuse_still_requires_fresh_evaluation_python_and_renovate(self):
         result = self.results()
         result["prepare"]["outputs"].update(
-            reused_run="42",
-            checks=json.dumps(["formatting", "navidrome-basic"]),
-            production="true",
-            gitops="true",
-            renovate="true",
+            production="true", gitops="true", renovate="true"
         )
+        self.graph(result, [], ["navidrome-basic"], reused_production=True)
         result["checks"]["result"] = "skipped"
         result["gitops"]["result"] = "success"
         result["renovate"]["result"] = "success"
@@ -248,6 +269,16 @@ class RequiredCheckTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     ci.verify(result)
                 result[job]["result"] = "success"
+
+    def test_reuse_needs_complete_coverage_and_current_matrix(self):
+        result = self.results()
+        self.graph(result, [], ["another-check"])
+        with self.assertRaises(ValueError):
+            ci.verify(result)
+        self.graph(result, ["navidrome-basic"])
+        result["evaluate"]["outputs"]["matrix"] = '{"include":[]}'
+        with self.assertRaises(ValueError):
+            ci.verify(result)
 
     def test_only_planned_skips_are_accepted(self):
         ci.verify(self.results())
@@ -274,6 +305,7 @@ class RequiredCheckTests(unittest.TestCase):
     def test_empty_matrix_can_skip_checks(self):
         result = self.results()
         result["prepare"]["outputs"].update(checks="[]", has_checks="false")
+        self.graph(result, [])
         result["checks"]["result"] = "skipped"
         ci.verify(result)
 

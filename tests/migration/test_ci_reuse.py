@@ -1,3 +1,4 @@
+import copy
 import io
 import json
 import os
@@ -9,47 +10,106 @@ import unittest
 from unittest.mock import patch
 import zipfile
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[2]
 with patch.object(sys, "path", [str(ROOT / "scripts"), *sys.path]):
     import ci_reuse as reuse
 
 
-def api_archive(evidence):
-    output = io.BytesIO()
-    with zipfile.ZipFile(output, "w") as archive:
-        archive.writestr("ci-build-evidence.json", json.dumps(evidence))
-    return output.getvalue()
+def archive(evidence):
+    result = io.BytesIO()
+    with zipfile.ZipFile(result, "w") as bundle:
+        bundle.writestr("ci-build-evidence.json", json.dumps(evidence))
+    return result.getvalue()
 
 
-class ReuseTests(unittest.TestCase):
+class GraphTests(unittest.TestCase):
+    def test_recipes_are_scoped_to_jobs_and_include_the_shared_runner_environment(self):
+        before = yaml.safe_load((ROOT / reuse.WORKFLOW).read_text())
+        after = copy.deepcopy(before)
+        for tool in ("renovate", "gitops"):
+            after["jobs"][tool]["steps"].append({"run": "validate updated tool"})
+        self.assertEqual(reuse.recipe(before, "checks"), reuse.recipe(after, "checks"))
+        self.assertEqual(
+            reuse.recipe(before, "production"), reuse.recipe(after, "production")
+        )
+        after["jobs"]["checks"]["steps"][2][
+            "uses"
+        ] = "DeterminateSystems/determinate-nix-action@next"
+        self.assertNotEqual(
+            reuse.recipe(before, "checks"), reuse.recipe(after, "checks")
+        )
+        self.assertEqual(
+            reuse.recipe(before, "production"), reuse.recipe(after, "production")
+        )
+        after["env"]["NIX_CONFIG"] = "max-jobs = 2"
+        self.assertNotEqual(
+            reuse.recipe(before, "production"), reuse.recipe(after, "production")
+        )
+
+    def test_only_matching_derivations_and_host_pair_reuse(self):
+        roots = ["changed-vm", "environment-sensitive", "formatting", "unchanged-vm"]
+        options = {n: {"network": n == "environment-sensitive"} for n in roots}
+        current = {
+            "checks": {n: "old" if n != "changed-vm" else "new" for n in roots},
+            "production": "same host closures and canary",
+        }
+        previous = {
+            "run": 42,
+            "checks": {n: "old" for n in roots},
+            "production": "same host closures and canary",
+        }
+        result = reuse.select_builds(roots, True, current, previous, options)
+        self.assertEqual(result["reused"], ["formatting", "unchanged-vm"])
+        self.assertEqual(result["fresh"], ["changed-vm", "environment-sensitive"])
+        self.assertFalse(result["production"])
+        self.assertTrue(result["reused_production"])
+        self.assertEqual(result["source_run"], 42)
+        current["production"] = "changed canary"
+        self.assertTrue(
+            reuse.select_builds(roots, True, current, previous, options)["production"]
+        )
+        empty = {"checks": {}, "production": None}
+        self.assertEqual(
+            reuse.select_builds(roots, True, empty, previous, options)["fresh"], roots
+        )
+
+    def test_nix_derivation_changes_propagate_to_the_corresponding_identity(self):
+        options = {"formatting": {"vm": False, "network": False}}
+        drv = "/nix/store/" + "a" * 32 + "-formatting.drv"
+        changed = "/nix/store/" + "b" * 32 + "-formatting.drv"
+        values = [json.dumps({"formatting": v}) for v in (drv, changed)]
+        with patch.object(reuse, "nix", side_effect=values) as evaluate:
+            old = reuse.build_ids(["formatting"], options, False)
+            new = reuse.build_ids(["formatting"], options, False)
+        self.assertNotEqual(old["checks"]["formatting"], new["checks"]["formatting"])
+        self.assertIn("drvPath", evaluate.call_args.args[-1])
+
+
+class ProvenanceTests(unittest.TestCase):
     def setUp(self):
-        temp = tempfile.TemporaryDirectory()
-        self.addCleanup(temp.cleanup)
-        self.root = Path(temp.name)
-        previous_dir = Path.cwd()
+        workspace = tempfile.TemporaryDirectory()
+        self.addCleanup(workspace.cleanup)
+        self.root = Path(workspace.name)
+        self.addCleanup(os.chdir, Path.cwd())
         os.chdir(self.root)
-        self.addCleanup(os.chdir, previous_dir)
         self.git("init", "-q", "-b", "main")
         self.git("config", "user.name", "CI fixture")
         self.git("config", "user.email", "ci@example.test")
-        path = self.root / reuse.WORKFLOW
-        path.parent.mkdir(parents=True)
-        self.workflow = (
-            "      - run: npx --yes --package renovate@44.261.3 "
-            "renovate-config-validator --strict renovate.json\n"
-        )
-        path.write_text(self.workflow)
-        self.commit("initial base")
+        self.workflow = Path(reuse.WORKFLOW)
+        self.workflow.parent.mkdir(parents=True)
+        self.workflow.write_text("original trusted workflow\n")
+        self.old_base = self.commit("trusted base")
         self.git("switch", "-q", "-c", "topic")
-        (self.root / "flake.nix").write_text("fixture")
+        Path("flake.nix").write_text("a")
         self.previous = self.commit("topic change")
         self.git("switch", "-q", "main")
-        path.write_text(self.workflow.replace("44.261.3", "44.263.4"))
-        self.base = self.commit("upgrade Renovate")
+        self.workflow.write_text("reviewed CI tooling update\n")
+        self.base = self.commit("updated trusted base")
         self.git("switch", "-q", "topic")
         self.git("merge", "-q", "--no-edit", "main")
         self.head = self.git("rev-parse", "HEAD")
-        # Match the two-parent test merge that Actions checks out.
         checkout = self.git(
             "commit-tree",
             "HEAD^{tree}",
@@ -61,7 +121,8 @@ class ReuseTests(unittest.TestCase):
             "test merge",
         )
         self.git("checkout", "--quiet", "--detach", checkout)
-        metadata = {
+        self.event = self.root / "event.json"
+        self.metadata = {
             "action": "synchronize",
             "before": self.previous,
             "repository": {"id": 1, "default_branch": "main", "full_name": "org/repo"},
@@ -71,30 +132,30 @@ class ReuseTests(unittest.TestCase):
                 "base": {"sha": self.base, "ref": "main", "repo": {"id": 1}},
             },
         }
-        self.event = self.root / "event.json"
-        self.event.write_text(json.dumps(metadata))
-        self.env = {
-            "GITHUB_EVENT_NAME": "pull_request",
-            "GITHUB_EVENT_PATH": str(self.event),
-            "GITHUB_REPOSITORY": "org/repo",
-            "GITHUB_SHA": checkout,
-            "GITHUB_RUN_ID": "43",
-            "GITHUB_RUN_ATTEMPT": "1",
-        }
-        env = patch.dict(os.environ, self.env)
+        self.event.write_text(json.dumps(self.metadata))
+        env = patch.dict(
+            os.environ,
+            {
+                "GITHUB_EVENT_NAME": "pull_request",
+                "GITHUB_EVENT_PATH": str(self.event),
+                "GITHUB_REPOSITORY": "org/repo",
+                "GITHUB_SHA": checkout,
+                "GITHUB_RUN_ID": "43",
+                "GITHUB_RUN_ATTEMPT": "1",
+            },
+        )
         env.start()
         self.addCleanup(env.stop)
-        self.plan = {"checks": ["formatting", "vm-basic"], "production": True}
-        self.evidence = {
-            "schema": 1,
+        self.proof = {
+            "schema": 2,
             "repo": "org/repo",
             "pr": 91,
             "head": self.previous,
+            "base": self.old_base,
             "run": 42,
             "attempt": 2,
-            "fingerprint": reuse.fingerprint(self.previous),
-            "checks": self.plan["checks"],
-            "production": True,
+            "checks": {"formatting": "proof"},
+            "production": "hosts",
         }
         self.run = {
             "id": 42,
@@ -112,9 +173,7 @@ class ReuseTests(unittest.TestCase):
         return subprocess.check_output(["git", *args], text=True).strip()
 
     def commit(self, message):
-        self.git("add", str(self.root / reuse.WORKFLOW))
-        if (self.root / "flake.nix").is_file():
-            self.git("add", "flake.nix")
+        self.git("add", ".")
         self.git("commit", "--quiet", "-m", message)
         return self.git("rev-parse", "HEAD")
 
@@ -136,91 +195,39 @@ class ReuseTests(unittest.TestCase):
                 }
             ).encode()
         if path.endswith("/artifacts/7/zip"):
-            return api_archive(self.evidence)
+            return archive(self.proof)
         self.fail(path)
 
-    def test_base_merge_reuses_exact_tested_tree_with_fresh_validator_pin(self):
-        self.assertEqual(
-            reuse.previous_head(self.head, self.base, self.previous), self.previous
-        )
-        self.assertEqual(reuse.fingerprint("HEAD"), reuse.fingerprint(self.previous))
+    def test_accepts_prior_success_when_workflow_changed_on_trusted_base(self):
         with patch.object(reuse, "api", side_effect=self.api):
-            self.assertEqual(reuse.find_reusable_run(self.plan), 42)
+            self.assertEqual(reuse.previous_builds(), self.proof)
 
-    def test_proof_must_cover_exact_source_and_all_selected_checks(self):
-        for change in [
-            {"checks": ["formatting"]},
-            {"production": False},
-            {"fingerprint": "wrong"},
-            {"attempt": 1},
-            {"pr": 92},
-        ]:
-            with self.subTest(change=change):
-                old = self.evidence.copy()
-                self.evidence.update(change)
-                with patch.object(reuse, "api", side_effect=self.api):
-                    self.assertEqual(reuse.find_reusable_run(self.plan), 0)
-                self.evidence = old
+    def test_rejects_forks_and_policy_changes_in_the_pr(self):
+        with patch.object(reuse, "api", side_effect=AssertionError("unexpected API")):
+            with patch.object(reuse, "policy_matches", return_value=False):
+                self.assertIsNone(reuse.previous_builds())
+            self.metadata["pull_request"]["head"]["repo"]["id"] = 2
+            self.event.write_text(json.dumps(self.metadata))
+            self.assertIsNone(reuse.previous_builds())
 
-    def test_workflow_run_must_be_successful_for_same_pr_and_head(self):
-        for change in [
-            {"conclusion": "failure"},
-            {"head_sha": self.base},
-            {"pull_requests": [{"number": 92}]},
-            {"head_repository": {"id": 2}},
-        ]:
-            with self.subTest(change=change):
-                old = self.run.copy()
-                self.run.update(change)
-                with patch.object(reuse, "api", side_effect=self.api):
-                    self.assertEqual(reuse.find_reusable_run(self.plan), 0)
-                self.run = old
-
-    def test_source_and_nonvalidator_workflow_changes_invalidate_reuse(self):
-        updated = self.root / reuse.WORKFLOW
-        text = updated.read_text()
-        for delta in ["        run: echo another-step\n", "major", "source", "mode"]:
-            with self.subTest(delta=delta):
-                self.git("checkout", "--quiet", "--detach", self.base)
-                if delta == "source":
-                    (self.root / "flake.nix").write_text("different")
-                elif delta == "mode":
-                    updated.chmod(0o755)
-                elif delta == "major":
-                    updated.write_text(text.replace("44.263.4", "45.0.0"))
-                else:
-                    updated.write_text(text + delta)
-                if delta == "source":
-                    self.git("add", "flake.nix")
-                base = self.commit("unrelated base change")
-                self.git("checkout", "--quiet", "--detach", self.previous)
-                merge = self.git(
-                    "commit-tree",
-                    base + "^{tree}",
-                    "-p",
-                    self.previous,
-                    "-p",
-                    base,
-                    "-m",
-                    "merge",
-                )
-                self.assertTrue(
-                    reuse.previous_head(merge, base, self.previous) is None
-                    or reuse.fingerprint(merge) != reuse.fingerprint(self.previous)
-                )
-
-    def test_github_failure_falls_back_and_forks_never_request_artifacts(self):
-        with patch.object(reuse, "api", side_effect=OSError("offline")):
-            self.assertEqual(reuse.find_reusable_run(self.plan), 0)
-        event = json.loads(self.event.read_text())
-        event["pull_request"]["head"]["repo"]["id"] = 2
-        self.event.write_text(json.dumps(event))
-        with patch.object(
-            reuse, "api", side_effect=AssertionError("unexpected API request")
+    def test_rejects_wrong_run_attempt_previous_head_or_base(self):
+        for field, value in (
+            ("attempt", 1),
+            ("head", self.base),
+            ("base", self.previous),
         ):
-            self.assertEqual(reuse.find_reusable_run(self.plan), 0)
+            with self.subTest(field=field):
+                original = self.proof[field]
+                self.proof[field] = value
+                with patch.object(reuse, "api", side_effect=self.api):
+                    self.assertIsNone(reuse.previous_builds())
+                self.proof[field] = original
 
-    def test_required_job_can_record_evidence_from_a_shallow_checkout(self):
+    def test_github_failure_falls_back(self):
+        with patch.object(reuse, "api", side_effect=OSError("offline")):
+            self.assertIsNone(reuse.previous_builds())
+
+    def test_required_job_records_only_fresh_jobs_from_a_shallow_checkout(self):
         self.git("branch", "test-merge", "HEAD")
         clone = self.root / "shallow"
         self.git(
@@ -235,34 +242,19 @@ class ReuseTests(unittest.TestCase):
         self.addCleanup(os.chdir, self.root)
         os.chdir(clone)
         self.assertEqual(self.git("rev-parse", "--is-shallow-repository"), "true")
-        pr = json.loads(self.event.read_text())["pull_request"]
-        self.assertTrue(reuse.checkout_matches_event(pr))
-        proof = clone / "proof.json"
-        reuse.write_evidence(
-            {
-                "reused_run": "0",
-                "production": "true",
-                "has_checks": "true",
-                "checks": json.dumps(self.plan["checks"]),
+        builds = {
+            "fresh": ["formatting"],
+            "reused": ["some-vm"],
+            "production": False,
+            "identities": {
+                "checks": {"formatting": "fresh", "some-vm": "reused"},
+                "production": "old",
             },
-            proof,
-        )
-        self.assertEqual(
-            json.loads(proof.read_text())["fingerprint"], reuse.fingerprint("HEAD")
-        )
-
-    def test_recorded_evidence_matches_checkout_and_does_not_chain(self):
-        path = self.root / "proof.json"
-        outputs = {
-            "reused_run": "42",
-            "production": "true",
-            "has_checks": "true",
-            "checks": json.dumps(self.plan["checks"]),
         }
-        reuse.write_evidence(outputs, path)
-        self.assertFalse(path.exists())
-        reuse.write_evidence(dict(outputs, reused_run="0"), path)
-        evidence = json.loads(path.read_text())
+        proof = clone / "proof.json"
+        reuse.write_evidence(builds, proof)
+        evidence = json.loads(proof.read_text())
         self.assertEqual(evidence["head"], self.head)
-        self.assertEqual(evidence["run"], 43)
-        self.assertEqual(evidence["fingerprint"], reuse.fingerprint("HEAD"))
+        self.assertEqual(evidence["base"], self.base)
+        self.assertEqual(evidence["checks"], {"formatting": "fresh"})
+        self.assertIsNone(evidence["production"])
