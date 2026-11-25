@@ -149,11 +149,13 @@ pkgsUnfree.testers.runNixOSTest {
     machine.wait_for_unit("radarr.service", timeout=60)
     machine.wait_for_open_port(7878, timeout=60)
 
-    # Test API connectivity
-    machine.succeed(
-        "curl -f -H 'X-Api-Key: abcd1234abcd1234abcd1234abcd1234' "
+    # Assert the running API uses the selected upstream release, including DB startup.
+    import json
+    status = json.loads(machine.succeed(
+        "curl -fsS -H 'X-Api-Key: abcd1234abcd1234abcd1234abcd1234' "
         "http://127.0.0.1:7878/api/v3/system/status"
-    )
+    ))
+    assert tuple(map(int, status["version"].split("."))) >= (7, 0, 3, 10918), status["version"]
 
     # Wait for root folders, delay profiles, and download clients services
     machine.wait_for_unit("radarr-rootfolders.service", timeout=60)

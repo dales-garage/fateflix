@@ -1,0 +1,13 @@
+{
+  "version": "3.1.0.5799",
+  "sources": {
+    "x86_64-linux": {
+      "url": "https://github.com/Prowlarr/Prowlarr/releases/download/v3.1.0.5799/Prowlarr.master.3.1.0.5799.linux-core-x64.tar.gz",
+      "hash": "sha256-6cZv09LF6UylHiSV656Z7hYATcOWysTnSQXRQI/jF2c="
+    },
+    "aarch64-linux": {
+      "url": "https://github.com/Prowlarr/Prowlarr/releases/download/v3.1.0.5799/Prowlarr.master.3.1.0.5799.linux-core-arm64.tar.gz",
+      "hash": "sha256-HnQmLPlV7mC4CR0QChCdZkAuV4bt5fO2j6dzR9ViF0o="
+    }
+  }
+}

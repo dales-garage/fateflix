@@ -12,8 +12,15 @@ let
     inherit (pkgs.stdenv.hostPlatform) system;
     config = (import ../../lib/package-policy.nix { inherit lib; }).nixpkgsConfig fateflixPackagePolicy;
   };
+  arr = import ../../lib/arr-packages.nix { inherit pkgs media; };
 in
 {
+  nixflix = {
+    prowlarr.package = arr.prowlarr;
+    radarr.package = arr.radarr;
+    radarr-4k.package = arr.radarr;
+    lidarr.package = arr.lidarr;
+  };
   boot.kernelPackages = media.linuxPackages_6_18;
   services = {
     sabnzbd.package = media.sabnzbd;

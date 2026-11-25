@@ -158,11 +158,13 @@ pkgsUnfree.testers.runNixOSTest {
     machine.wait_for_unit("lidarr.service", timeout=60)
     machine.wait_for_open_port(8686, timeout=60)
 
-    # Test API connectivity
-    machine.succeed(
-        "curl -f -H 'X-Api-Key: 5678efgh5678efgh5678efgh5678efgh' "
+    # Assert the running API uses the selected upstream release, including DB startup.
+    import json
+    status = json.loads(machine.succeed(
+        "curl -fsS -H 'X-Api-Key: 5678efgh5678efgh5678efgh5678efgh' "
         "http://127.0.0.1:8686/api/v1/system/status"
-    )
+    ))
+    assert tuple(map(int, status["version"].split("."))) >= (3, 1, 6, 5079), status["version"]
 
     # Wait for root folders, delay profiles, quality profiles, metadata profiles, and download clients services
     machine.wait_for_unit("lidarr-qualityprofiles.service", timeout=60)

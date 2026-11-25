@@ -9,9 +9,20 @@
     }:
     let
       inherit (inputs) self;
+      media = import inputs.nixpkgs-media { inherit system; };
+      arr = import ../../lib/arr-packages.nix { inherit pkgs media; };
+      testedModules = {
+        imports = [ self.nixosModules.default ];
+        nixflix = {
+          prowlarr.package = lib.mkDefault arr.prowlarr;
+          radarr.package = lib.mkDefault arr.radarr;
+          radarr-4k.package = lib.mkDefault arr.radarr;
+          lidarr.package = lib.mkDefault arr.lidarr;
+        };
+      };
       tests = import ../../tests {
         inherit system pkgs lib;
-        nixosModules = self.nixosModules.default;
+        nixosModules = testedModules;
         nixflixSource = self.lib.nixflixSource;
       };
     in
@@ -58,7 +69,7 @@
         four-instance-eval = import ../../tests/migration/four-instance-eval.nix {
           inherit pkgs;
           host = self.nixosConfigurations.nixflix-staging;
-          nixosModules = self.nixosModules.default;
+          nixosModules = testedModules;
         };
         production-eval = import ../../tests/migration/production-eval.nix {
           inherit pkgs;
@@ -68,7 +79,7 @@
           inherit pkgs;
           host = self.nixosConfigurations.nixflix-production;
           staging = self.nixosConfigurations.nixflix-staging;
-          nixosModules = self.nixosModules.default;
+          nixosModules = testedModules;
         };
         notifiarr-eval = import ../../tests/migration/notifiarr-eval.nix {
           inherit pkgs;
