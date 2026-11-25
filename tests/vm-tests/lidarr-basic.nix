@@ -300,11 +300,23 @@ pkgsUnfree.testers.runNixOSTest {
     print(f"Delay profiles: {delay_profiles}")
     assert len(profiles_list) == 1, f"Expected 1 delay profile, found {len(profiles_list)}"
     assert profiles_list[0]['id'] == 1, "Expected default delay profile with id=1"
-    assert profiles_list[0]['enableUsenet'] == True, "Expected enableUsenet=true"
-    assert profiles_list[0]['enableTorrent'] == True, "Expected enableTorrent=true"
-    assert profiles_list[0]['preferredProtocol'] == 'torrent', "Expected preferredProtocol=torrent"
-    assert profiles_list[0]['usenetDelay'] == 0, "Expected usenetDelay=0"
-    assert profiles_list[0]['torrentDelay'] == 360, "Expected torrentDelay=360"
+    # Lidarr 3.1.6 represents preference by the order of its protocol items.
+    # Keep the legacy assertions for older pins supported by the source adapter.
+    if ${if pkgs.lib.versionAtLeast pkgsUnfree.lidarr.version "3.1.6" then "True" else "False"}:
+        items = [
+            {key: item[key] for key in ('protocol', 'allowed', 'delay')}
+            for item in profiles_list[0]['items']
+        ]
+        assert items == [
+            {'protocol': 'TorrentDownloadProtocol', 'allowed': True, 'delay': 360},
+            {'protocol': 'UsenetDownloadProtocol', 'allowed': True, 'delay': 0},
+        ], f"Unexpected protocol preference, enabled state or delays: {items}"
+    else:
+        assert profiles_list[0]['enableUsenet'] == True, "Expected enableUsenet=true"
+        assert profiles_list[0]['enableTorrent'] == True, "Expected enableTorrent=true"
+        assert profiles_list[0]['preferredProtocol'] == 'torrent', "Expected preferredProtocol=torrent"
+        assert profiles_list[0]['usenetDelay'] == 0, "Expected usenetDelay=0"
+        assert profiles_list[0]['torrentDelay'] == 360, "Expected torrentDelay=360"
     assert profiles_list[0]['order'] == 2147483647, "Expected order=2147483647"
     print("Default delay profile configured successfully!")
 
