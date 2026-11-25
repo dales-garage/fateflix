@@ -27,7 +27,7 @@ pkgs.testers.runNixOSTest {
       ../../capabilities/media/containers.nix
     ];
     environment.systemPackages = [ pkgs.curl ];
-    fileSystems."/srv/media" = {
+    virtualisation.fileSystems."/srv/media" = {
       device = "tmpfs";
       fsType = "tmpfs";
       options = [ "noauto" ];
@@ -67,7 +67,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("mkdir -p /var/lib/mylar3 && echo existing-state > /var/lib/mylar3/index.html")
     machine.succeed("touch /var/lib/ready && systemctl start podman-mylar3")
     machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -qx existing-state")
-    machine.fail("systemctl show -p X-QuadletNixConfigHash --value podman-mylar3 | grep -q .")
+    machine.fail("systemctl cat podman-mylar3 | grep -E 'SourcePath=.*/podman-mylar3[.]container$'")
 
     def switch(variant):
         prefix = "/run/booted-system"
@@ -80,7 +80,7 @@ pkgs.testers.runNixOSTest {
         machine.succeed("systemctl show -p ControlGroup --value podman-mylar3 | grep -F /nixflix-staging.slice/")
 
     switch("quadlet")
-    machine.succeed("systemctl cat podman-mylar3 | grep -F SourcePath=/etc/containers/systemd/podman-mylar3.container")
+    machine.succeed("systemctl cat podman-mylar3 | grep -E 'SourcePath=.*/podman-mylar3[.]container$'")
     machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -qx FATEFLIX_REVISION=initial")
     switch("changed")
     machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -qx FATEFLIX_REVISION=updated")
