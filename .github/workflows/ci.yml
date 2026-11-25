@@ -58,12 +58,17 @@ jobs:
           CI_EVENT: ${{ github.event_name }}
           CI_FULL: ${{ inputs.full || false }}
         run: |
+          python=python3
+          if ! python3 -c 'import yaml' && python3 -m venv "$RUNNER_TEMP/ci-plan" &&
+             "$RUNNER_TEMP/ci-plan/bin/pip" install --disable-pip-version-check -r .github/requirements-ci.txt; then
+            python="$RUNNER_TEMP/ci-plan/bin/python"
+          fi
           if [ "$CI_FULL" = true ]; then
-            python3 scripts/ci-plan.py plan --full
+            "$python" scripts/ci-plan.py plan --full
           elif [ "$CI_EVENT" = workflow_dispatch ]; then
-            python3 scripts/ci-plan.py plan --base origin/main
+            "$python" scripts/ci-plan.py plan --base origin/main
           else
-            python3 scripts/ci-plan.py plan --base "$CI_BASE_SHA"
+            "$python" scripts/ci-plan.py plan --base "$CI_BASE_SHA"
           fi
 
   gitops:

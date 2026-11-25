@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan CI from repository paths without installing Nix or evaluating flakes."""
+"""Select CI coverage and verify the fresh or prior results for each target."""
 
 import argparse
 import json
@@ -54,7 +54,7 @@ def full_plan(checks, reason):
     }
 
 
-def select(names, changed):
+def select(names, changed, tool_jobs=None, check_runner_changed=False):
     checks, production, renovate = {"formatting"}, False, False
     reasons = set()
     for path in changed:
@@ -85,6 +85,15 @@ def select(names, changed):
                 reasons.add("Navidrome generated plugins")
                 continue
             return full_plan(names["all"], "Shared Nix modules changed; full suite")
+        if path == ci_reuse.WORKFLOW:
+            if check_runner_changed:
+                return full_plan(
+                    names["all"], "Shared Nix check runner changed; full suite"
+                )
+            if tool_jobs is not None:
+                renovate |= "renovate" in tool_jobs
+                reasons.add("Isolated CI tooling")
+                continue
         if path in {
             "scripts/ci-plan.py",
             "tests/check-names.nix",
@@ -162,7 +171,10 @@ def make_plan(base_ref=None, full=False):
         ).split("\0")
     except subprocess.CalledProcessError:
         return full_plan(names["all"], "Base commit unavailable; full suite required")
-    return select(names, changed)
+    tools, runner_changed = (None, False)
+    if ci_reuse.WORKFLOW in changed:
+        tools, runner_changed = ci_reuse.workflow_impact(base_sha)
+    return select(names, changed, tools, runner_changed)
 
 
 def matrix(root, checks):
@@ -342,7 +354,8 @@ def main():
                 if previous and not ci_reuse.policy_matches(
                     previous, "HEAD", [ci_reuse.WORKFLOW]
                 ):
-                    plan["renovate"] = True
+                    tool_jobs, _ = ci_reuse.workflow_impact(previous)
+                    plan["renovate"] = tool_jobs is None or "renovate" in tool_jobs
         except (KeyError, OSError, ValueError, subprocess.SubprocessError):
             plan["renovate"] = True
     outputs = {

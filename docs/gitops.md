@@ -25,7 +25,8 @@ Merge only after the required CI check passes. Do not enable Comin against the o
 ### Choosing builds from the Nix dependency graph
 
 CI selects candidate checks from changed paths, then evaluates their Nix
-derivations. A same-repository pull request update can reuse an earlier
+derivations. Isolated Python or Renovate job changes run their tool validation
+and formatting. Changes to the shared Nix check runner select the full suite. A same-repository pull request update can reuse an earlier
 successful build of the same derivation when its runner, workflow steps,
 and execution flags also match. Nix includes transitive dependencies in
 the derivation identity, so tool updates only invalidate the jobs that use

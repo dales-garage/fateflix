@@ -45,6 +45,39 @@ def recipe(workflow, job):
     return digest([workflow.get("env", {}), workflow.get("permissions", {}), runner])
 
 
+def workflow_impact(base):
+    """Compare independent tool jobs and detect changes to the shared Nix runner."""
+    try:
+        import yaml
+
+        before = yaml.load(git("show", f"{base}:{WORKFLOW}"), Loader=yaml.BaseLoader)
+        after = yaml.load(Path(WORKFLOW).read_bytes(), Loader=yaml.BaseLoader)
+        if recipe(before, "checks") != recipe(after, "checks"):
+            return None, True
+        # A job's trigger and graph edges still need the wider CI plan if edited.
+        recipe_keys = {"runs-on", "timeout-minutes", "steps", "env"}
+        changed = set()
+        for name in ("gitops", "renovate"):
+            prior, current = before["jobs"][name], after["jobs"][name]
+            if prior != current:
+                changed.add(name)
+            for key in recipe_keys:
+                prior.pop(key, None)
+                current.pop(key, None)
+        return (changed if before == after else None), False
+    except (
+        ImportError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        OSError,
+        subprocess.SubprocessError,
+    ):
+        return None, True
+    except yaml.YAMLError:
+        return None, True
+
+
 def build_ids(roots, options, hosts):
     import yaml
 

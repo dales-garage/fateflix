@@ -95,6 +95,45 @@ class SelectionTests(unittest.TestCase):
             self.assertIn("unit-tests", plan["checks"])
             self.assertFalse(set(plan["checks"]) & self.names["vm"])
 
+    def test_isolated_tool_runtime_edits_do_not_select_host_or_vm_builds(self):
+        workflow = (ROOT / ci.ci_reuse.WORKFLOW).read_text()
+        for expected, runner_changed, old, new in [
+            ({"gitops"}, False, "python-version: '3.15'", "python-version: '3.16'"),
+            ({"renovate"}, False, "node-version: '24.22.3'", "node-version: '24.23.0'"),
+            (None, True, "kvm: ${{ matrix.vm }}", "kvm: false"),
+            (None, False, "needs: prepare", "needs: evaluate"),
+        ]:
+            with self.subTest(old=old):
+                self.assertIn(old, workflow)
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "ci.yml"
+                    path.write_text(workflow.replace(old, new, 1))
+                    with (
+                        patch.object(
+                            ci.ci_reuse, "git", return_value=workflow.encode()
+                        ),
+                        patch.object(ci.ci_reuse, "WORKFLOW", str(path)),
+                    ):
+                        jobs, shared_runner = ci.ci_reuse.workflow_impact("base")
+                    self.assertEqual((jobs, shared_runner), (expected, runner_changed))
+                if shared_runner:
+                    plan = ci.select(
+                        self.names, [ci.ci_reuse.WORKFLOW], jobs, shared_runner
+                    )
+                    self.assertEqual(set(plan["checks"]), self.names["all"])
+                    self.assertTrue(plan["production"])
+                if jobs is not None:
+                    plan = ci.select(self.names, [ci.ci_reuse.WORKFLOW], jobs)
+                    self.assertEqual(plan["checks"], ["formatting"])
+                    self.assertEqual(plan["renovate"], "renovate" in jobs)
+                    self.assertFalse(plan["production"])
+
+    def test_isolated_tool_edits_do_not_drop_other_changed_paths(self):
+        plan = ci.select(self.names, [ci.ci_reuse.WORKFLOW, "flake.lock"], {"renovate"})
+        self.assertEqual(set(plan["checks"]), self.names["all"])
+        self.assertTrue(plan["production"])
+        self.assertTrue(plan["renovate"])
+
     def test_individual_fixture_is_scoped_and_shared_fixture_is_broad(self):
         plan = self.select("tests/vm-tests/navidrome-basic.nix")
         self.assertEqual(plan["checks"], ["formatting", "navidrome-basic"])
