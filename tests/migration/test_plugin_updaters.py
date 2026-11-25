@@ -11,6 +11,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 CADDY = Path("integrations/nixflix/compatibility/caddy")
 NAVIDROME = Path("integrations/nixflix/plugins/navidrome")
+JELLYFIN = Path("integrations/nixflix/plugins/jellyfin")
 SHA = "80962887e4c680abfd1b11ce1403fa8cc0fdd3d6"
 VERSION = "v0.0.0-20250618171559-80962887e4c6"
 HASH = "sha256-" + "B" * 43 + "="
@@ -31,7 +32,7 @@ class PluginUpdaters(unittest.TestCase):
         )
         self.log = self.root / "calls.jsonl"
         self.env["TEST_CALLS"] = str(self.log)
-        for directory in [CADDY, NAVIDROME]:
+        for directory in [CADDY, NAVIDROME, JELLYFIN]:
             (self.repo / directory).mkdir(parents=True)
             shutil.copyfile(
                 ROOT / directory / "update.sh", self.repo / directory / "update.sh"
@@ -128,6 +129,64 @@ print(os.environ['TEST_METADATA'])
         result = self.run_updater(CADDY, SHA, "--force")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(path.read_bytes(), before)
+
+    def test_jellyfin_skips_missing_download_urls_before_prefetching(self):
+        self.env["TEST_MANIFEST"] = json.dumps(
+            [
+                {
+                    "name": "Fixture",
+                    "guid": "fixture-guid",
+                    "versions": [
+                        {
+                            "version": "1.0.0.0",
+                            "sourceUrl": "",
+                            "targetAbi": "12.1.0.0",
+                        },
+                        {"version": "2.0.0.0", "targetAbi": "12.1.0.0"},
+                        {
+                            "version": "3.0.0.0",
+                            "sourceUrl": "https://example.org/plugin.zip",
+                            "targetAbi": "12.1.0.0",
+                        },
+                    ],
+                }
+            ]
+        )
+        self.env["TEST_HASH"] = HASH
+        self.stub(
+            "nix",
+            """
+import json, os, sys
+with open(os.environ['TEST_CALLS'], 'a') as stream:
+    print(json.dumps(sys.argv[1:]), file=stream)
+if sys.argv[1] == 'eval':
+    print('12.1.0')
+else:
+    assert sys.argv[1:3] == ['flake', 'prefetch']
+    assert sys.argv[-1] == 'https://example.org/plugin.zip'
+    print(json.dumps({'hash': os.environ['TEST_HASH']}))
+""",
+        )
+        source = self.repo / "integrations/nixflix/vendor/modules/jellyfin/plugins"
+        source.mkdir(parents=True)
+        fetcher = source / "fetch-manifest.sh"
+        fetcher.write_text(
+            "#!" + sys.executable + "\nimport os\nprint(os.environ['TEST_MANIFEST'])\n"
+        )
+        fetcher.chmod(0o755)
+        (self.repo / "flake.lock").write_text(
+            json.dumps({"nodes": {"nixpkgs": {"locked": {"rev": "a" * 40}}}})
+        )
+        manifest = self.repo / JELLYFIN / "plugins.json"
+        manifest.write_text("{}")
+        result = self.run_updater(JELLYFIN, "--manifest-only")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr.count("missing HTTPS download URL"), 2)
+        versions = json.loads(manifest.read_text())["Fixture"]["versions"]
+        self.assertEqual([item["version"] for item in versions], ["3.0.0.0"])
+        self.assertEqual(versions[0]["hash"], HASH)
+        calls = [json.loads(line) for line in self.log.read_text().splitlines()]
+        self.assertEqual(sum(call[:2] == ["flake", "prefetch"] for call in calls), 1)
 
     def navidrome_package(self, layout):
         output = self.root / "package with spaces"

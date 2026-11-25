@@ -6,11 +6,11 @@
       inputs.treefmt-nix.follows = "treefmt-nix";
     };
     trash-guides = {
-      url = "github:TRaSH-Guides/Guides/56cb176ef4b59d734d3643287e66aafd7c809bd4";
+      url = "github:TRaSH-Guides/Guides/83934a3e72b1950bffe14ca2ce743ce3de6b6b93";
       flake = false;
     };
     recyclarr-templates = {
-      url = "github:recyclarr/config-templates/9faf65ff745d74ab906fd73cadaa25f08eb9d981";
+      url = "github:recyclarr/config-templates/89eebadd429952069182a22930af4d768cacda36";
       flake = false;
     };
     nixpkgs-media.url = "github:NixOS/nixpkgs/master";

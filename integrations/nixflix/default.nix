@@ -34,5 +34,7 @@ pkgs.applyPatches {
       --replace-fail './fromGenerated.nix' './fromGenerated.nix ./runtime.nix'
     cp -R ${clean ../../pkgs}/. pkgs/
     chmod -R u+w .
+    # Retain the verbatim vendor snapshot while adapting newer plugin permissions.
+    ${pkgs.patch}/bin/patch -p1 < ${./patches/navidrome-plugin-users.patch}
   '';
 }

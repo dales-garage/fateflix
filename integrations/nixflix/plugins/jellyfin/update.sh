@@ -64,6 +64,12 @@ update_plugins() {
     fi
 
     for version in $(echo "$plugin" | jq -c '.versions[]'); do
+      local source_url
+      source_url="$(echo "$version" | jq -r '.sourceUrl // empty')"
+      if [[ "$source_url" != https://* || "$source_url" == https:// ]]; then
+        echo "Skipping $name version $(echo "$version" | jq -r '.version'): missing HTTPS download URL" >&2
+        continue
+      fi
       for existing_version in $(echo "$versions_json" | jq -c '.[]'); do
         if [ "$(echo "$version" | jq -c "$VERSION_COMPARE_KEYS_FILTER")" = "$(echo "$existing_version" | jq -c "$VERSION_COMPARE_KEYS_FILTER")" ]; then
           # Existing version exists which appears to be identical, so let's skip it
@@ -82,7 +88,7 @@ update_plugins() {
         done
       fi
       local hash
-      hash="$(nix flake prefetch --json "$(echo "$version" | jq -r '.sourceUrl')" 2>/dev/null | jq '.hash' || true)"
+      hash="$(nix flake prefetch --json "$source_url" 2>/dev/null | jq '.hash' || true)"
       if [ -n "$hash" ]; then
         # Only add version if hash is set, otherwise, skip it (usually due to 404 on sourceUrl)
         echo "New or updated version of $name found: $(echo "$version" | jq '.version')"

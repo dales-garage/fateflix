@@ -36,3 +36,8 @@ The complete appliance is exported as `nixosConfigurations.fateflix`. Importing
 selecting the appliance's machine configuration or operating policy. See the
 [architecture guide](../../docs/fateflix.md) for how capabilities and hosts
 consume this integration.
+
+The Navidrome user-permission compatibility patch runs after copying the retained
+vendor snapshot. Plugins default to no user access; select `users` (Navidrome user
+IDs) or explicitly set `allUsers = true` for plugins requiring that capability.
+The snapshot and its recorded hashes remain unchanged.
