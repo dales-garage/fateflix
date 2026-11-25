@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Preserve FateFlix HD codec preferences through Recyclarr syncs."""
+
 import argparse
 import copy
 import json
@@ -12,6 +13,7 @@ EXTRA_FORMATS = {
     "[FateFlix] H264": [r"\b(?:[xh][ ._-]?264|avc)\b"],
     "[FateFlix] AV1 MP4": [r"\bAV1\b", r"\bmp4\b"],
 }
+
 
 def validate(policy):
     for p in policy["profiles"].values():
@@ -27,27 +29,46 @@ def validate(policy):
         assert -10000 + av1 + bonus + secondary < p["min_format_score"]
         assert av1 + secondary < p["cutoff_format_score"] <= av1 + bonus
 
+
 def configure(config, policy):
     result = copy.deepcopy(config)
     for app, p in policy["profiles"].items():
         instance = result[app][app]
-        profile = next(x for x in instance["quality_profiles"] if x.get("trash_id") == p["trash_id"])
+        profile = next(
+            x
+            for x in instance["quality_profiles"]
+            if x.get("trash_id") == p["trash_id"]
+        )
         profile["min_format_score"] = p["min_format_score"]
-        profile.setdefault("upgrade", {}).update(allowed=True, until_score=p["cutoff_format_score"])
+        profile.setdefault("upgrade", {}).update(
+            allowed=True, until_score=p["cutoff_format_score"]
+        )
         reset = profile.setdefault("reset_unmatched_scores", {})
         reset["except"] = sorted(set(reset.get("except", [])) | set(EXTRA_FORMATS))
         formats = instance.setdefault("custom_formats", [])
         managed_ids = {x["trash_id"] for x in p["guide_scores"]}
         # Our entries use profile-local scores; remove those entries before replacing.
-        formats[:] = [x for x in formats if not (
-            len(x.get("trash_ids", [])) == 1 and x["trash_ids"][0] in managed_ids
-            and len(x.get("assign_scores_to", [])) == 1
-            and x["assign_scores_to"][0].get("trash_id") == p["trash_id"]
-        )]
+        formats[:] = [
+            x
+            for x in formats
+            if not (
+                len(x.get("trash_ids", [])) == 1
+                and x["trash_ids"][0] in managed_ids
+                and len(x.get("assign_scores_to", [])) == 1
+                and x["assign_scores_to"][0].get("trash_id") == p["trash_id"]
+            )
+        ]
         for score in p["guide_scores"]:
-            formats.append({"trash_ids": [score["trash_id"]], "assign_scores_to": [
-                {"trash_id": p["trash_id"], "score": score["score"]}]})
+            formats.append(
+                {
+                    "trash_ids": [score["trash_id"]],
+                    "assign_scores_to": [
+                        {"trash_id": p["trash_id"], "score": score["score"]}
+                    ],
+                }
+            )
     return result
+
 
 def atomic_json(path, value):
     info = path.stat()
@@ -66,31 +87,55 @@ def atomic_json(path, value):
         if os.path.exists(temporary):
             os.unlink(temporary)
 
+
 def apply(config, policy):
     for app, p in policy["profiles"].items():
         instance = config[app][app]
+
         def api(resource, method="GET", payload=None):
             request = urllib.request.Request(
                 instance["base_url"].rstrip("/") + "/api/v3/" + resource,
                 data=None if payload is None else json.dumps(payload).encode(),
-                headers={"X-Api-Key": instance["api_key"], "Content-Type": "application/json"},
+                headers={
+                    "X-Api-Key": instance["api_key"],
+                    "Content-Type": "application/json",
+                },
                 method=method,
             )
             with urllib.request.urlopen(request, timeout=15) as response:
                 raw = response.read()
             return json.loads(raw) if raw else None
+
         formats = api("customformat")
         for name, expressions in EXTRA_FORMATS.items():
-            definition = {"name": name, "includeCustomFormatWhenRenaming": False,
-                "specifications": [{"name": "Match " + str(i + 1),
-                    "implementation": "ReleaseTitleSpecification", "negate": False,
-                    "required": True, "fields": [{"name": "value", "value": expression}]}
-                    for i, expression in enumerate(expressions)]}
+            definition = {
+                "name": name,
+                "includeCustomFormatWhenRenaming": False,
+                "specifications": [
+                    {
+                        "name": "Match " + str(i + 1),
+                        "implementation": "ReleaseTitleSpecification",
+                        "negate": False,
+                        "required": True,
+                        "fields": [{"name": "value", "value": expression}],
+                    }
+                    for i, expression in enumerate(expressions)
+                ],
+            }
             existing = next((x for x in formats if x["name"] == name), None)
             if existing:
-                actual = [(x["implementation"], x.get("negate", False), x.get("required", False),
-                    next(f["value"] for f in x["fields"] if f["name"] == "value")) for x in existing["specifications"]]
-                desired = [("ReleaseTitleSpecification", False, True, e) for e in expressions]
+                actual = [
+                    (
+                        x["implementation"],
+                        x.get("negate", False),
+                        x.get("required", False),
+                        next(f["value"] for f in x["fields"] if f["name"] == "value"),
+                    )
+                    for x in existing["specifications"]
+                ]
+                desired = [
+                    ("ReleaseTitleSpecification", False, True, e) for e in expressions
+                ]
                 if actual != desired:
                     definition["id"] = existing["id"]
                     api("customformat/" + str(existing["id"]), "PUT", definition)
@@ -105,13 +150,23 @@ def apply(config, policy):
         for item in profile["formatItems"]:
             if item["name"] in scores:
                 item["score"] = scores[item["name"]]
-        other_positive = sum(x["score"] for x in profile["formatItems"] if x["score"] > 0
-            and x["name"] not in ("AV1", "x265 (HD)", *EXTRA_FORMATS))
+        other_positive = sum(
+            x["score"]
+            for x in profile["formatItems"]
+            if x["score"] > 0 and x["name"] not in ("AV1", "x265 (HD)", *EXTRA_FORMATS)
+        )
         if other_positive > 499:
-            raise ValueError("Unexpected secondary scores exceed codec preference budget")
-        profile.update(minFormatScore=p["min_format_score"], cutoffFormatScore=p["cutoff_format_score"], upgradeAllowed=True)
+            raise ValueError(
+                "Unexpected secondary scores exceed codec preference budget"
+            )
+        profile.update(
+            minFormatScore=p["min_format_score"],
+            cutoffFormatScore=p["cutoff_format_score"],
+            upgradeAllowed=True,
+        )
         api("qualityprofile/" + str(profile["id"]), "PUT", profile)
         print(app + ": HD codec preference applied")
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -128,6 +183,7 @@ def main():
         atomic_json(args.config, configure(config, policy))
     else:
         apply(config, policy)
+
 
 if __name__ == "__main__":
     try:

@@ -44,10 +44,15 @@ class NntpCredentials(unittest.TestCase):
         self.assertIn("nntp", command)
 
     def test_endpoint_migration_preserves_unrelated_state(self):
-        config = {"misc": {"api_key": "synthetic-api"}, "categories": {"books": {}},
-            "servers": {"news.vipernews.com": {"retention": "3500", "priority": "2"},
+        config = {
+            "misc": {"api_key": "synthetic-api"},
+            "categories": {"books": {}},
+            "servers": {
+                "news.vipernews.com": {"retention": "3500", "priority": "2"},
                 "news.newsgroupdirect.com@1": {"enable": "1"},
-                "unmanaged": {"host": "example.invalid", "enable": "0"}}}
+                "unmanaged": {"host": "example.invalid", "enable": "0"},
+            },
+        }
         original = copy.deepcopy(config)
         result = nntp.configure(config, self.values(), POLICY)
         self.assertEqual(config, original)
@@ -56,13 +61,18 @@ class NntpCredentials(unittest.TestCase):
         self.assertEqual(result["misc"]["bandwidth_perc"], "100")
         self.assertEqual(result["categories"]["books"], config["categories"]["books"])
         self.assertEqual(result["categories"]["prowlarr"]["dir"], "prowlarr")
-        self.assertEqual(result["servers"]["unmanaged"], dict(config["servers"]["unmanaged"], retention="0"))
+        self.assertEqual(
+            result["servers"]["unmanaged"],
+            dict(config["servers"]["unmanaged"], retention="0"),
+        )
         viper = result["servers"]["viper.newsgroupdirect.com"]
         self.assertEqual(viper["password"], self.values()["VIPERNEWS_PASSWORD"])
         self.assertEqual(viper["retention"], "0")
         self.assertEqual(viper["priority"], "2")
         self.assertEqual(viper["connections"], "4")
-        self.assertEqual(result["servers"]["farm.newsgroupdirect.com"]["connections"], "6")
+        self.assertEqual(
+            result["servers"]["farm.newsgroupdirect.com"]["connections"], "6"
+        )
         self.assertEqual(result["servers"]["news.newsgroupdirect.com@1"]["enable"], "0")
         for server in POLICY["servers"]:
             actual = result["servers"][server["name"]]
@@ -86,7 +96,9 @@ class NntpCredentials(unittest.TestCase):
             root = Path(temporary) / "nntp"
             store.install(values, root, keys=KEYS, validator=validate)
             previous = os.readlink(root / "current")
-            self.assertTrue(store.valid_generation(root / "current", root, values, keys=KEYS))
+            self.assertTrue(
+                store.valid_generation(root / "current", root, values, keys=KEYS)
+            )
             for path in (root / "current").iterdir():
                 self.assertEqual(path.stat().st_mode & 0o777, 0o600)
             changed = dict(values, NGD_PASSWORD="new-synthetic-value")
@@ -94,9 +106,13 @@ class NntpCredentials(unittest.TestCase):
                 with self.assertRaises(OSError):
                     store.install(changed, root, keys=KEYS, validator=validate)
             self.assertEqual(os.readlink(root / "current"), previous)
-            self.assertEqual((root / "current/NGD_PASSWORD").read_text(), values["NGD_PASSWORD"])
+            self.assertEqual(
+                (root / "current/NGD_PASSWORD").read_text(), values["NGD_PASSWORD"]
+            )
             store.install(changed, root, keys=KEYS, validator=validate)
-            self.assertEqual((root / "current/NGD_PASSWORD").read_text(), changed["NGD_PASSWORD"])
+            self.assertEqual(
+                (root / "current/NGD_PASSWORD").read_text(), changed["NGD_PASSWORD"]
+            )
 
 
 if __name__ == "__main__":
