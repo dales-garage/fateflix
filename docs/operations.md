@@ -417,7 +417,7 @@ unsupported; this is not a guarantee of production isolation or stability.
 Keep a current application backup and hypervisor snapshot before changing it.
 
 On the XCP-ng host, stop the guest cleanly, set
-`xe vm-param-set uuid=<vm-uuid> platform:exp-nested-hvm=true`, and start it again.
+`xe vm-param-set uuid=<vm-uuid> platform:nested-virt=true`, and start it again.
 A guest-only reboot does not replace the required power cycle. Preserve existing
 PCI/passthrough settings, including `hvm-pirq=false`.
 
