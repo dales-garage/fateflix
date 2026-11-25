@@ -63,7 +63,11 @@ class SecretOwnership(unittest.TestCase):
                 role.installed_role(path, production_only=True)
 
     def test_production_only_commands_reject_staging_before_provider(self):
-        for operation in ["provision-notifications", "provision-notifiarr", "provision-nntp"]:
+        for operation in [
+            "provision-notifications",
+            "provision-notifiarr",
+            "provision-nntp",
+        ]:
             with patch.object(sys, "argv", ["provision.py", operation]), patch.object(
                 provision, "installed_role", side_effect=ValueError
             ), patch.object(provision.subprocess, "run") as run:

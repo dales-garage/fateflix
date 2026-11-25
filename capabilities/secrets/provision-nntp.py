@@ -28,8 +28,10 @@ def main():
     installer = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(installer)
     installer.install(
-        json.load(sys.stdin), Path("/var/lib/nixflix-nntp-secrets"),
-        keys=KEYS, validator=validate,
+        json.load(sys.stdin),
+        Path("/var/lib/nixflix-nntp-secrets"),
+        keys=KEYS,
+        validator=validate,
     )
 
 

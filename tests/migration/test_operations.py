@@ -333,7 +333,9 @@ class Advisory(unittest.TestCase):
             health, "STATE", Path(directory)
         ), patch.object(health, "read_json", return_value=report), patch.object(
             health, "healthy", return_value=True
-        ), patch.object(ops, "fresh", return_value=True), patch.object(
+        ), patch.object(
+            ops, "fresh", return_value=True
+        ), patch.object(
             health.os.path, "realpath", return_value="/current"
         ), patch.object(
             ops, "capacity_advisory", return_value=False

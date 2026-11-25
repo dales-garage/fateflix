@@ -15,7 +15,9 @@ import tempfile
 def configure(config, credentials, policy):
     required = set(policy["credentials"])
     if set(credentials) != required or any(
-        not isinstance(value, str) or not value or len(value) > 4096
+        not isinstance(value, str)
+        or not value
+        or len(value) > 4096
         or any(c in value for c in ("\x00", "\n", "\r"))
         for value in credentials.values()
     ):
@@ -92,7 +94,10 @@ def main():
     parser.add_argument("--credential-directory", type=Path, required=True)
     args = parser.parse_args()
     policy = json.loads(args.policy.read_text())
-    values = {key: (args.credential_directory / key).read_text() for key in policy["credentials"]}
+    values = {
+        key: (args.credential_directory / key).read_text()
+        for key in policy["credentials"]
+    }
     apply(args.config, values, policy)
 
 
