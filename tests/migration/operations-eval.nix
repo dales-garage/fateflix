@@ -112,27 +112,27 @@ assert builtins.all
   (
     name:
     builtins.elem "--network=ns:/run/netns/nixflix-staging"
-      staging.config.virtualisation.quadlet.containers."podman-${name}".containerConfig.podmanArgs
+      staging.config.virtualisation.quadlet.containers."podman-${name}".containerConfig.PodmanArgs
   )
   [
     "mylar3"
     "stash"
   ];
 assert builtins.elem "${staging.config.fateflix.storage.root}:/data:ro"
-  staging.config.virtualisation.quadlet.containers.podman-mylar3.containerConfig.volumes;
+  staging.config.virtualisation.quadlet.containers.podman-mylar3.containerConfig.Volume;
 assert builtins.elem "--device=/dev/dri:/dev/dri"
-  cfg.virtualisation.quadlet.containers.podman-stash.containerConfig.podmanArgs;
+  cfg.virtualisation.quadlet.containers.podman-stash.containerConfig.PodmanArgs;
 assert builtins.elem "/nix/store:/nix/store:ro"
-  cfg.virtualisation.quadlet.containers.podman-stash.containerConfig.volumes;
+  cfg.virtualisation.quadlet.containers.podman-stash.containerConfig.Volume;
 assert
   !(
-    disabled.virtualisation.quadlet.containers.podman-stash.containerConfig.environments
+    disabled.virtualisation.quadlet.containers.podman-stash.containerConfig.Environment
       ? LIBVA_DRIVER_NAME
   );
 assert
-  !(builtins.elem "--device=/dev/dri:/dev/dri" disabled.virtualisation.quadlet.containers.podman-stash.containerConfig.podmanArgs);
+  !(builtins.elem "--device=/dev/dri:/dev/dri" disabled.virtualisation.quadlet.containers.podman-stash.containerConfig.PodmanArgs);
 assert
-  !(builtins.elem "/nix/store:/nix/store:ro" disabled.virtualisation.quadlet.containers.podman-stash.containerConfig.volumes);
+  !(builtins.elem "/nix/store:/nix/store:ro" disabled.virtualisation.quadlet.containers.podman-stash.containerConfig.Volume);
 assert builtins.all
   (
     path:

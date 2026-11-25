@@ -14,14 +14,9 @@ let
       "/state"
     ];
   };
-  quadlet = {
-    fateflix.containers.mylar3.backend = pkgs.lib.mkForce "quadlet";
-    fateflix.containers.stash.backend = pkgs.lib.mkForce "quadlet";
-    fateflix.containers.apprise.backend = pkgs.lib.mkForce "quadlet";
-  };
 in
 pkgs.testers.runNixOSTest {
-  name = "fateflix-quadlet-transition";
+  name = "fateflix-quadlet-activation";
 
   nodes.machine = {
     imports = [
@@ -51,7 +46,6 @@ pkgs.testers.runNixOSTest {
       serviceConfig.Slice = "nixflix-staging.slice";
     };
     fateflix.containers.mylar3 = {
-      backend = "oci";
       image = "${imageName}:test";
       volumes = [ "/var/lib/mylar3:/state:ro" ];
       extraOptions = [
@@ -83,7 +77,6 @@ pkgs.testers.runNixOSTest {
       '';
     };
     fateflix.containers.stash = {
-      backend = "oci";
       image = "${imageName}:test";
       volumes = [ "/var/lib/mylar3:/state:ro" ];
       extraOptions = [
@@ -92,15 +85,12 @@ pkgs.testers.runNixOSTest {
       ];
     };
     fateflix.containers.apprise = {
-      backend = "oci";
       image = "${imageName}:test";
       volumes = [ "/run/apprise-state:/state:ro" ];
       ports = [ "127.0.0.1:18182:18181" ];
       extraOptions = [ "--cgroup-parent=nixflix-staging.slice" ];
     };
-    specialisation.quadlet.configuration = quadlet;
     specialisation.changed.configuration = {
-      imports = [ quadlet ];
       fateflix.containers.mylar3.environment.FATEFLIX_REVISION = pkgs.lib.mkForce "updated";
     };
   };
@@ -111,7 +101,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("mkdir -p /var/lib/mylar3 && echo existing-state > /var/lib/mylar3/index.html")
     machine.succeed("touch /var/lib/ready && systemctl start podman-mylar3")
     machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -x existing-state")
-    machine.fail("systemctl cat podman-mylar3 | grep -E 'SourcePath=.*/podman-mylar3[.]container$'")
+    machine.succeed("systemctl cat podman-mylar3 | grep -E 'SourcePath=/nix/store/.*/podman-mylar3[.]container$'")
 
     machine.succeed("systemctl start podman-stash")
     machine.wait_until_succeeds("ip netns exec fateflix-test curl -fsS http://127.0.0.1:18181/ | grep -x existing-state")
@@ -120,37 +110,24 @@ pkgs.testers.runNixOSTest {
     machine.succeed("echo fixture > /var/lib/apprise-credential && systemctl start podman-apprise")
     machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18182/ | grep -x fixture")
 
-    def switch(variant, recover=False):
-        prefix = "/run/booted-system"
-        if variant:
-            prefix += f"/specialisation/{variant}"
-        machine.succeed(f"{prefix}/bin/switch-to-configuration test")
-        if recover:
-            # A backend transition can stop on-demand units. Production
-            # starts them again through the NAS recovery service.
-            machine.succeed("systemctl start podman-mylar3 podman-stash podman-apprise")
-        machine.wait_for_unit("podman-mylar3.service")
-        machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -x existing-state")
-        machine.succeed("test \"$(podman ps --format '{{.Names}}' | grep -xc mylar3)\" = 1")
-        machine.succeed("systemctl show -p ControlGroup --value podman-mylar3 | grep -F /nixflix-staging.slice/")
+    machine.succeed(
+        "/run/booted-system/specialisation/changed/bin/switch-to-configuration test"
+    )
+    machine.wait_for_unit("podman-mylar3.service")
+    machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18181/ | grep -x existing-state")
+    machine.succeed("test \"$(podman ps --format '{{.Names}}' | grep -xc mylar3)\" = 1")
+    machine.succeed("systemctl show -p ControlGroup --value podman-mylar3 | grep -F /nixflix-staging.slice/")
 
-        machine.wait_for_unit("podman-stash.service")
-        machine.wait_for_unit("podman-apprise.service")
-        machine.wait_until_succeeds(
-            "ip netns exec fateflix-test curl -fsS http://127.0.0.1:18181/ | grep -x existing-state"
-        )
-        machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18182/ | grep -x fixture")
-        machine.succeed("podman port apprise 18181/tcp | grep -x 127.0.0.1:18182")
+    machine.wait_for_unit("podman-stash.service")
+    machine.wait_for_unit("podman-apprise.service")
+    machine.wait_until_succeeds(
+        "ip netns exec fateflix-test curl -fsS http://127.0.0.1:18181/ | grep -x existing-state"
+    )
+    machine.wait_until_succeeds("curl -fsS http://127.0.0.1:18182/ | grep -x fixture")
+    machine.succeed("podman port apprise 18181/tcp | grep -x 127.0.0.1:18182")
 
-    switch("quadlet", recover=True)
-    machine.succeed("systemctl cat podman-mylar3 | grep -E 'SourcePath=.*/podman-mylar3[.]container$'")
-    machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -x FATEFLIX_REVISION=initial")
-    switch("changed")
     machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -x FATEFLIX_REVISION=updated")
-    switch("", recover=True)
-    machine.succeed("podman inspect --format '{{range .Config.Env}}{{println .}}{{end}}' mylar3 | grep -x FATEFLIX_REVISION=initial")
 
-    switch("quadlet", recover=True)
     machine.succeed("systemctl stop srv-media.mount")
     machine.fail("systemctl is-active --quiet podman-mylar3")
     machine.succeed("systemctl mask --runtime srv-media.mount")

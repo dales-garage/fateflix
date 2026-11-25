@@ -111,8 +111,9 @@ assert builtins.all
       unit = "podman-${name}";
     in
     !(builtins.hasAttr name cfg.virtualisation.oci-containers.containers)
-    && cfg.virtualisation.quadlet.containers.${unit}.containerConfig.name == name
-    && cfg.systemd.services.${unit}.unitConfig ? X-QuadletNixConfigHash
+    && cfg.virtualisation.quadlet.containers.${unit}.containerConfig.ContainerName == name
+    && cfg.virtualisation.quadlet.containers.${unit}.serviceName == unit
+    && cfg.systemd.services.${unit}.wantedBy == [ ]
     && builtins.elem "data.mount" cfg.systemd.services.${unit}.bindsTo
     &&
       builtins.elem "!/var/lib/nixflix-gitops/holds/${unit}"
@@ -124,9 +125,9 @@ assert builtins.all
     "stash"
   ];
 assert builtins.elem "--network=host"
-  cfg.virtualisation.quadlet.containers.podman-mylar3.containerConfig.podmanArgs;
+  cfg.virtualisation.quadlet.containers.podman-mylar3.containerConfig.PodmanArgs;
 assert
-  cfg.virtualisation.quadlet.containers.podman-apprise.containerConfig.publishPorts
+  cfg.virtualisation.quadlet.containers.podman-apprise.containerConfig.PublishPort
   == [ "127.0.0.1:8000:8000" ];
 assert builtins.elem "/var/lib/nixflix-secrets/notifications.json"
   cfg.systemd.services.podman-apprise.unitConfig.ConditionPathExists;

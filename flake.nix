@@ -36,7 +36,10 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixpkgs-host.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-media.url = "github:NixOS/nixpkgs/master";
-    quadlet-nix.url = "github:SEIAROTg/quadlet-nix";
+    quadlet-nix = {
+      url = "github:mirkolenz/quadlet-nix/v1";
+      inputs.flake-parts.follows = "flake-parts";
+    };
     recyclarr-templates = {
       url = "github:recyclarr/config-templates/89eebadd429952069182a22930af4d768cacda36";
       flake = false;

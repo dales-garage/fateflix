@@ -302,9 +302,10 @@ package, local transcode paths, memory limits and CIFS layout.
 
 ## FateFlix Podman containers
 
-Mylar3, Stash, and Apprise use the `fateflix.containers` inventory and Podman's
-Quadlet generator. Inspect a unit with `sudo systemctl cat podman-mylar3` or
-`sudo podman inspect mylar3`. The stable `podman-*.service` names let NAS
+Mylar3, Stash, and Apprise use the `fateflix.containers` inventory and
+[mirkolenz/quadlet-nix](https://github.com/mirkolenz/quadlet-nix). Podman generates
+and validates their systemd units during the Nix build. Use `sudo quadletctl list`
+to see the containers or `sudo systemctl cat podman-mylar3` to inspect a unit. The stable `podman-*.service` names let NAS
 recovery, maintenance holds, health checks, and monitoring track the same services
 across generations. Apprise starts only when its runtime credential file is
 present. Its listener is limited to loopback.

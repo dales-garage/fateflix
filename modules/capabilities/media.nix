@@ -7,7 +7,7 @@
     ];
     nixos.imports = [
       ../../capabilities/media/packages.nix
-      inputs.quadlet-nix.nixosModules.quadlet
+      inputs.quadlet-nix.nixosModules.default
       ../../capabilities/media/containers.nix
       ../../capabilities/media/services.nix
       ../../capabilities/media/native-media.nix

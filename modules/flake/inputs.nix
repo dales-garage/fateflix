@@ -14,7 +14,10 @@
       flake = false;
     };
     nixpkgs-media.url = "github:NixOS/nixpkgs/master";
-    quadlet-nix.url = "github:SEIAROTg/quadlet-nix";
+    quadlet-nix = {
+      url = "github:mirkolenz/quadlet-nix/v1";
+      inputs.flake-parts.follows = "flake-parts";
+    };
     nixpkgs-host.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     treefmt-nix = {
