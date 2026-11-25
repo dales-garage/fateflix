@@ -12,6 +12,7 @@
     ./time.nix
     ./maintenance.nix
     ./resources.nix
+    ./builders.nix
     (modulesPath + "/virtualisation/xen-domU.nix")
   ];
   config = {
