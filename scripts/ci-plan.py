@@ -9,6 +9,8 @@ import re
 import subprocess
 import time
 
+import ci_reuse
+
 
 def run(*args):
     return subprocess.check_output(args, text=True, timeout=60).strip()
@@ -199,6 +201,18 @@ def verify(results):
         or outputs.get("has_checks") != str(bool(checks)).lower()
     ):
         raise ValueError("Invalid check selection")
+    reused = int(outputs["reused_run"])
+    if reused < 0 or (
+        reused
+        and (
+            set(checks) != catalog(Path.cwd())["all"]
+            or any(
+                outputs.get(flag) != "true"
+                for flag in ("production", "gitops", "renovate")
+            )
+        )
+    ):
+        raise ValueError("Invalid reused CI coverage")
     for job, flag in (
         ("checks", "has_checks"),
         ("production", "production"),
@@ -208,7 +222,8 @@ def verify(results):
         value = outputs.get(flag)
         if value not in {"true", "false"}:
             raise ValueError(f"Missing or invalid selection for {job}")
-        expected = "success" if value == "true" else "skipped"
+        reused_job = reused and job in {"checks", "production"}
+        expected = "success" if value == "true" and not reused_job else "skipped"
         actual = results.get(job, {}).get("result")
         if actual != expected:
             raise ValueError(f"{job}: expected {expected}, got {actual}")
@@ -216,30 +231,54 @@ def verify(results):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["plan", "verify"])
+    parser.add_argument("command", choices=["plan", "verify", "record"])
     parser.add_argument("--base")
     parser.add_argument("--full", action="store_true")
+    parser.add_argument("--evidence", type=Path)
     args = parser.parse_args()
-    if args.command == "verify":
-        verify(json.loads(os.environ["CI_RESULTS"]))
-        print("Every selected job passed; only unselected jobs were skipped.")
+    if args.command in {"verify", "record"}:
+        results = json.loads(os.environ["CI_RESULTS"])
+        verify(results)
+        outputs = results["prepare"]["outputs"]
+        if args.command == "record":
+            if args.evidence is None:
+                parser.error("record requires --evidence")
+            if set(json.loads(outputs["checks"])) == catalog(Path.cwd())["all"]:
+                ci_reuse.write_evidence(outputs, args.evidence)
+        elif outputs["reused_run"] != "0":
+            print(
+                f"Fresh jobs passed. Nix builds reuse successful run {outputs['reused_run']}."
+            )
+        else:
+            print("Every selected job passed; only unselected jobs were skipped.")
         return
 
     started = time.monotonic()
     plan = make_plan(args.base, args.full)
+    reused = 0
+    if (
+        not args.full
+        and plan["production"]
+        and plan["renovate"]
+        and set(plan["checks"]) == catalog(Path.cwd())["all"]
+    ):
+        reused = ci_reuse.find_reusable_run(plan)
     outputs = {
         "checks": plan["checks"],
+        "reused_run": reused,
         "has_checks": bool(plan["checks"]),
         "production": plan["production"],
         "gitops": plan["gitops"],
         "renovate": plan["renovate"],
-        "matrix": matrix(Path.cwd(), plan["checks"]),
+        "matrix": matrix(Path.cwd(), [] if reused else plan["checks"]),
     }
     print(
         f"Selected {len(plan['checks'])} checks in {time.monotonic() - started:.3f}s without Nix",
         flush=True,
     )
     print(json.dumps(plan, indent=2))
+    if reused:
+        print(f"Reusing Nix builds from successful CI run {reused}.")
     if os.environ.get("GITHUB_OUTPUT"):
         with open(os.environ["GITHUB_OUTPUT"], "a") as stream:
             for key, value in outputs.items():
@@ -250,7 +289,14 @@ def main():
             stream.write(
                 "Checks: " + (", ".join(plan["checks"]) or "none changed") + "\n\n"
             )
+            if reused:
+                url = f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{reused}"
+                stream.write(
+                    f"Nix checks and host builds reused from [CI run {reused}]({url}).\n\n"
+                )
             for job in ("production", "gitops", "renovate"):
+                if reused and job == "production":
+                    continue
                 stream.write(
                     f"- {job}: {'run' if plan[job] else 'skip (outside scope)'}\n"
                 )

@@ -2,6 +2,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import sys
 import unittest
 import tempfile
 from unittest.mock import patch
@@ -11,7 +12,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("ci_plan", ROOT / "scripts/ci-plan.py")
 ci = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(ci)
+with patch.object(sys, "path", [str(ROOT / "scripts"), *sys.path]):
+    spec.loader.exec_module(ci)
 
 
 class SelectionTests(unittest.TestCase):
@@ -214,6 +216,7 @@ class RequiredCheckTests(unittest.TestCase):
                 "outputs": {
                     "checks": json.dumps(["navidrome-basic"]),
                     "has_checks": "true",
+                    "reused_run": "0",
                     "production": "false",
                     "gitops": "false",
                     "renovate": "false",
@@ -225,6 +228,26 @@ class RequiredCheckTests(unittest.TestCase):
             "gitops": {"result": "skipped"},
             "renovate": {"result": "skipped"},
         }
+
+    def test_reuse_still_requires_fresh_evaluation_python_and_renovate(self):
+        result = self.results()
+        result["prepare"]["outputs"].update(
+            reused_run="42",
+            checks=json.dumps(sorted(ci.catalog(ROOT)["all"])),
+            production="true",
+            gitops="true",
+            renovate="true",
+        )
+        result["checks"]["result"] = "skipped"
+        result["gitops"]["result"] = "success"
+        result["renovate"]["result"] = "success"
+        ci.verify(result)
+        for job in ("evaluate", "gitops", "renovate"):
+            with self.subTest(job=job):
+                result[job]["result"] = "skipped"
+                with self.assertRaises(ValueError):
+                    ci.verify(result)
+                result[job]["result"] = "success"
 
     def test_only_planned_skips_are_accepted(self):
         ci.verify(self.results())

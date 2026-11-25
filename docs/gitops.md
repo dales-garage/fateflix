@@ -22,6 +22,20 @@ FateFlix consumes upstream through the locked NixFlix source input. See
 Merge only after the required CI check passes. Do not enable Comin against the old
 `main`, which does not contain the production host configuration.
 
+### Reusing checks after a Renovate-only base merge
+
+When a same-repository pull request merges the default branch and the only
+tracked change is a patch or minor bump of the Renovate validator in CI, the
+planner can reuse that pull request's previous successful Nix checks and host
+builds. The previous run must have run the full suite, and its checkpoint must
+match the current checked-out tree with only that validator pin masked.
+Full flake evaluation, Python tests, and Renovate validation still run fresh.
+
+The plan links the source run when it reuses results. Checkpoints expire after
+seven days. Missing or mismatched evidence falls back to fresh checks, as do
+forks, other changes, and explicitly requested full runs. A run that reused
+checks does not publish a new checkpoint.
+
 ## Update ownership
 
 | Group | Updates | Owner |

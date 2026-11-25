@@ -34,12 +34,16 @@ env:
 jobs:
   prepare:
     name: Plan validation
+    permissions:
+      actions: read
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 3
     outputs:
       checks: ${{ steps.plan.outputs.checks }}
       matrix: ${{ steps.plan.outputs.matrix }}
       has_checks: ${{ steps.plan.outputs.has_checks }}
+      reused_run: ${{ steps.plan.outputs.reused_run }}
       production: ${{ steps.plan.outputs.production }}
       gitops: ${{ steps.plan.outputs.gitops }}
       renovate: ${{ steps.plan.outputs.renovate }}
@@ -57,6 +61,7 @@ jobs:
         env:
           CI_BASE_SHA: ${{ github.event.merge_group.base_sha || github.event.pull_request.base.sha || github.event.before }}
           CI_EVENT: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
           CI_FULL: ${{ inputs.full || false }}
         run: |
           if [ "$CI_FULL" = true ]; then
@@ -103,7 +108,7 @@ jobs:
   checks:
     name: ${{ matrix.name }}
     needs: prepare
-    if: needs.prepare.outputs.has_checks == 'true'
+    if: needs.prepare.outputs.has_checks == 'true' && needs.prepare.outputs.reused_run == '0'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -158,7 +163,7 @@ jobs:
   production:
     name: Both host systems
     needs: prepare
-    if: needs.prepare.outputs.production == 'true'
+    if: needs.prepare.outputs.production == 'true' && needs.prepare.outputs.reused_run == '0'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -187,3 +192,17 @@ jobs:
         env:
           CI_RESULTS: ${{ toJSON(needs) }}
         run: python3 scripts/ci-plan.py verify
+      - name: Record fresh Nix build evidence
+        if: github.event_name == 'pull_request' && needs.prepare.outputs.reused_run == '0'
+        continue-on-error: true
+        env:
+          CI_RESULTS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci-plan.py record --evidence "$RUNNER_TEMP/ci-build-evidence.json"
+      - uses: actions/upload-artifact@v7
+        if: github.event_name == 'pull_request' && needs.prepare.outputs.reused_run == '0'
+        continue-on-error: true
+        with:
+          name: ci-build-evidence-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci-build-evidence.json
+          retention-days: 7
+          if-no-files-found: ignore
