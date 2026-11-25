@@ -134,6 +134,8 @@ pkgsUnfree.testers.runNixOSTest {
   };
 
   testScript = ''
+    import json
+
     start_all()
 
     # Wait for services to start (longer timeout for initial DB migrations)
@@ -150,7 +152,6 @@ pkgsUnfree.testers.runNixOSTest {
     machine.wait_for_open_port(7878, timeout=60)
 
     # Assert the running API uses the selected upstream release, including DB startup.
-    import json
     status = json.loads(machine.succeed(
         "curl -fsS -H 'X-Api-Key: abcd1234abcd1234abcd1234abcd1234' "
         "http://127.0.0.1:7878/api/v3/system/status"
@@ -171,7 +172,6 @@ pkgsUnfree.testers.runNixOSTest {
     assert "/media/movies" in folders, "Root folder not created"
 
     # Check that SABnzbd download client was configured
-    import json
     clients = machine.succeed(
         "curl -s -H 'X-Api-Key: abcd1234abcd1234abcd1234abcd1234' "
         "http://127.0.0.1:7878/api/v3/downloadclient"

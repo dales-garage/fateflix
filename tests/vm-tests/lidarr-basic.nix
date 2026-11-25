@@ -143,6 +143,7 @@ pkgsUnfree.testers.runNixOSTest {
   testScript = ''
     import json
 
+
     start_all()
 
     # Wait for services to start (longer timeout for initial DB migrations)
@@ -159,7 +160,6 @@ pkgsUnfree.testers.runNixOSTest {
     machine.wait_for_open_port(8686, timeout=60)
 
     # Assert the running API uses the selected upstream release, including DB startup.
-    import json
     status = json.loads(machine.succeed(
         "curl -fsS -H 'X-Api-Key: 5678efgh5678efgh5678efgh5678efgh' "
         "http://127.0.0.1:8686/api/v1/system/status"
