@@ -2,6 +2,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import sys
 import unittest
 import tempfile
 from unittest.mock import patch
@@ -11,7 +12,8 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("ci_plan", ROOT / "scripts/ci-plan.py")
 ci = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(ci)
+with patch.object(sys, "path", [str(ROOT / "scripts"), *sys.path]):
+    spec.loader.exec_module(ci)
 
 
 class SelectionTests(unittest.TestCase):
@@ -92,6 +94,45 @@ class SelectionTests(unittest.TestCase):
             self.assertTrue(plan["renovate"])
             self.assertIn("unit-tests", plan["checks"])
             self.assertFalse(set(plan["checks"]) & self.names["vm"])
+
+    def test_isolated_tool_runtime_edits_do_not_select_host_or_vm_builds(self):
+        workflow = (ROOT / ci.ci_reuse.WORKFLOW).read_text()
+        for expected, runner_changed, old, new in [
+            ({"gitops"}, False, "python-version: '3.15'", "python-version: '3.16'"),
+            ({"renovate"}, False, "node-version: '24.22.3'", "node-version: '24.23.0'"),
+            (None, True, "kvm: ${{ matrix.vm }}", "kvm: false"),
+            (None, False, "needs: prepare", "needs: evaluate"),
+        ]:
+            with self.subTest(old=old):
+                self.assertIn(old, workflow)
+                with tempfile.TemporaryDirectory() as directory:
+                    path = Path(directory) / "ci.yml"
+                    path.write_text(workflow.replace(old, new, 1))
+                    with (
+                        patch.object(
+                            ci.ci_reuse, "git", return_value=workflow.encode()
+                        ),
+                        patch.object(ci.ci_reuse, "WORKFLOW", str(path)),
+                    ):
+                        jobs, shared_runner = ci.ci_reuse.workflow_impact("base")
+                    self.assertEqual((jobs, shared_runner), (expected, runner_changed))
+                if shared_runner:
+                    plan = ci.select(
+                        self.names, [ci.ci_reuse.WORKFLOW], jobs, shared_runner
+                    )
+                    self.assertEqual(set(plan["checks"]), self.names["all"])
+                    self.assertTrue(plan["production"])
+                if jobs is not None:
+                    plan = ci.select(self.names, [ci.ci_reuse.WORKFLOW], jobs)
+                    self.assertEqual(plan["checks"], ["formatting"])
+                    self.assertEqual(plan["renovate"], "renovate" in jobs)
+                    self.assertFalse(plan["production"])
+
+    def test_isolated_tool_edits_do_not_drop_other_changed_paths(self):
+        plan = ci.select(self.names, [ci.ci_reuse.WORKFLOW, "flake.lock"], {"renovate"})
+        self.assertEqual(set(plan["checks"]), self.names["all"])
+        self.assertTrue(plan["production"])
+        self.assertTrue(plan["renovate"])
 
     def test_individual_fixture_is_scoped_and_shared_fixture_is_broad(self):
         plan = self.select("tests/vm-tests/navidrome-basic.nix")
@@ -208,7 +249,7 @@ class SelectionTests(unittest.TestCase):
 
 class RequiredCheckTests(unittest.TestCase):
     def results(self):
-        return {
+        result = {
             "prepare": {
                 "result": "success",
                 "outputs": {
@@ -220,11 +261,64 @@ class RequiredCheckTests(unittest.TestCase):
                 },
             },
             "evaluate": {"result": "success"},
+            "graph": {"result": "success"},
             "checks": {"result": "success"},
             "production": {"result": "skipped"},
             "gitops": {"result": "skipped"},
             "renovate": {"result": "skipped"},
         }
+        self.graph(result, ["navidrome-basic"])
+        return result
+
+    def graph(
+        self, result, fresh, reused=(), production=False, reused_production=False
+    ):
+        reused = list(reused)
+        result["graph"]["outputs"] = {
+            "has_checks": str(bool(fresh)).lower(),
+            "production": str(production).lower(),
+            "matrix": json.dumps(ci.matrix(ROOT, fresh)),
+            "builds": json.dumps(
+                {
+                    "fresh": fresh,
+                    "reused": reused,
+                    "production": production,
+                    "reused_production": reused_production,
+                    "source_run": 42 if reused or reused_production else 0,
+                    "identities": {
+                        "checks": dict.fromkeys(reused, "id"),
+                        "production": "host" if reused_production else None,
+                    },
+                }
+            ),
+        }
+
+    def test_reuse_still_requires_fresh_evaluation_python_and_renovate(self):
+        result = self.results()
+        result["prepare"]["outputs"].update(
+            production="true", gitops="true", renovate="true"
+        )
+        self.graph(result, [], ["navidrome-basic"], reused_production=True)
+        result["checks"]["result"] = "skipped"
+        result["gitops"]["result"] = "success"
+        result["renovate"]["result"] = "success"
+        ci.verify(result)
+        for job in ("evaluate", "graph", "gitops", "renovate"):
+            with self.subTest(job=job):
+                result[job]["result"] = "skipped"
+                with self.assertRaises(ValueError):
+                    ci.verify(result)
+                result[job]["result"] = "success"
+
+    def test_reuse_needs_complete_coverage_and_current_matrix(self):
+        result = self.results()
+        self.graph(result, [], ["another-check"])
+        with self.assertRaises(ValueError):
+            ci.verify(result)
+        self.graph(result, ["navidrome-basic"])
+        result["graph"]["outputs"]["matrix"] = '{"include":[]}'
+        with self.assertRaises(ValueError):
+            ci.verify(result)
 
     def test_only_planned_skips_are_accepted(self):
         ci.verify(self.results())
@@ -251,6 +345,7 @@ class RequiredCheckTests(unittest.TestCase):
     def test_empty_matrix_can_skip_checks(self):
         result = self.results()
         result["prepare"]["outputs"].update(checks="[]", has_checks="false")
+        self.graph(result, [])
         result["checks"]["result"] = "skipped"
         ci.verify(result)
 
@@ -315,6 +410,12 @@ class WorkflowTests(unittest.TestCase):
             self.assertIn(target + ".drvPath", commands)
             self.assertIn(target, builds)
         self.assertIn("check-secret-canary.py", builds)
+
+    def test_graph_planning_does_not_hold_up_full_evaluation(self):
+        self.assertNotIn("needs", self.jobs["evaluate"])
+        self.assertEqual(self.jobs["graph"]["needs"], "prepare")
+        for job in ("checks", "production"):
+            self.assertEqual(self.jobs[job]["needs"], "graph")
 
     def test_renovate_is_separate_from_python_tests(self):
         self.assertFalse(

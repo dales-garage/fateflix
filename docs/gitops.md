@@ -22,6 +22,25 @@ FateFlix consumes upstream through the locked NixFlix source input. See
 Merge only after the required CI check passes. Do not enable Comin against the old
 `main`, which does not contain the production host configuration.
 
+### Choosing builds from the Nix dependency graph
+
+CI selects candidate checks from changed paths, then evaluates their Nix
+derivations. Isolated Python or Renovate job changes run their tool validation
+and formatting. Changes to the shared Nix check runner select the full suite. A same-repository pull request update can reuse an earlier
+successful build of the same derivation when its runner, workflow steps,
+and execution flags also match. Nix includes transitive dependencies in
+the derivation identity, so tool updates only invalidate the jobs that use
+them. An unchanged pair of host closures also needs an unchanged secret
+canary and host build recipe.
+
+The gate links the earlier run and accounts for every candidate. A fresh full
+flake evaluation runs alongside build planning. Python tests and selected
+CI-tool validators are also fresh.
+Network-dependent VM checks are always fresh when selected. Changes to the
+PR's CI policy, forks, missing evidence, and explicit full runs use fresh
+builds. Evidence expires after seven days and records only jobs that
+actually ran successfully.
+
 ## Update ownership
 
 | Group | Updates | Owner |

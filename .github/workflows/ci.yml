@@ -38,7 +38,6 @@ jobs:
     timeout-minutes: 3
     outputs:
       checks: ${{ steps.plan.outputs.checks }}
-      matrix: ${{ steps.plan.outputs.matrix }}
       has_checks: ${{ steps.plan.outputs.has_checks }}
       production: ${{ steps.plan.outputs.production }}
       gitops: ${{ steps.plan.outputs.gitops }}
@@ -59,12 +58,17 @@ jobs:
           CI_EVENT: ${{ github.event_name }}
           CI_FULL: ${{ inputs.full || false }}
         run: |
+          python=python3
+          if ! python3 -c 'import yaml' && python3 -m venv "$RUNNER_TEMP/ci-plan" &&
+             "$RUNNER_TEMP/ci-plan/bin/pip" install --disable-pip-version-check -r .github/requirements-ci.txt; then
+            python="$RUNNER_TEMP/ci-plan/bin/python"
+          fi
           if [ "$CI_FULL" = true ]; then
-            python3 scripts/ci-plan.py plan --full
+            "$python" scripts/ci-plan.py plan --full
           elif [ "$CI_EVENT" = workflow_dispatch ]; then
-            python3 scripts/ci-plan.py plan --base origin/main
+            "$python" scripts/ci-plan.py plan --base origin/main
           else
-            python3 scripts/ci-plan.py plan --base "$CI_BASE_SHA"
+            "$python" scripts/ci-plan.py plan --base "$CI_BASE_SHA"
           fi
 
   gitops:
@@ -102,14 +106,14 @@ jobs:
 
   checks:
     name: ${{ matrix.name }}
-    needs: prepare
-    if: needs.prepare.outputs.has_checks == 'true'
+    needs: graph
+    if: needs.graph.outputs.has_checks == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.graph.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -155,10 +159,59 @@ jobs:
       - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-production.config.system.build.toplevel.drvPath
       - run: nix eval --no-write-lock-file .#nixosConfigurations.nixflix-staging.config.system.build.toplevel.drvPath
 
+  graph:
+    name: Plan Nix builds
+    needs: prepare
+    permissions:
+      actions: read
+      contents: read
+    env:
+      CI_RECORD_GRAPH: >-
+        ${{ github.event_name == 'pull_request' &&
+            github.event.pull_request.head.repo.full_name == github.repository &&
+            github.event.pull_request.base.ref == github.event.repository.default_branch }}
+    outputs:
+      has_checks: ${{ steps.graph.outputs.has_checks }}
+      production: ${{ steps.graph.outputs.production }}
+      matrix: ${{ steps.graph.outputs.matrix }}
+      builds: ${{ steps.graph.outputs.builds }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: DeterminateSystems/determinate-nix-action@v3.24.3
+        if: env.CI_RECORD_GRAPH == 'true'
+        with:
+          kvm: false
+      - name: Prepare Nix graph fixtures
+        if: env.CI_RECORD_GRAPH == 'true'
+        run: |
+          nix build --no-write-lock-file --no-link .#lib.nixflixSource
+          nix eval --impure --json --file tests/fixture-paths.nix
+      - name: Select Nix builds from the evaluated dependency graph
+        id: graph
+        env:
+          CI_PLAN: ${{ toJSON(needs.prepare.outputs) }}
+          CI_FULL: ${{ inputs.full || false }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python=python3
+          if [ "$CI_RECORD_GRAPH" = true ] &&
+             python3 -m venv "$RUNNER_TEMP/ci-graph" &&
+             "$RUNNER_TEMP/ci-graph/bin/pip" install --disable-pip-version-check -r .github/requirements-ci.txt; then
+            python="$RUNNER_TEMP/ci-graph/bin/python"
+          fi
+          args=()
+          if [ "$CI_FULL" = true ]; then args+=(--full); fi
+          "$python" scripts/ci-plan.py graph "${args[@]}"
+
   production:
     name: Both host systems
-    needs: prepare
-    if: needs.prepare.outputs.production == 'true'
+    needs: graph
+    if: needs.graph.outputs.production == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -176,7 +229,7 @@ jobs:
   required:
     name: CI required
     if: always()
-    needs: [prepare, evaluate, checks, production, gitops, renovate]
+    needs: [prepare, evaluate, graph, checks, production, gitops, renovate]
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -187,3 +240,17 @@ jobs:
         env:
           CI_RESULTS: ${{ toJSON(needs) }}
         run: python3 scripts/ci-plan.py verify
+      - name: Record fresh Nix build evidence
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          CI_RESULTS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci-plan.py record --evidence "$RUNNER_TEMP/ci-build-evidence.json"
+      - uses: actions/upload-artifact@v7
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        with:
+          name: ci-build-evidence-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci-build-evidence.json
+          retention-days: 7
+          if-no-files-found: ignore
