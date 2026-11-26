@@ -13,7 +13,9 @@ let
   };
 in
 {
-  den.aspects.nixflix-api.nixos = import ../../integrations/nixflix/module.nix { inherit inputs source; };
+  den.aspects.nixflix-api.nixos = import ../../integrations/nixflix/module.nix {
+    inherit inputs source;
+  };
   flake = {
     lib.nixflixSource = source;
     lib.buildJellyfinPlugin = { pkgs }: import ../../lib/build-jellyfin-plugin.nix { inherit pkgs; };
