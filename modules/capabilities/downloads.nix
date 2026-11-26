@@ -1,5 +1,4 @@
 { den, ... }: {
-  flake.nixosModules.download-policy = ../../capabilities/downloads/policy.nix;
   den.aspects.download-policy = {
     includes = [ den.aspects.nixflix-api ];
     nixos.imports = [ ../../capabilities/downloads/policy.nix ];

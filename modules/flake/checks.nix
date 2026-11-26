@@ -12,7 +12,12 @@
       media = import inputs.nixpkgs-media { inherit system; };
       arr = import ../../lib/arr-packages.nix { inherit pkgs media; };
       testedModules = {
-        imports = [ self.nixosModules.default ];
+        imports = [
+          (import ../../integrations/nixflix/module.nix {
+            inherit inputs;
+            source = self.lib.nixflixSource;
+          })
+        ];
         nixflix = {
           prowlarr.package = lib.mkDefault arr.prowlarr;
           radarr.package = lib.mkDefault arr.radarr;

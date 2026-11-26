@@ -277,7 +277,11 @@ to the personal fork's migration bookmark. Discord/Matrix delivery remains disab
 pending the two pass entries described below. Final client playback and HDR tone
 mapping checks remain useful before declaring every playback scenario validated.
 
-## Repository workflow
+## Historical repository workflow
+
+These commands describe the completed pre-Comin migration. The old deployment
+app and its `just` wrappers are no longer present on current `main`. For live
+operation and rollback, use the [GitOps runbook](../gitops.md).
 
 ```sh
 nix develop

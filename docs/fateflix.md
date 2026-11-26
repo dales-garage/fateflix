@@ -14,17 +14,17 @@ production deployment are composed here, alongside the upstream integration.
    Shared dependencies follow FateFlix inputs; the adapter uses its `outPath`.
 1. `integrations/nixflix/default.nix` assembles that source with reviewed
    patches, vendored modules, compatibility modules, plugins and packages.
-1. `modules/integrations/nixflix.nix` exports the assembled NixOS modules as
-   `nixosModules.default` and `nixosModules.nixflix`. The `nixflix-api` aspect
-   supplies those declarations to the capability composition.
+1. `modules/integrations/nixflix.nix` uses the internal adapter to import the
+   assembled NixOS modules. The `nixflix-api` aspect supplies those declarations
+   to the capability composition.
 1. `modules/profiles/media-server.nix` combines the machine base with the
    downloads, playback, processing, monitoring and FreeCORE capabilities.
 1. `modules/hosts/` selects production or staging. Production adds the deployment
    capability; `nixosConfigurations.fateflix` exposes the resulting appliance.
 
-The module exports are reusable on another NixOS host. The appliance outputs
-include this repository's machine configuration and operating policy. See
-[Getting started](getting-started/index.md) to choose between them.
+The appliance outputs include this repository's machine configuration and
+operating policy. The adapted modules are not standalone flake outputs; see
+[Getting started](getting-started/index.md) for the supported entry point.
 
 ## Composition and host roles
 
@@ -35,7 +35,8 @@ contains explicitly imported machine configuration.
 
 `nixosConfigurations.fateflix` is the preferred production alias. It resolves
 to the same derivation as `nixflix-production` and the retained `nixflix` alias;
-it is not another Den host. `nixflix-staging` remains the staging output.
+it is not another Den host. Comin deploys production only from reviewed `main`.
+`nixflix-staging` remains a development-only role, not a second deployment.
 Hostnames, state versions, service identities, database locations, image pins,
 SecretSpec namespaces and host/media Nixpkgs separation are unchanged.
 
@@ -150,8 +151,7 @@ build. Do not override `nixpkgs.config.allowUnfree` separately in host modules.
 
 The policy does not change runtime service names, state paths, UID/GID values,
 secret contracts, storage/download defaults, or public flake output aliases.
-Reusable exported upstream NixOS modules still respect the consuming host's own
-Nixpkgs policy; this flake-parts setting governs the FateFlix appliance outputs.
+This flake-parts setting governs the FateFlix appliance outputs.
 
 ## Media service catalog
 
@@ -227,8 +227,8 @@ construction. `integrations/nixflix/default.nix` assembles fetched upstream
 source with `patches/`, verbatim `vendor/modules/`, maintained `compatibility/`,
 `plugins/` and `pkgs/` overlays. Vendored files record their original revision,
 paths and digests in `vendor/provenance.json`. See the
-[integration boundary](https://github.com/dales-garage/fateflix/blob/main/integrations/nixflix/README.md). Public `nixosModules.default`, `nixflix`, and
-`download-policy` exports are preserved. The source-only IFD remains: evaluation
+[integration boundary](https://github.com/dales-garage/fateflix/blob/main/integrations/nixflix/README.md).
+The adapter and download policy are internal. The source-only IFD remains: evaluation
 needs an x86_64 builder to realize the small patched source tree. Prime it with
 `nix build --no-link .#lib.nixflixSource` before a read-only flake check.
 

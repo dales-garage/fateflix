@@ -40,8 +40,8 @@ retaining its own host composition.
 
 The appliance's checked-in hardware and filesystem definitions belong to an
 existing machine. Adapt those definitions before deploying elsewhere. See
-[Getting started](getting-started/index.md) for the difference between the
-complete appliance and the reusable module exports.
+[Getting started](getting-started/index.md) for the supported appliance
+entry point and the limited development role.
 
 The red logo is reused from upstream NixFlix. For the original project's setup
 and service documentation, visit the

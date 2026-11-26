@@ -22,18 +22,18 @@ A lock update still needs source-patch, evaluation and CI validation before merg
 
 The assembled paths preserve relative imports expected by upstream modules.
 The repository directories are not independently imported as NixOS modules.
-`modules/integrations/nixflix.nix` owns the public module exports and the
-`nixflix-api` Den aspect. This aspect supplies upstream declarations without
-activating the media service stack.
+`modules/integrations/nixflix.nix` owns the `nixflix-api` Den aspect.
+The aspect, test fixtures and Navidrome updater share the internal
+`module.nix` adapter. It supplies upstream declarations without activating
+the media service stack.
 
 `plugins/` owns maintained manifests, generated definitions and updater scripts.
 The plugin update allowlists, Renovate configuration and CI planner use these
 source locations. Changing the assembly, vendor sources or compatibility code
 selects the full integration suite.
 
-The complete appliance is exported as `nixosConfigurations.fateflix`. Importing
-`nixosModules.default` on its own exposes the adapted service modules without
-selecting the appliance's machine configuration or operating policy. See the
+The complete appliance is exported as `nixosConfigurations.fateflix`.
+FateFlix does not export standalone NixOS modules. See the
 [architecture guide](../../docs/fateflix.md) for how capabilities and hosts
 consume this integration.
 
