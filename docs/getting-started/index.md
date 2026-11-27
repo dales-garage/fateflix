@@ -4,10 +4,9 @@ title: Getting Started
 
 # Getting started with FateFlix
 
-FateFlix offers a complete downstream appliance and reusable adapted NixFlix
-modules. Choose the appliance when working on this repository's host
-composition, or the module export when adding media services to a NixOS host
-you already maintain.
+FateFlix is a complete downstream appliance. Its adapted service modules are
+internal to the appliance. For standalone service modules, use the
+[upstream NixFlix installation guide](https://kiriwalawren.github.io/nixflix/getting-started/).
 
 ## Inspect the appliance
 
@@ -30,8 +29,10 @@ nix build --no-link .#nixosConfigurations.fateflix.config.system.build.toplevel
 ```
 
 `fateflix`, `nixflix` and `nixflix-production` name the same production system.
-`nixflix-staging` selects a staging role with separate secrets and no production
-Comin deployment. It shares the existing machine's hardware definitions.
+`nixflix-staging` is for limited development testing from a test checkout.
+It uses separate secrets and does not run Comin. It shares the existing machine's
+hardware definitions; it is not a separate VM or a production deployment target.
+Use `nix develop -c just build-staging` to build it without activating it.
 
 ## Adapt the appliance to another machine
 
@@ -54,47 +55,13 @@ For the existing production appliance, follow [GitOps and updates](../gitops.md)
 Comin owns activation from reviewed `main`; local evaluation and builds are
 separate from deployment.
 
-## Use the adapted modules on your own host
-
-Add FateFlix as an input to your own flake, then import its module export:
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    fateflix.url = "github:dales-garage/fateflix";
-  };
-
-  outputs = { nixpkgs, fateflix, ... }: {
-    nixosConfigurations.my-media-host = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        ./configuration.nix
-        fateflix.nixosModules.default
-      ];
-    };
-  };
-}
-```
-
-Your `configuration.nix` supplies the machine configuration and selects services
-through `nixflix.*` options. The import exposes FateFlix's adapted NixFlix module
-interface; it does not import the appliance's host profile, storage choices or
-Comin deployment.
-
-See the [basic module example](../examples/basic-setup.md) and
-[options reference](../reference/index.md) for service configuration. Application
-API credentials must use runtime secret paths rather than literal values in Nix.
-For unadapted upstream NixFlix, follow the
-[upstream installation guide](https://kiriwalawren.github.io/nixflix/getting-started/).
-
 ## How the dependency is consumed
 
 FateFlix declares `inputs.nixflix` as a full flake input tracking
 `github:kiriwalawren/nixflix/main`. `flake.lock` pins the revision, and
 `nix flake update nixflix` refreshes it from upstream main. Shared dependencies
 follow FateFlix inputs. The integration assembles its `outPath` with local
-patches and overlays before exposing its NixOS modules.
+patches and overlays before composing the appliance.
 
 See [Architecture and configuration](../fateflix.md#how-nixflix-becomes-the-appliance)
 for the path from upstream input to appliance output, and

@@ -115,7 +115,7 @@ nav:
       - Dependency Updates: dependency-updates.md
       - Completed Migration Archive: migration/nixflix.md
   - Examples:
-      - Basic Setup: examples/basic-setup.md
+      - Appliance Configuration: examples/basic-setup.md
       - Jellyfin Plugins: examples/jellyfin-plugins.md
       - Jellyfin Subtitles: examples/jellyfin-subtitles.md
       - Maintainerr Rules: examples/maintainerr-rules.md

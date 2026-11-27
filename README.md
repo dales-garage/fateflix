@@ -39,7 +39,7 @@ resulting NixOS modules into its own host composition.
 | Layer | Responsibility |
 | --- | --- |
 | Upstream NixFlix | Declarative media-service options and application configuration |
-| FateFlix integration | Pinned upstream source, patches, compatibility changes and module exports |
+| FateFlix integration | Pinned upstream source, patches, compatibility changes and internal service modules |
 | FateFlix capabilities | Storage, secrets, media, downloads, playback, processing and monitoring policy |
 | FateFlix appliance | Machine configuration, production/staging roles and production deployment |
 
@@ -66,18 +66,17 @@ source assembly process.
 
 Start with [Getting started](docs/getting-started/index.md). The preferred
 production output is `nixosConfigurations.fateflix`; `nixflix` and
-`nixflix-production` are retained aliases. `nixflix-staging` is an alternate
-role of the same machine configuration, with production deployment disabled.
+`nixflix-production` are retained aliases. Comin deploys only reviewed `main`.
+`nixflix-staging` is an optional role for limited development testing, with
+production deployment disabled. A testing branch is not a deployment source.
 
 The checked-in appliance describes a specific machine and storage layout.
 Adapt hardware, filesystem identities, networking, storage and secrets before
 using it on another host. The staging output shares those machine definitions;
 it is not a ready-made second machine.
 
-FateFlix also exports `nixosModules.default` (alias `nixosModules.nixflix`) for
-consuming its adapted NixFlix modules in your own NixOS configuration. Importing
-that module gives you the service options; the complete appliance comes from
-FateFlix's host and capability composition.
+FateFlix keeps its adapted NixFlix modules internal. To add standalone media
+modules to your own NixOS configuration, use [upstream NixFlix](https://github.com/kiriwalawren/nixflix).
 
 ## Documentation
 

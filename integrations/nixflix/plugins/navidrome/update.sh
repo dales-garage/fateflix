@@ -18,7 +18,10 @@ let
   eval = import "\${flake.inputs.nixpkgs}/nixos/lib/eval-config.nix" {
     system = "$SYSTEM";
     modules = [
-      flake.nixosModules.default
+      (import "\${flake.outPath}/integrations/nixflix/module.nix" {
+        inherit (flake) inputs;
+        source = flake.lib.nixflixSource;
+      })
       {
         nixflix.enable = true;
         nixflix.navidrome.enable = true;

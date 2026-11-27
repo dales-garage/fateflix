@@ -60,15 +60,9 @@ The separate SecretSpec profile resolves the key and atomically installs it at
 `/var/lib/nixflix-secrets/notifiarr-api-key`. After rotating a key, reprovision it
 and restart both `notifiarr` and `notifiarr-connections`.
 
-The deployment follows the repository's `migration/nixflix` bookmark workflow.
-`/etc/nixos/flake.nix` pins the deployed GitHub commit, so
-`sudo nixos-rebuild switch --flake /etc/nixos#fateflix` retains the module.
-To run its provisioner independently of the remote checkout:
-
-```sh
-revision=$(cat /var/lib/nixflix-deploy/deployed)
-nix run "github:dales-garage/fateflix/$revision#provision-notifiarr"
-```
+Production changes deploy through Comin from reviewed `main`. Use a checkout
+of the intended reviewed revision when running the provisioner; see
+[GitOps and updates](../gitops.md) for deployment and recovery.
 
 The site controls integration triggers, Discord channels, client tunnels, and
 scheduled actions. Configuring local connections does not select new channels or

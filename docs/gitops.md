@@ -2,8 +2,9 @@
 
 Production is `dales-garage/fateflix` → reviewed `main` → Comin →
 `nixosConfigurations.nixflix-production`. Comin polls every 60 seconds and uses
-`switch`, making deployments persistent. Reboots are manual. The staging output
-has Comin disabled; there is no separate staging VM in this rollout.
+`switch`, making deployments persistent. Reboots are manual. Comin has no
+testing branch configured. The staging output is for limited development
+testing only, has Comin disabled, and is not a separate staging VM.
 
 ## GitHub setup and promotion
 
@@ -19,8 +20,9 @@ default token read-only; only the update jobs request write permissions.
 
 FateFlix consumes upstream through the locked NixFlix source input. See
 [the modular configuration guide](fateflix.md) for the adapter and update process.
-Merge only after the required CI check passes. Do not enable Comin against the old
-`main`, which does not contain the production host configuration.
+Merge only after the required CI check passes. Production follows reviewed
+`main`; do not point it at a test branch. For a non-activating local build, run
+`nix develop -c just build` in the checkout you want to validate.
 
 ### Choosing builds from the Nix dependency graph
 
@@ -119,7 +121,8 @@ and the generated `flake.nix`: disabling a package
 rule alone does not stop lock maintenance advancing an unpinned input. Nix digest
 pinning stays disabled for branch-only flake URLs; the lock file supplies pins.
 The host stays on NixOS 26.05. Optional Jellyfin/Navidrome modules remain maintained
-without enabling them on production. The inherited omnibus updater is not scheduled.
+without enabling them on production. Use the targeted or supplemental updater
+instead of the retired bulk update wrapper.
 
 Upstream lock updates arrive in Renovate system-dependency PRs. The trusted
 artifact helper refreshes the fingerprint before CI accepts the change. Adapter
@@ -228,7 +231,8 @@ An operator who explicitly chooses to proceed without a fresh backup can pass
 
 SecretSpec/pass provisioning repairs incomplete generations and permission drift atomically; see [credential recovery](credential-recovery.md). Comin fetches the public
 repository without credentials. No API keys or GitHub write tokens enter Git or
-the Nix store. The old `deploy.py` refuses activation once Comin owns the machine.
+the Nix store. The pre-Comin deployment helper is retired; use the recovery
+procedure below for an emergency rollback.
 
 ## Health and recovery
 

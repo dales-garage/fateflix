@@ -13,15 +13,12 @@ let
   };
 in
 {
-  den.aspects.nixflix-api.nixos.imports = [ inputs.self.nixosModules.default ];
+  den.aspects.nixflix-api.nixos.imports = [
+    (import ../../integrations/nixflix/module.nix { inherit inputs source; })
+  ];
   flake = {
     lib.nixflixSource = source;
     lib.buildJellyfinPlugin = { pkgs }: import ../../lib/build-jellyfin-plugin.nix { inherit pkgs; };
     lib.jellyfinPlugins = import ../../lib/jellyfin-plugins.nix { inherit (inputs.nixpkgs) lib; };
-    nixosModules.default.imports = [
-      "${source}/modules"
-      inputs.vpn-confinement.nixosModules.default
-    ];
-    nixosModules.nixflix.imports = [ inputs.self.nixosModules.default ];
   };
 }

@@ -35,6 +35,7 @@ let
   secretManifest = builtins.fromTOML (builtins.readFile cfg.fateflix.secrets.manifest);
   productionManifest = builtins.fromTOML (builtins.readFile prod.config.fateflix.secrets.manifest);
 in
+assert (self.nixosModules or { }) == { };
 assert
   self.nixosConfigurations.fateflix.config.system.build.toplevel.drvPath
   == prod.config.system.build.toplevel.drvPath;

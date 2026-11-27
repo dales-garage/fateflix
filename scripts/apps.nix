@@ -32,10 +32,6 @@ in
       ''
         exec ${python}/bin/python3 ${self}/scripts/extra_dependencies.py "$@"
       '';
-  deploy = script "deploy" [
-    pkgs.jujutsu
-    pkgs.openssh
-  ];
   legacy-ubuntu-migration = import ../legacy/ubuntu-migration/app.nix { inherit pkgs self; };
   router-dns = script "router-dns" [ pkgs.openssh ];
   router-https = script "router-https" [ pkgs.openssh ];
